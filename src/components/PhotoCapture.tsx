@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 import { photoApiUrl } from "@/lib/photoUrl";
 
@@ -29,7 +29,10 @@ export function PhotoCapture({
   disabled,
   onUploaded,
 }: PhotoCaptureProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  /** 갤러리·파일 선택 (capture 없음 — 일부 기기에서 단일 input이 카메라로만 열리는 것 방지) */
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  /** 카메라 직촬 */
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +78,14 @@ export function PhotoCapture({
     }
   }
 
+  const inputDisabled = disabled || uploading || !memberId;
+
+  function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void handleFile(file);
+    e.target.value = "";
+  }
+
   return (
     <div className="photo-card">
       <div className="flex items-center justify-between gap-2">
@@ -96,26 +107,41 @@ export function PhotoCapture({
       </p>
 
       <input
-        ref={inputRef}
+        ref={galleryInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+        className="hidden"
+        disabled={inputDisabled}
+        onChange={onPickFile}
+      />
+      <input
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         className="hidden"
-        disabled={disabled || uploading || !memberId}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFile(file);
-          e.target.value = "";
-        }}
+        disabled={inputDisabled}
+        onChange={onPickFile}
       />
 
-      <button
-        type="button"
-        className="btn btn-secondary mt-2 w-full text-sm"
-        disabled={disabled || uploading || !memberId}
-        onClick={() => inputRef.current?.click()}
-      >
-        {hasPhoto || preview ? "사진 다시 등록" : "앨범·카메라에서 선택"}
-      </button>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          className="btn btn-secondary flex-1 text-sm"
+          disabled={inputDisabled}
+          onClick={() => galleryInputRef.current?.click()}
+        >
+          {hasPhoto || preview ? "앨범에서 다시 선택" : "앨범·파일에서 선택"}
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary flex-1 text-sm"
+          disabled={inputDisabled}
+          onClick={() => cameraInputRef.current?.click()}
+        >
+          {hasPhoto || preview ? "카메라로 다시 촬영" : "카메라로 촬영"}
+        </button>
+      </div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
