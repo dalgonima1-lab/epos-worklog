@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
+import { ManagerReportModal } from "@/components/ManagerReportModal";
 import { StationPicker } from "@/components/StationPicker";
 import {
   calendarDaysBetween,
@@ -19,6 +20,10 @@ export default function StationHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchedStation, setSearchedStation] = useState("");
+  const [reportView, setReportView] = useState<{
+    memberName: string;
+    report: DailyReport;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/members")
@@ -100,7 +105,11 @@ export default function StationHistoryPage() {
             <h2 className="text-lg font-bold">
               「{searchedStation}」 방문 기록
             </h2>
-            <p className="muted text-sm">총 {reports.length}건</p>
+            <p className="muted text-sm">
+              총 {reports.length}건 · 각 카드에서{" "}
+              <strong className="text-slate-600">보고서 보기</strong>로 전체
+              화면 확인
+            </p>
           </div>
 
           {reports.length === 0 ? (
@@ -158,6 +167,15 @@ export default function StationHistoryPage() {
                             작업 시간: {formatWorkDuration(r.workMinutes)}
                           </p>
                         </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary shrink-0 text-sm"
+                          onClick={() =>
+                            setReportView({ memberName: name, report: r })
+                          }
+                        >
+                          보고서 보기
+                        </button>
                       </div>
 
                       {(beforeSrc || afterSrc) && (
@@ -203,6 +221,16 @@ export default function StationHistoryPage() {
             </ol>
           )}
         </section>
+      )}
+
+      {reportView && (
+        <ManagerReportModal
+          open
+          teamName={teamName}
+          memberName={reportView.memberName}
+          report={reportView.report}
+          onClose={() => setReportView(null)}
+        />
       )}
     </>
   );
