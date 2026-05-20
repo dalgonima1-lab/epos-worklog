@@ -25,6 +25,9 @@ export function Header({ teamName, subtitle }: HeaderProps) {
         <Link href="/daily" className="btn btn-ghost text-sm">
           일일 기록
         </Link>
+        <Link href="/stations/history" className="btn btn-ghost text-sm">
+          역사 히스토리
+        </Link>
         {!staff && (
           <>
             <Link href="/manager" className="btn btn-ghost text-sm">

@@ -4,6 +4,7 @@ import type { Database, DailyReport, Member, StationRecord } from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
 import {
+  normalizeStationName,
   registerStationInHistory,
   seedStationHistory,
   sortStations,
@@ -277,6 +278,30 @@ export async function getReportsInRange(
     (r) => r.date >= startDate && r.date <= endDate
   );
   return Promise.all(list.map((r) => syncPhotoFlags(normalizeReport({ ...r }))));
+}
+
+/** 역사명이 같은 일일 보고를 최신순으로 (공백 무시·대소문자 무시 매칭) */
+export async function getReportsByStationName(
+  stationQuery: string,
+  limit = 300
+): Promise<DailyReport[]> {
+  const db = await ensureDb();
+  const target = normalizeStationName(stationQuery).toLowerCase();
+  if (!target) return [];
+
+  const list = db.reports.filter((r) => {
+    const n = normalizeStationName(r.stationName || "").toLowerCase();
+    return n.length > 0 && n === target;
+  });
+  list.sort((a, b) => {
+    const byDate = b.date.localeCompare(a.date);
+    if (byDate !== 0) return byDate;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
+  const sliced = list.slice(0, Math.min(limit, 500));
+  return Promise.all(
+    sliced.map((r) => syncPhotoFlags(normalizeReport({ ...r })))
+  );
 }
 
 export async function verifyManagerPin(pin: string): Promise<boolean> {

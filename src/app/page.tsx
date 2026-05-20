@@ -37,6 +37,9 @@ export default async function HomePage() {
           <Link href="/daily" className="btn btn-primary mt-4">
             오늘 업무 작성
           </Link>
+          <Link href="/stations/history" className="btn btn-secondary mt-2">
+            역사별 방문 히스토리
+          </Link>
         </section>
 
         <section className="card p-5">
@@ -60,6 +63,9 @@ export default async function HomePage() {
           <li>공종, 작업 전·후 사진(자동 시각), 작업시간 산정, 미비사항</li>
           <li>직원별 일일 업무 입력 (금일/익일/이슈)</li>
           <li>주간(월~금) 제출률 및 미제출일 표시</li>
+          <li>
+            역사(현장)별 과거 방문·공종·금일 수행 내역 조회
+          </li>
           <li>팀장용 주간 요약 Markdown 생성</li>
           <li>Gemini AI: 지난주 보고서 대비 잘한 점·부족한 점·팀장 첨언 자동 정리</li>
           <li>

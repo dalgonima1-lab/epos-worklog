@@ -39,3 +39,35 @@ export function shiftWeek(anchor: Date, delta: number): Date {
   d.setDate(d.getDate() + delta * 7);
   return d;
 }
+
+/** `YYYY-MM-DD` 두 날짜 사이의 달력 일 수 (시작 ≤ 끝일 때 양수) */
+export function calendarDaysBetween(
+  startIsoDate: string,
+  endIsoDate: string
+): number {
+  const a = new Date(startIsoDate + "T12:00:00");
+  const b = new Date(endIsoDate + "T12:00:00");
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+/** 오늘 기준 상대 표현 (로컬 달력 기준) */
+export function relativeCalendarDayLabel(dateStr: string): string {
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return dateStr;
+  const [y, m, d] = parts;
+  const target = new Date(y, m - 1, d);
+  const now = new Date();
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  const diffDays = Math.round(
+    (todayStart.getTime() - target.getTime()) / 86400000
+  );
+  if (diffDays === 0) return "오늘";
+  if (diffDays === 1) return "어제";
+  if (diffDays > 1) return `${diffDays}일 전`;
+  if (diffDays === -1) return "내일";
+  return `${-diffDays}일 후`;
+}
