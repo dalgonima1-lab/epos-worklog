@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EPOS 일일업무 오프라인 데모</title>
+    <style>
+      :root {
+        --bg: #f4f6f9;
+        --card: #ffffff;
+        --text: #1a2332;
+        --muted: #64748b;
+        --accent: #2563eb;
+        --border: #e2e8f0;
+        --danger: #dc2626;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: linear-gradient(160deg, #eef2ff 0%, var(--bg) 60%);
+        color: var(--text);
+        font-family: "Malgun Gothic", Arial, sans-serif;
+      }
+
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .top {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-end;
+        margin-bottom: 16px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 6px;
+        font-size: 26px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      @media (min-width: 820px) {
+        .grid-2 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        margin: 12px 0 5px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font: inherit;
+        background: white;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      .btn {
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        background: var(--accent);
+        color: white;
+      }
+
+      .btn.secondary {
+        background: #f1f5f9;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .btn.danger {
+        background: #fee2e2;
+        color: var(--danger);
+      }
+
+      .tabs,
+      .station-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .tab,
+      .chip {
+        border: 1px solid var(--border);
+        background: white;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .tab.active,
+      .chip.active {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: white;
+      }
+
+      .photo-box {
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fafafa;
+      }
+
+      .photo-placeholder {
+        height: 120px;
+        border-radius: 12px;
+        background: repeating-linear-gradient(
+          45deg,
+          #f1f5f9,
+          #f1f5f9 10px,
+          #e2e8f0 10px,
+          #e2e8f0 20px
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+        padding: 12px;
+      }
+
+      .summary-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .report-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        background: #f8fafc;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 3px 8px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        overflow: auto;
+        max-height: 420px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="top">
+        <div>
+          <p class="muted">EPOS Worklog · Standalone Offline Demo</p>
+          <h1>EPOS 관리팀 일일업무 보고 데모</h1>
+          <p class="muted">
+            이 파일은 인터넷/서버 없이 열리는 설명용 데모입니다. 입력값은 이 화면 안에서만
+            시연되며, 사진 파일은 저장하지 않습니다.
+          </p>
+        </div>
+        <button class="btn danger" id="resetBtn">데모 초기화</button>
+      </div>
+
+      <div class="tabs" style="margin-bottom: 14px">
+        <button class="tab active" data-panel="daily">직원 일일 입력</button>
+        <button class="tab" data-panel="manager">팀장 주간 요약</button>
+        <button class="tab" data-panel="ai">AI 분석 흐름 예시</button>
+      </div>
+
+      <section id="daily" class="card">
+        <h2>직원 일일 업무 입력</h2>
+        <div class="grid grid-2">
+          <div>
+            <label for="member">작성자</label>
+            <select id="member"></select>
+          </div>
+          <div>
+            <label for="date">날짜</label>
+            <input id="date" type="date" />
+          </div>
+        </div>
+
+        <label>역사명</label>
+        <p class="muted">
+          기존 역은 탭으로 선택하고, 새 역은 아래 입력칸에 입력 후 저장하면 다음부터
+          탭에 남는 흐름입니다.
+        </p>
+        <div class="station-tabs" id="stationTabs"></div>
+        <input id="stationName" placeholder="예: 명동역, 회현역, 봉천역" />
+
+        <label for="category">공종</label>
+        <select id="category">
+          <option value="">선택하세요</option>
+          <option>전력감시시스템</option>
+          <option>조명제어시스템</option>
+          <option>유지보수 용역</option>
+          <option>A/S</option>
+        </select>
+
+        <div class="grid grid-2" style="margin-top: 14px">
+          <div class="photo-box">
+            <h3>작업 전 사진</h3>
+            <div class="photo-placeholder" id="beforePhoto">
+              실제 파일 저장 없이<br />"사진 등록" 흐름만 시연
+            </div>
+            <p class="muted" id="beforeAt">등록 시각: -</p>
+            <button class="btn secondary" id="beforeBtn">작업 전 사진 등록 시연</button>
+          </div>
+
+          <div class="photo-box">
+            <h3>작업 후 사진</h3>
+            <div class="photo-placeholder" id="afterPhoto">
+              실제 파일 저장 없이<br />"사진 등록" 흐름만 시연
+            </div>
+            <p class="muted" id="afterAt">등록 시각: -</p>
+            <button class="btn secondary" id="afterBtn">작업 후 사진 등록 시연</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 14px; background: #eff6ff">
+          <strong>작업 시간 자동 산정:</strong>
+          <span id="duration">작업 전·후 등록 시각을 기준으로 계산됩니다.</span>
+        </div>
+
+        <label for="done">금일 수행 업무</label>
+        <textarea id="done" placeholder="오늘 진행/완료한 업무를 입력하세요."></textarea>
+
+        <label for="plan">익일 계획</label>
+        <textarea id="plan" placeholder="다음 작업 계획을 입력하세요."></textarea>
+
+        <label for="issues">이슈 / 지원 요청</label>
+        <textarea id="issues" placeholder="블로커, 협조 필요 사항 등"></textarea>
+
+        <label for="deficiencies">미비사항</label>
+        <textarea id="deficiencies" placeholder="미완료, 보완 필요, 재작업 예정 등"></textarea>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px">
+          <button class="btn" id="saveBtn">일일 보고 저장</button>
+          <span class="muted" id="status"></span>
+        </div>
+      </section>
+
+      <section id="manager" class="card hidden">
+        <h2>팀장 주간 요약</h2>
+        <p class="muted">
+          직원들이 매일 입력한 내용이 쌓이면 팀장은 제출 현황과 요약본을 한 번에
+          확인하는 구조입니다.
+        </p>
+        <div class="summary-list" id="summaryCards"></div>
+        <h3 style="margin-top: 18px">Markdown 요약본</h3>
+        <pre id="markdownOut"></pre>
+      </section>
+
+      <section id="ai" class="card hidden">
+        <h2>AI 주간 분석 흐름 예시</h2>
+        <p class="muted">
+          실제 서비스에서는 Gemini가 지난주 보고서와 이번 주 일일 기록을 비교해 아래
+          형식의 보고서를 생성합니다. 이 데모에서는 형식만 보여줍니다.
+        </p>
+        <pre id="aiOut"></pre>
+      </section>
+    </main>
+
+    <script>
+      const members = [
+        { id: "m1", name: "노희찬 과장" },
+        { id: "m2", name: "이준명 대리" },
+        { id: "m3", name: "유영준 사원" },
+      ];
+
+      const state = {
+        stations: ["명동역", "회현역", "봉천역", "을지로4가역", "신대방역"],
+        reports: [
+          {
+            memberId: "m1",
+            date: today(),
+            stationName: "명동역",
+            category: "조명제어시스템",
+            beforeAt: minutesAgo(95),
+            afterAt: minutesAgo(20),
+            done: "명동역 조명제어 관제 화면 동작 상태 확인",
+            plan: "회현역 관제 화면 점검 예정",
+            issues: "",
+            deficiencies: "일부 화면 갱신 속도 확인 필요",
+          },
+          {
+            memberId: "m2",
+            date: today(),
+            stationName: "봉천역",
+            category: "전력감시시스템",
+            beforeAt: minutesAgo(130),
+            afterAt: minutesAgo(55),
+            done: "봉천역 DB 백업 및 통신 상태 점검",
+            plan: "오류 재발 여부 모니터링",
+            issues: "기존 DB 작업 이력 확인 필요",
+            deficiencies: "",
+          },
+        ],
+      };
+
+      let beforeAt = null;
+      let afterAt = null;
+
+      function today() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+
+      function minutesAgo(min) {
+        return new Date(Date.now() - min * 60000).toISOString();
+      }
+
+      function fmtDateTime(iso) {
+        if (!iso) return "-";
+        return new Date(iso).toLocaleString("ko-KR");
+      }
+
+      function fmtDuration(start, end) {
+        if (!start || !end) return "작업 전·후 등록 시각을 기준으로 계산됩니다.";
+        const minutes = Math.max(
+          0,
+          Math.round((new Date(end) - new Date(start)) / 60000)
+        );
+        if (minutes < 60) return `${minutes}분`;
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return m ? `${h}시간 ${m}분` : `${h}시간`;
+      }
+
+      function memberName(id) {
+        return members.find((m) => m.id === id)?.name ?? id;
+      }
+
+      function initMembers() {
+        const select = document.getElementById("member");
+        select.innerHTML = "";
+        members.forEach((m) => {
+          const option = document.createElement("option");
+          option.value = m.id;
+          option.textContent = m.name;
+          select.appendChild(option);
+        });
+      }
+
+      function renderStations(selected) {
+        const box = document.getElementById("stationTabs");
+        box.innerHTML = "";
+        state.stations.forEach((name) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "chip" + (selected === name ? " active" : "");
+          btn.textContent = name;
+          btn.onclick = () => {
+            document.getElementById("stationName").value = name;
+            renderStations(name);
+          };
+          box.appendChild(btn);
+        });
+      }
+
+      function updateDuration() {
+        document.getElementById("beforeAt").textContent =
+          "등록 시각: " + fmtDateTime(beforeAt);
+        document.getElementById("afterAt").textContent =
+          "등록 시각: " + fmtDateTime(afterAt);
+        document.getElementById("duration").textContent = fmtDuration(
+          beforeAt,
+          afterAt
+        );
+      }
+
+      function saveReport() {
+        const report = {
+          memberId: document.getElementById("member").value,
+          date: document.getElementById("date").value,
+          stationName: document.getElementById("stationName").value.trim(),
+          category: document.getElementById("category").value,
+          beforeAt,
+          afterAt,
+          done: document.getElementById("done").value,
+          plan: document.getElementById("plan").value,
+          issues: document.getElementById("issues").value,
+          deficiencies: document.getElementById("deficiencies").value,
+        };
+
+        if (!report.stationName) {
+          document.getElementById("status").textContent = "역사명을 입력하세요.";
+          return;
+        }
+        if (!report.category) {
+          document.getElementById("status").textContent = "공종을 선택하세요.";
+          return;
+        }
+
+        const idx = state.reports.findIndex(
+          (r) => r.memberId === report.memberId && r.date === report.date
+        );
+        if (idx >= 0) state.reports[idx] = report;
+        else state.reports.push(report);
+
+        if (!state.stations.includes(report.stationName)) {
+          state.stations.unshift(report.stationName);
+        }
+
+        renderStations(report.stationName);
+        renderSummary();
+        document.getElementById("status").textContent =
+          "저장되었습니다. 팀장 주간 요약 탭에서 확인하세요.";
+      }
+
+      function renderSummary() {
+        const cards = document.getElementById("summaryCards");
+        const md = [];
+        cards.innerHTML = "";
+        md.push("# EPOS 관리팀 주간 업무 요약\n");
+
+        members.forEach((member) => {
+          const reports = state.reports.filter((r) => r.memberId === member.id);
+          const card = document.createElement("div");
+          card.className = "report-card";
+          card.innerHTML = `<h3>${member.name} <span class="badge">${reports.length}건</span></h3>`;
+
+          md.push(`## ${member.name}`);
+          if (reports.length === 0) {
+            card.innerHTML += `<p class="muted">제출 기록 없음</p>`;
+            md.push("- 제출 기록 없음\n");
+          }
+
+          reports.forEach((r) => {
+            const duration = fmtDuration(r.beforeAt, r.afterAt);
+            card.innerHTML += `
+              <p><strong>${r.date}</strong> · ${r.stationName} · ${r.category}</p>
+              <p class="muted">작업시간: ${duration}</p>
+              <p>${escapeHtml(r.done || "(업무 내용 없음)")}</p>
+              ${
+                r.deficiencies
+                  ? `<p style="color: var(--danger)">미비사항: ${escapeHtml(
+                      r.deficiencies
+                    )}</p>`
+                  : ""
+              }
+            `;
+            md.push(`### ${r.date}`);
+            md.push(`- 역사: ${r.stationName}`);
+            md.push(`- 공종: ${r.category}`);
+            md.push(`- 작업 시간: ${duration}`);
+            md.push(`**금일 수행**\n${r.done || "(없음)"}`);
+            md.push(`**익일 계획**\n${r.plan || "(없음)"}`);
+            if (r.issues) md.push(`**이슈**\n${r.issues}`);
+            if (r.deficiencies) md.push(`**미비사항**\n${r.deficiencies}`);
+            md.push("");
+          });
+
+          cards.appendChild(card);
+        });
+
+        document.getElementById("markdownOut").textContent = md.join("\n");
+        renderAiExample();
+      }
+
+      function renderAiExample() {
+        document.getElementById("aiOut").textContent = `# EPOS 관리팀 업무 분석 및 제언 예시
+
+## 1. 종합 평가
+이번 주 EPOS 관리팀은 일일 기록 기반으로 현장 이력, 공종, 작업시간, 미비사항을 구조화하여 관리하는 흐름을 구축했습니다.
+특히 역사별 반복 이슈와 작업시간을 함께 확인할 수 있어 차주 업무 배분과 보완 지시에 활용할 수 있습니다.
+
+## 2. 구성원별 성과 및 보완 과제
+### ■ 노희찬 과장
+#### 👍 잘한 부분
+- 현장 조치 이력과 미비사항을 구분해 기록
+#### 👎 부족한 부분
+- 반복 미비사항은 원인 분석 및 매뉴얼화 필요
+
+### ■ 이준명 대리
+#### 👍 잘한 부분
+- DB/관제 관련 작업 내용을 구체적으로 기록
+#### 👎 부족한 부분
+- 타 부서 연계 이슈는 후속 조치 책임자를 명확히 할 필요
+
+### ■ 유영준 사원
+#### 👍 잘한 부분
+- 현장 업무를 일 단위로 기록하는 습관 형성 가능
+#### 👎 부족한 부분
+- 장애 원인 분석 내용 보강 필요
+
+## 3. 핵심 전략 과제 체크리스트
+| 전략 과제 | 이행 여부 | 분석 |
+|---|---|---|
+| 현장 조치 이력 데이터화 | ○ | 역사/공종/시간/미비사항 기록 가능 |
+| 반복 이슈 매뉴얼화 | △ | 미비사항 누적 후 주간 분석 필요 |
+
+## 4. 팀장 첨언
+주간 요약을 바탕으로 차주에는 반복 미비사항과 타 부서 협조 필요 건을 우선 정리합니다.`;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.onclick = () => {
+          document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          ["daily", "manager", "ai"].forEach((id) => {
+            document.getElementById(id).classList.toggle("hidden", id !== tab.dataset.panel);
+          });
+          if (tab.dataset.panel === "manager") renderSummary();
+          if (tab.dataset.panel === "ai") renderAiExample();
+        };
+      });
+
+      document.getElementById("beforeBtn").onclick = () => {
+        beforeAt = new Date().toISOString();
+        document.getElementById("beforePhoto").textContent =
+          "작업 전 사진 등록됨 (저장 없음)";
+        updateDuration();
+      };
+
+      document.getElementById("afterBtn").onclick = () => {
+        afterAt = new Date().toISOString();
+        document.getElementById("afterPhoto").textContent =
+          "작업 후 사진 등록됨 (저장 없음)";
+        updateDuration();
+      };
+
+      document.getElementById("saveBtn").onclick = saveReport;
+
+      document.getElementById("resetBtn").onclick = () => {
+        location.reload();
+      };
+
+      document.getElementById("stationName").oninput = (e) => {
+        renderStations(e.target.value.trim());
+      };
+
+      initMembers();
+      document.getElementById("date").value = today();
+      renderStations("");
+      updateDuration();
+      renderSummary();
+    </script>
+  </body>
+</html>

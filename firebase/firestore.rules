@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 이 앱은 서버(Next.js API)에서만 Firestore에 접근합니다.
+    // 브라우저에서 직접 DB를 열지 않도록 전부 차단합니다.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>우리 결혼자금 노트 데모</title>
+    <style>
+      :root {
+        --bg: #fbf7f2;
+        --card: #ffffff;
+        --text: #243042;
+        --muted: #758195;
+        --line: #eadfd5;
+        --primary: #c77777;
+        --primary-dark: #9f5151;
+        --navy: #25324a;
+        --green: #4f8a67;
+        --amber: #c28a36;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, #ffe8e8 0, transparent 32%),
+          linear-gradient(160deg, #fffaf4 0%, var(--bg) 58%, #f8eeee 100%);
+        font-family: "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+      }
+
+      .app {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 18px 56px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-end;
+        margin-bottom: 22px;
+      }
+
+      .eyebrow {
+        color: var(--primary-dark);
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        font-size: 13px;
+        margin: 0 0 6px;
+      }
+
+      h1 {
+        font-size: clamp(28px, 4vw, 44px);
+        margin: 0;
+        line-height: 1.12;
+      }
+
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 13px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line);
+        color: var(--navy);
+        font-weight: 800;
+        box-shadow: 0 8px 18px rgba(52, 41, 33, 0.06);
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 18px;
+      }
+
+      .tab {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+        border-radius: 999px;
+        padding: 11px 15px;
+        font-weight: 800;
+        color: var(--navy);
+        cursor: pointer;
+      }
+
+      .tab.active {
+        background: var(--navy);
+        color: white;
+        border-color: var(--navy);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      @media (max-width: 850px) {
+        header,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 20px;
+        box-shadow: 0 18px 45px rgba(69, 44, 30, 0.08);
+      }
+
+      .hero {
+        padding: 26px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 247, 0.94)),
+          radial-gradient(circle at top right, rgba(199, 119, 119, 0.18), transparent 35%);
+      }
+
+      .hero-number {
+        font-size: clamp(38px, 7vw, 72px);
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin: 4px 0;
+        color: var(--navy);
+      }
+
+      .money {
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 4px 0 0;
+      }
+
+      .small-money {
+        font-weight: 900;
+        color: var(--navy);
+      }
+
+      .progress {
+        height: 16px;
+        border-radius: 999px;
+        background: #f1e6dd;
+        overflow: hidden;
+        margin: 16px 0 12px;
+      }
+
+      .bar {
+        height: 100%;
+        width: 40.6%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--primary), #d9a15c);
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .person {
+        border-radius: 16px;
+        padding: 15px;
+        background: #fffaf7;
+        border: 1px solid var(--line);
+      }
+
+      .list {
+        display: grid;
+        gap: 11px;
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        border-radius: 14px;
+        padding: 13px 14px;
+        background: #fffaf7;
+        border: 1px solid var(--line);
+      }
+
+      .row strong {
+        color: var(--navy);
+      }
+
+      .tag {
+        display: inline-flex;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #f4e4e4;
+        color: var(--primary-dark);
+      }
+
+      .tag.green {
+        background: #e4f1e9;
+        color: var(--green);
+      }
+
+      .tag.amber {
+        background: #fff0d6;
+        color: var(--amber);
+      }
+
+      .panel {
+        display: none;
+      }
+
+      .panel.active {
+        display: block;
+      }
+
+      .note {
+        border-left: 4px solid var(--primary);
+        padding: 13px 15px;
+        border-radius: 14px;
+        background: #fff8f8;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: rgba(37, 50, 74, 0.06);
+        color: var(--navy);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <p class="eyebrow">WEDDING MONEY PLANNER · DEMO</p>
+          <h1>우리 결혼자금 노트</h1>
+          <p class="muted" style="margin: 10px 0 0">
+            각자 통장은 그대로 두고, 결혼 준비 자금만 함께 투명하게 보는 앱입니다.
+          </p>
+        </div>
+        <div class="pill">결혼식까지 D-312</div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab active" data-panel="dashboard">대시보드</button>
+        <button class="tab" data-panel="assets">각자 자산</button>
+        <button class="tab" data-panel="budget">결혼 비용 계획</button>
+        <button class="tab" data-panel="monthly">월별 저축</button>
+        <button class="tab" data-panel="memo">둘만의 메모</button>
+      </nav>
+
+      <section id="dashboard" class="panel active">
+        <div class="grid grid-2">
+          <div class="card hero">
+            <p class="muted">목표금액 80,000,000원 중</p>
+            <div class="hero-number">32,500,000원</div>
+            <p class="muted">현재 함께 준비한 금액</p>
+            <div class="progress"><div class="bar"></div></div>
+            <strong>40.6% 달성 · 목표까지 47,500,000원</strong>
+            <div class="split">
+              <div class="person">
+                <span class="tag">예비신랑</span>
+                <p class="money">18,000,000원</p>
+                <p class="muted">이번 달 +2,000,000원</p>
+              </div>
+              <div class="person">
+                <span class="tag">예비신부</span>
+                <p class="money">14,500,000원</p>
+                <p class="muted">이번 달 +1,500,000원</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <h2>대표 관점 핵심</h2>
+              <div class="list">
+                <div class="row">
+                  <span>자금 소유 구분</span>
+                  <strong>신랑/신부 별도 관리</strong>
+                </div>
+                <div class="row">
+                  <span>공동 목표</span>
+                  <strong>결혼 준비금 통합 조회</strong>
+                </div>
+                <div class="row">
+                  <span>운영 방식</span>
+                  <strong>입력은 간단, 현황은 명확</strong>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <h2>현재 판단</h2>
+              <p class="muted">
+                지금 속도라면 목표까지 약 14개월이 필요합니다. 신혼집 보증금 항목이
+                전체 예산의 핵심 변수입니다.
+              </p>
+              <span class="tag green">무리 없는 누적 관리</span>
+              <span class="tag amber">신혼집 예산 재검토 필요</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="assets" class="panel">
+        <div class="grid grid-2">
+          <div class="card">
+            <h2>예비신랑 자산</h2>
+            <p class="money">18,000,000원</p>
+            <div class="list">
+              <div class="row"><span>급여통장</span><strong>5,000,000원</strong></div>
+              <div class="row"><span>적금</span><strong>10,000,000원</strong></div>
+              <div class="row"><span>비상금</span><strong>3,000,000원</strong></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>예비신부 자산</h2>
+            <p class="money">14,500,000원</p>
+            <div class="list">
+              <div class="row"><span>급여통장</span><strong>4,500,000원</strong></div>
+              <div class="row"><span>적금</span><strong>8,000,000원</strong></div>
+              <div class="row"><span>비상금</span><strong>2,000,000원</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="footer-note">
+          실제 계좌번호는 저장하지 않습니다. 은행명과 별칭, 잔액만 관리해 보안 부담을 낮춥니다.
+        </div>
+      </section>
+
+      <section id="budget" class="panel">
+        <div class="grid grid-3">
+          <div class="card">
+            <span class="tag">핵심</span>
+            <h2>신혼집 보증금</h2>
+            <p class="money">50,000,000원</p>
+            <p class="muted">현재 준비 20,000,000원 · 남은 금액 30,000,000원</p>
+          </div>
+          <div class="card">
+            <span class="tag">계약 예정</span>
+            <h2>예식장</h2>
+            <p class="money">15,000,000원</p>
+            <p class="muted">계약금 2,000,000원 반영</p>
+          </div>
+          <div class="card">
+            <span class="tag">조정 가능</span>
+            <h2>신혼여행</h2>
+            <p class="money">8,000,000원</p>
+            <p class="muted">가전/가구 예산과 조정 필요</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="monthly" class="panel">
+        <div class="card">
+          <h2>월별 저축 흐름</h2>
+          <div class="list">
+            <div class="row">
+              <span>2026년 1월</span>
+              <strong>+3,500,000원</strong>
+            </div>
+            <div class="row">
+              <span>예비신랑</span>
+              <strong>+2,000,000원</strong>
+            </div>
+            <div class="row">
+              <span>예비신부</span>
+              <strong>+1,500,000원</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="memo" class="panel">
+        <div class="grid grid-2">
+          <div class="card note">
+            <h2>합의 메모</h2>
+            <p>
+              이번 달은 예식장 계약금 때문에 저축액이 줄어도 괜찮음. 다음 달부터
+              신혼집 보증금 목표를 우선 반영.
+            </p>
+            <p class="muted">2026.01.18</p>
+          </div>
+          <div class="card note">
+            <h2>중요 원칙</h2>
+            <p>
+              이 앱은 실제 돈을 한 통장으로 옮기는 앱이 아니라, 각자 자산을 분리해
+              기록하고 결혼 목표만 함께 보는 관리 도구입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      document.querySelectorAll(".tab").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+          document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
+          button.classList.add("active");
+          document.getElementById(button.dataset.panel).classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

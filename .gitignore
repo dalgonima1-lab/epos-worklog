@@ -1,0 +1,12 @@
+node_modules
+.next
+data/*.json
+data/uploads/**
+data/analyses/**
+data/references/**
+!.gitkeep
+.env
+.env.local
+.env*.local
+.DS_Store
+.vercel

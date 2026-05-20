@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EPOS Worklog 데모</title>
+    <style>
+      :root {
+        --bg: #f4f6f9;
+        --card: #fff;
+        --text: #1a2332;
+        --muted: #5c6b7a;
+        --accent: #2563eb;
+        --border: #e2e8f0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Malgun Gothic", sans-serif;
+        background: linear-gradient(160deg, #eef2ff, var(--bg));
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 1.25rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0.2rem 0;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 0.75rem;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.6rem 0 0.25rem;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.55rem 0.7rem;
+        font: inherit;
+      }
+      textarea {
+        min-height: 90px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+      }
+      .tabs {
+        display: flex;
+        gap: 0.4rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .tab {
+        border: 1px solid var(--border);
+        background: #fff;
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        cursor: pointer;
+      }
+      .tab.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .btn {
+        margin-top: 0.8rem;
+        border: none;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn.secondary {
+        background: #f1f5f9;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 0.8rem;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        max-height: 320px;
+        overflow: auto;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 0.1rem 0.5rem;
+        font-size: 0.75rem;
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .hidden {
+        display: none;
+      }
+      .photo-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+      }
+      .photo-box img {
+        width: 100%;
+        max-height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-top: 0.35rem;
+        border: 1px solid var(--border);
+      }
+      .time-box {
+        background: #eff6ff;
+        border-radius: 8px;
+        padding: 0.6rem;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+      }
+      .station-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin: 0.35rem 0;
+      }
+      .station-tab {
+        border: 1px solid var(--border);
+        background: #fff;
+        border-radius: 999px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .station-tab.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="muted">EPOS Worklog · 오프라인 데모</p>
+      <h1>epos 관리팀</h1>
+      <p class="muted">브라우저 localStorage에 저장됩니다. 팀 공유는 서버 버전을 사용하세요.</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="daily">일일 기록</button>
+        <button class="tab" data-tab="manager">팀장 요약</button>
+      </div>
+
+      <section id="panel-daily" class="card">
+        <div class="row">
+          <div>
+            <label for="member">작성자</label>
+            <select id="member"></select>
+          </div>
+          <div>
+            <label for="date">날짜</label>
+            <input id="date" type="date" />
+          </div>
+        </div>
+        <label for="stationName">역사명</label>
+        <p class="muted" style="font-size: 0.75rem; margin: 0">
+          기존 역은 탭으로 선택하고, 새 역은 입력 후 저장하면 다음부터 탭에 남습니다.
+        </p>
+        <div class="station-tabs" id="stationTabs"></div>
+        <input id="stationName" placeholder="예: 명동역, 회현역" />
+        <label for="role">공종</label>
+        <select id="role">
+          <option value="">선택</option>
+          <option>전력감시시스템</option>
+          <option>조명제어시스템</option>
+          <option>유지보수 용역</option>
+          <option>A/S</option>
+        </select>
+        <div class="photo-row" style="margin-top: 0.5rem">
+          <div class="photo-box">
+            <label>작업 전 사진</label>
+            <input type="file" accept="image/*" capture="environment" id="photoBefore" />
+            <img id="previewBefore" class="hidden" alt="작업 전" />
+            <p class="muted" id="timeBefore" style="font-size: 0.75rem"></p>
+          </div>
+          <div class="photo-box">
+            <label>작업 후 사진</label>
+            <input type="file" accept="image/*" capture="environment" id="photoAfter" />
+            <img id="previewAfter" class="hidden" alt="작업 후" />
+            <p class="muted" id="timeAfter" style="font-size: 0.75rem"></p>
+          </div>
+        </div>
+        <div class="time-box" id="workTimeBox">작업 시간: —</div>
+        <label for="done">금일 수행</label>
+        <textarea id="done" placeholder="- 오늘 한 일"></textarea>
+        <label for="plan">익일 계획</label>
+        <textarea id="plan"></textarea>
+        <label for="issues">이슈 (선택)</label>
+        <textarea id="issues"></textarea>
+        <label for="deficiencies">미비사항</label>
+        <textarea id="deficiencies" placeholder="미완료, 보완 필요 등"></textarea>
+        <button class="btn" id="saveDaily">저장</button>
+        <p class="muted" id="dailyStatus"></p>
+      </section>
+
+      <section id="panel-manager" class="card hidden">
+        <p class="muted">데모 PIN: <strong>1234</strong></p>
+        <label for="pin">팀장 PIN</label>
+        <input id="pin" type="password" />
+        <button class="btn" id="loadSummary">주간 요약 보기</button>
+        <div id="managerCards" style="margin-top: 0.8rem"></div>
+        <pre id="mdOut" class="hidden"></pre>
+        <button class="btn secondary hidden" id="downloadMd">Markdown 다운로드</button>
+      </section>
+    </div>
+
+    <script>
+      const STORAGE_KEY = "epos-worklog-demo";
+      const PIN = "1234";
+      const members = [
+        { id: "m1", name: "노희찬 과장" },
+        { id: "m2", name: "이준명 대리" },
+        { id: "m3", name: "유영준 사원" },
+      ];
+      const defaultStations = [
+        "명동역",
+        "회현역",
+        "경찰병원역",
+        "봉천역",
+        "을지로4가역",
+        "신대방역",
+      ];
+
+      function loadDb() {
+        try {
+          const db = JSON.parse(
+            localStorage.getItem(STORAGE_KEY) || '{"reports":[]}'
+          );
+          if (!Array.isArray(db.stationHistory) || db.stationHistory.length === 0) {
+            db.stationHistory = defaultStations.map((name) => ({
+              name,
+              useCount: 1,
+              lastUsedAt: new Date().toISOString(),
+            }));
+          }
+          return db;
+        } catch {
+          return {
+            reports: [],
+            stationHistory: defaultStations.map((name) => ({
+              name,
+              useCount: 1,
+              lastUsedAt: new Date().toISOString(),
+            })),
+          };
+        }
+      }
+      function saveDb(db) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      }
+      function fmt(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+      function weekRange(anchor = new Date()) {
+        const d = new Date(anchor);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        const mon = new Date(d);
+        mon.setDate(d.getDate() + diff);
+        const fri = new Date(mon);
+        fri.setDate(mon.getDate() + 4);
+        return { start: fmt(mon), end: fmt(fri) };
+      }
+      function formatDt(iso) {
+        if (!iso) return "—";
+        return new Date(iso).toLocaleString("ko-KR");
+      }
+      function calcMinutes(a, b) {
+        if (!a || !b) return null;
+        const d = (new Date(b) - new Date(a)) / 60000;
+        return d >= 0 ? Math.round(d) : null;
+      }
+      function formatDur(m) {
+        if (m == null) return "—";
+        if (m < 60) return m + "분";
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        return r ? h + "시간 " + r + "분" : h + "시간";
+      }
+      function registerStation(name) {
+        const trimmed = (name || "").trim();
+        if (!trimmed) return;
+        const db = loadDb();
+        const found = db.stationHistory.find(
+          (s) => s.name.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (found) {
+          found.useCount += 1;
+          found.lastUsedAt = new Date().toISOString();
+        } else {
+          db.stationHistory.unshift({
+            name: trimmed,
+            useCount: 1,
+            lastUsedAt: new Date().toISOString(),
+          });
+        }
+        db.stationHistory.sort((a, b) =>
+          b.lastUsedAt.localeCompare(a.lastUsedAt)
+        );
+        saveDb(db);
+        renderStationTabs(trimmed);
+      }
+      function renderStationTabs(selected) {
+        const db = loadDb();
+        const box = document.getElementById("stationTabs");
+        box.innerHTML = "";
+        db.stationHistory.forEach((station) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className =
+            "station-tab" + (selected === station.name ? " active" : "");
+          btn.textContent = station.name;
+          btn.onclick = () => {
+            document.getElementById("stationName").value = station.name;
+            renderStationTabs(station.name);
+          };
+          box.appendChild(btn);
+        });
+      }
+      function bindPhoto(inputId, previewId, timeId, field) {
+        document.getElementById(inputId).onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const db = loadDb();
+            const id = memberSel.value + "_" + dateInput.value;
+            let r = db.reports.find((x) => x.id === id);
+            const at = new Date().toISOString();
+            if (!r) {
+              r = {
+                id,
+                memberId: memberSel.value,
+                date: dateInput.value,
+                stationName: document.getElementById("stationName").value,
+                processingRole: "",
+                done: "",
+                plan: "",
+                issues: "",
+                deficiencies: "",
+              };
+              db.reports.push(r);
+            }
+            r[field + "Photo"] = reader.result;
+            r[field + "PhotoAt"] = at;
+            saveDb(db);
+            const img = document.getElementById(previewId);
+            img.src = reader.result;
+            img.classList.remove("hidden");
+            document.getElementById(timeId).textContent =
+              "등록: " + formatDt(at);
+            updateWorkTime();
+          };
+          reader.readAsDataURL(file);
+        };
+      }
+      function updateWorkTime() {
+        const db = loadDb();
+        const r = db.reports.find(
+          (x) =>
+            x.memberId === memberSel.value && x.date === dateInput.value
+        );
+        const m = calcMinutes(r?.beforePhotoAt, r?.afterPhotoAt);
+        document.getElementById("workTimeBox").textContent =
+          "작업 시간: " + formatDur(m);
+      }
+      function weekdays(start, end) {
+        const out = [];
+        const cur = new Date(start + "T12:00:00");
+        const last = new Date(end + "T12:00:00");
+        while (cur <= last) {
+          const dow = cur.getDay();
+          if (dow >= 1 && dow <= 5) out.push(fmt(cur));
+          cur.setDate(cur.getDate() + 1);
+        }
+        return out;
+      }
+
+      const memberSel = document.getElementById("member");
+      members.forEach((m) => {
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = m.name;
+        memberSel.appendChild(o);
+      });
+      const dateInput = document.getElementById("date");
+      dateInput.value = fmt(new Date());
+
+      function loadDaily() {
+        const db = loadDb();
+        const r = db.reports.find(
+          (x) => x.memberId === memberSel.value && x.date === dateInput.value
+        );
+        document.getElementById("stationName").value = r?.stationName || "";
+        document.getElementById("role").value = r?.processingRole || "";
+        document.getElementById("done").value = r?.done || "";
+        document.getElementById("plan").value = r?.plan || "";
+        document.getElementById("issues").value = r?.issues || "";
+        document.getElementById("deficiencies").value = r?.deficiencies || "";
+        ["Before", "After"].forEach((side) => {
+          const key = side.toLowerCase();
+          const img = document.getElementById("preview" + side);
+          const data = r?.[key + "Photo"];
+          if (data) {
+            img.src = data;
+            img.classList.remove("hidden");
+            document.getElementById("time" + side).textContent =
+              "등록: " + formatDt(r[key + "PhotoAt"]);
+          } else {
+            img.classList.add("hidden");
+            document.getElementById("time" + side).textContent = "";
+          }
+        });
+        renderStationTabs(r?.stationName || "");
+        updateWorkTime();
+      }
+      memberSel.addEventListener("change", loadDaily);
+      dateInput.addEventListener("change", loadDaily);
+      document.getElementById("stationName").addEventListener("input", (e) => {
+        renderStationTabs(e.target.value.trim());
+      });
+      loadDaily();
+      bindPhoto("photoBefore", "previewBefore", "timeBefore", "before");
+      bindPhoto("photoAfter", "previewAfter", "timeAfter", "after");
+
+      document.getElementById("saveDaily").onclick = () => {
+        const db = loadDb();
+        const existing = db.reports.find(
+          (x) =>
+            x.memberId === memberSel.value && x.date === dateInput.value
+        );
+        const payload = {
+          id: `${memberSel.value}_${dateInput.value}`,
+          memberId: memberSel.value,
+          date: dateInput.value,
+          stationName: document.getElementById("stationName").value.trim(),
+          processingRole: document.getElementById("role").value,
+          done: document.getElementById("done").value,
+          plan: document.getElementById("plan").value,
+          issues: document.getElementById("issues").value,
+          deficiencies: document.getElementById("deficiencies").value,
+          beforePhoto: existing?.beforePhoto,
+          beforePhotoAt: existing?.beforePhotoAt,
+          afterPhoto: existing?.afterPhoto,
+          afterPhotoAt: existing?.afterPhotoAt,
+          workMinutes: calcMinutes(
+            existing?.beforePhotoAt,
+            existing?.afterPhotoAt
+          ),
+        };
+        const idx = db.reports.findIndex((x) => x.id === payload.id);
+        if (idx >= 0) db.reports[idx] = payload;
+        else db.reports.push(payload);
+        if (payload.stationName) {
+          const found = db.stationHistory.find(
+            (s) => s.name.toLowerCase() === payload.stationName.toLowerCase()
+          );
+          if (found) {
+            found.useCount += 1;
+            found.lastUsedAt = new Date().toISOString();
+          } else {
+            db.stationHistory.unshift({
+              name: payload.stationName,
+              useCount: 1,
+              lastUsedAt: new Date().toISOString(),
+            });
+          }
+        }
+        saveDb(db);
+        renderStationTabs(payload.stationName);
+        document.getElementById("dailyStatus").textContent = "저장되었습니다.";
+      };
+
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const t = btn.dataset.tab;
+          document.getElementById("panel-daily").classList.toggle("hidden", t !== "daily");
+          document.getElementById("panel-manager").classList.toggle("hidden", t !== "manager");
+        };
+      });
+
+      document.getElementById("loadSummary").onclick = () => {
+        if (document.getElementById("pin").value !== PIN) {
+          alert("PIN이 올바르지 않습니다.");
+          return;
+        }
+        const { start, end } = weekRange();
+        const days = weekdays(start, end);
+        const db = loadDb();
+        const cards = document.getElementById("managerCards");
+        cards.innerHTML = "";
+        let md = `# epos 관리팀 주간 업무 요약\n\n기간: ${start} ~ ${end}\n\n`;
+
+        members.forEach((m) => {
+          const reports = db.reports
+            .filter((r) => r.memberId === m.id && r.date >= start && r.date <= end)
+            .sort((a, b) => a.date.localeCompare(b.date));
+          const submitted = new Set(reports.map((r) => r.date));
+          const missing = days.filter((d) => !submitted.has(d));
+          const rate = Math.round((reports.length / days.length) * 100);
+
+          const el = document.createElement("div");
+          el.className = "card";
+          el.style.marginTop = "0.5rem";
+          el.innerHTML = `<strong>${m.name}</strong> <span class="badge">${reports.length}/${days.length}일 (${rate}%)</span>
+            ${missing.length ? `<p class="muted">미제출: ${missing.join(", ")}</p>` : ""}`;
+          cards.appendChild(el);
+
+          md += `## ${m.name}\n- 제출: ${reports.length}/${days.length}\n`;
+          if (missing.length) md += `- 미제출: ${missing.join(", ")}\n`;
+          reports.forEach((r) => {
+            md += `\n### ${r.date}\n`;
+            if (r.stationName) md += `- 역사: ${r.stationName}\n`;
+            if (r.processingRole) md += `- 공종: ${r.processingRole}\n`;
+            if (r.workMinutes != null)
+              md += `- 작업 시간: ${formatDur(r.workMinutes)}\n`;
+            md += `**금일**\n${r.done}\n\n**익일**\n${r.plan}\n`;
+            if (r.issues) md += `\n**이슈**\n${r.issues}\n`;
+            if (r.deficiencies) md += `\n**미비사항**\n${r.deficiencies}\n`;
+          });
+          md += "\n";
+        });
+
+        const pre = document.getElementById("mdOut");
+        pre.textContent = md;
+        pre.classList.remove("hidden");
+        document.getElementById("downloadMd").classList.remove("hidden");
+        document.getElementById("downloadMd").onclick = () => {
+          const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `주간요약_${start}.md`;
+          a.click();
+        };
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,352 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Header } from "@/components/Header";
+import { getWeekRange, shiftWeek } from "@/lib/dates";
+
+export default function ManagerAnalysisPage() {
+  const [teamName, setTeamName] = useState("epos \uad00\ub9ac\ud300");
+  const [anchor, setAnchor] = useState(new Date());
+  const [pin, setPin] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [error, setError] = useState("");
+
+  const [previousAnalysis, setPreviousAnalysis] = useState("");
+  const [strategicChecklist, setStrategicChecklist] = useState("");
+  const [managerNotes, setManagerNotes] = useState("");
+  const [analysis, setAnalysis] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [meta, setMeta] = useState<{
+    currentWeek: string;
+    previousWeek: string;
+    reportCount: number;
+  } | null>(null);
+
+  const week = useMemo(() => getWeekRange(anchor), [anchor]);
+  const prevWeek = useMemo(() => getWeekRange(shiftWeek(anchor, -1)), [anchor]);
+
+  useEffect(() => {
+    fetch("/api/members")
+      .then((r) => r.json())
+      .then((d) => setTeamName(d.teamName));
+  }, []);
+
+  useEffect(() => {
+    if (!authed || !pin) return;
+    fetch(
+      `/api/analysis/reference?start=${prevWeek.start}&end=${prevWeek.end}&pin=${encodeURIComponent(pin)}`
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.text) setPreviousAnalysis(d.text);
+      });
+    fetch(
+      `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.markdown) setAnalysis(d.markdown);
+      });
+  }, [authed, pin, week.start, week.end, prevWeek.start, prevWeek.end]);
+
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    const submitted = pin.trim();
+    setPin(submitted);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: submitted }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setAuthed(false);
+        setError(
+          data.error ??
+            `서버 오류(HTTP ${res.status}). 새로고침 후 다시 시도해주세요.`
+        );
+        return;
+      }
+      setAuthed(Boolean(data.ok));
+      setError(data.ok ? "" : (data.error ?? "PIN이 올바르지 않습니다."));
+    } catch {
+      setAuthed(false);
+      setError("네트워크 오류입니다. 연결을 확인해주세요.");
+    }
+  }
+
+  async function loadSampleReference() {
+    const res = await fetch("/api/analysis/sample");
+    const data = await res.json();
+    if (data.text) setPreviousAnalysis(data.text);
+    else setError(data.error ?? "\uc0d8\ud50c \ubd88\ub7ec\uc624\uae30 \uc2e4\ud328");
+  }
+
+  async function saveReference() {
+    const res = await fetch("/api/analysis/reference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pin,
+        start: prevWeek.start,
+        end: prevWeek.end,
+        text: previousAnalysis,
+      }),
+    });
+    if (res.ok) setError("");
+    else {
+      const d = await res.json();
+      setError(d.error ?? "\uc800\uc7a5 \uc2e4\ud328");
+    }
+  }
+
+  async function handleReferenceFile(file: File) {
+    const text = await file.text();
+    setPreviousAnalysis(text);
+  }
+
+  async function generateAnalysis() {
+    setGenerating(true);
+    setError("");
+    setAnalysis("");
+    try {
+      const res = await fetch("/api/analysis/weekly", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin,
+          start: week.start,
+          end: week.end,
+          anchorDate: week.end,
+          previousAnalysisText: previousAnalysis,
+          managerNotes,
+          strategicChecklist,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "\ubd84\uc11d \uc0dd\uc131 \uc2e4\ud328");
+        return;
+      }
+      setAnalysis(data.markdown);
+      setMeta(data.meta);
+    } catch {
+      setError("\ub124\ud2b8\uc6cc\ud06c \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function downloadAnalysis() {
+    const blob = new Blob([analysis], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `\uc8fc\uac04\ubd84\uc11d_${week.start}.md`;
+    a.click();
+  }
+
+  return (
+    <>
+      <Header
+        teamName={teamName}
+        subtitle={"\uc8fc\uac04 \uc5c5\ubb34 \ubd84\uc11d \ubc0f \uc81c\uc548 (Gemini AI)"}
+      />
+
+      <p className="muted mb-4 text-sm">
+        <Link href="/manager" className="text-blue-700 underline">
+          {"\u2190 \ud300\uc7a5 \ub300\uc2dc\ubcf4\ub4dc"}
+        </Link>
+      </p>
+
+      {!authed ? (
+        <form onSubmit={login} className="card max-w-md space-y-3 p-5">
+          <p className="muted text-sm">
+            {"Gemini AI\ub85c \uc9c0\ub09c\uc8fc \ubd84\uc11d \ubcf4\uace0\uc11c\uc640 \ube44\uad50\ud558\uc5ec "}
+            <strong>
+              {"\uc798\ud55c \uc810, \ubd80\uc871\ud55c \uc810, \ud300\uc7a5 \ucca8\uc5b8"}
+            </strong>
+            {"\uc744 \uc815\ub9ac\ud569\ub2c8\ub2e4."}
+          </p>
+          <div>
+            <label className="label" htmlFor="pin">
+              {"\ud300\uc7a5 PIN"}
+            </label>
+            <input
+              id="pin"
+              type="password"
+              className="input"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button type="submit" className="btn btn-primary">
+            {"\uc785\uc7a5"}
+          </button>
+        </form>
+      ) : (
+        <>
+          <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="font-semibold">{"\ubd84\uc11d \ub300\uc0c1 \uc8fc"}</p>
+              <p className="muted">{week.label}</p>
+              <p className="muted mt-1 text-xs">
+                {"\ube44\uad50: \uc9c0\ub09c\uc8fc "}({prevWeek.label})
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAnchor(shiftWeek(anchor, -1))}
+              >
+                {"\uc774\uc804 \uc8fc"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAnchor(new Date())}
+              >
+                {"\uc774\ubc88 \uc8fc"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={generateAnalysis}
+                disabled={generating}
+              >
+                {generating
+                  ? "Gemini \ubd84\uc11d \uc0dd\uc131 \uc911..."
+                  : "Gemini\ub85c \uc8fc\uac04 \ubd84\uc11d \uc0dd\uc131"}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="card space-y-3 p-4">
+              <h3 className="font-semibold">
+                {"1. \uc9c0\ub09c\uc8fc \ubd84\uc11d \ubcf4\uace0\uc11c (\ube44\uad50 \uae30\uc900)"}
+              </h3>
+              <p className="muted text-xs">
+                {
+                  "PDF \ubcf4\uace0\uc11c \ub0b4\uc6a9\uc744 \ubd99\uc5ec\ub123\uac70\ub098 .txt \ud30c\uc77c\uc744 \uc5c5\ub85c\ub4dc\ud558\uc138\uc694. Gemini\uac00 \uc9c0\ub09c\uc8fc \uc81c\uc5b8\uacfc \uc774\ubc88 \uc8fc \uc77c\uc77c \uae30\ub85d\uc744 \ube44\uad50\ud569\ub2c8\ub2e4."
+                }
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary text-sm"
+                  onClick={loadSampleReference}
+                >
+                  {"\uc0d8\ud50c \ubd88\ub7ec\uc624\uae30 (5\uc6d4 2\uc8fc\ucc28)"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary text-sm"
+                  onClick={saveReference}
+                >
+                  {"\uc9c0\ub09c\uc8fc \ubcf4\uace0\uc11c \uc800\uc7a5"}
+                </button>
+                <label className="btn btn-secondary cursor-pointer text-sm">
+                  {".txt / .md \uc5c5\ub85c\ub4dc"}
+                  <input
+                    type="file"
+                    accept=".txt,.md,text/plain,text/markdown"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleReferenceFile(f);
+                    }}
+                  />
+                </label>
+              </div>
+              <textarea
+                className="textarea min-h-[200px] font-mono text-xs"
+                placeholder={
+                  "\uc9c0\ub09c\uc8fc \uc5c5\ubb34 \ubd84\uc11d \ubc0f \uc81c\uc5b8 \ubcf4\uace0\uc11c \uc804\uccb4 \ub0b4\uc6a9\uc744 \ubd99\uc5ec\ub123\uae30..."
+                }
+                value={previousAnalysis}
+                onChange={(e) => setPreviousAnalysis(e.target.value)}
+              />
+            </section>
+
+            <section className="card space-y-3 p-4">
+              <h3 className="font-semibold">
+                {"2. \ud300\uc7a5 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc \uc0ac\ud56d"}
+              </h3>
+              <div>
+                <label className="label">
+                  {"\ucca8\uc5b8\u00b7\ucd94\uac00 \uc9c0\uc2dc (\uc774\ubc88 \uc8fc \ubcf4\uace0\uc5d0 \ubc18\uc601)"}
+                </label>
+                <textarea
+                  className="textarea min-h-[120px]"
+                  placeholder={
+                    "\uc608: \ubd09\ucc9c\uc5ed DB \uc774\uc288 \uc7ac\ubc1c \ubc29\uc9c0\ub97c \uc704\ud574 \uba87\uc77c \ub0b4 \ub9e4\ub274\uc5bc \ud654..."
+                  }
+                  value={managerNotes}
+                  onChange={(e) => setManagerNotes(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">
+                  {
+                    "\uc9c0\ub09c\uc8fc \ud575\uc2ec \uc804\ub7b5 \uacfc\uc81c (\uccb4\ud06c\ub9ac\uc2a4\ud2b8\uc6a9, \uc120\ud0dd)"
+                  }
+                </label>
+                <textarea
+                  className="textarea min-h-[100px] text-sm"
+                  placeholder={
+                    "\uc608: [\ucd5c\uc6d0\uc81c] \ud604\uc7a5 \uc2e4\ubb34 \ucd95\uc18c\n[\ub178\ud76c\ucc2c] \ubc18\ubcf5 \uc5d0\ub7ec \ub9e4\ub274\uc5bc\ud654..."
+                  }
+                  value={strategicChecklist}
+                  onChange={(e) => setStrategicChecklist(e.target.value)}
+                />
+              </div>
+            </section>
+          </div>
+
+          {error && (
+            <p className="mt-3 text-sm text-red-600">{error}</p>
+          )}
+
+          {meta && (
+            <p className="muted mt-3 text-sm">
+              {"\uc77c\uc77c \uae30\ub85d "}
+              {meta.reportCount}
+              {"\uac74 \uae30\uc900 \u00b7 \ube44\uad50\uc8fc "}
+              {meta.previousWeek}
+            </p>
+          )}
+
+          {analysis && (
+            <section className="card mt-4 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold">
+                  {"\uc0dd\uc131\ub41c \uc8fc\uac04 \ubd84\uc11d \ubc0f \uc81c\uc548 \ubcf4\uace0\uc11c"}
+                </h3>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={downloadAnalysis}
+                >
+                  {".md \ub2e4\uc6b4\ub85c\ub4dc"}
+                </button>
+              </div>
+              <pre className="analysis-output max-h-[70vh] overflow-auto whitespace-pre-wrap">
+                {analysis}
+              </pre>
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
+}

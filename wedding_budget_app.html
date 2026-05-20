@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>우리 결혼자금 노트</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #ffffff;
+        --surface: #f8fafc;
+        --text: #0f172a;
+        --muted: #64748b;
+        --line: #d6dee9;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --navy: #0f172a;
+        --green: #059669;
+        --red: #dc2626;
+        --amber: #d97706;
+        --blue: #2563eb;
+        --lavender: #7c3aed;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 10% 0%, rgba(37, 99, 235, 0.35) 0, transparent 26%),
+          radial-gradient(circle at 90% 10%, rgba(5, 150, 105, 0.22) 0, transparent 28%),
+          linear-gradient(160deg, #0f172a 0%, #111827 48%, #1e293b 100%);
+        font-family: "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+      }
+
+      .app {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px 16px 56px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-end;
+        margin-bottom: 18px;
+      }
+
+      @media (max-width: 820px) {
+        header {
+          display: grid;
+        }
+      }
+
+      .eyebrow {
+        color: #93c5fd;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        font-size: 13px;
+        margin: 0 0 6px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: clamp(28px, 4vw, 42px);
+        margin: 0;
+        line-height: 1.12;
+        color: #ffffff;
+      }
+
+      h2 {
+        margin-bottom: 12px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      header .muted {
+        color: #cbd5e1;
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .tab,
+      .btn,
+      .chip {
+        border-radius: 999px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .tab {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.55);
+        padding: 11px 15px;
+        color: #e2e8f0;
+      }
+
+      .tab.active {
+        background: #ffffff;
+        color: var(--navy);
+        border-color: #ffffff;
+      }
+
+      .tab:hover {
+        border-color: #93c5fd;
+      }
+
+      .demo-guide .muted {
+        color: #dbeafe;
+      }
+
+      .demo-guide strong {
+        color: white;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      @media (max-width: 900px) {
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+      }
+
+      .hero {
+        padding: 26px;
+        background:
+          linear-gradient(135deg, #ffffff 0%, #eef4ff 100%),
+          radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 35%);
+      }
+
+      .hero-number {
+        font-size: clamp(36px, 6vw, 66px);
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin: 3px 0;
+        color: var(--navy);
+      }
+
+      .money {
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 4px 0 0;
+      }
+
+      .progress {
+        height: 16px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+        margin: 16px 0 12px;
+      }
+
+      .bar {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #2563eb, #059669);
+        transition: width 0.2s ease;
+      }
+
+      label {
+        display: block;
+        margin: 12px 0 5px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: white;
+        color: var(--text);
+        font-size: 15px;
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+        padding: 11px 15px;
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn.secondary {
+        background: #e2e8f0;
+        border: 1px solid #cbd5e1;
+        color: var(--navy);
+      }
+
+      .btn.danger {
+        background: #fee2e2;
+        color: var(--red);
+      }
+
+      .btn.small {
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-top: 14px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        border-radius: 14px;
+        padding: 13px 14px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+      }
+
+      .row strong {
+        color: var(--navy);
+      }
+
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .tag {
+        display: inline-flex;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 900;
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .tag.income {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .tag.expense {
+        background: #fee2e2;
+        color: var(--red);
+      }
+
+      .tag.saving {
+        background: #dcfce7;
+        color: var(--green);
+      }
+
+      .panel {
+        display: none;
+      }
+
+      .panel.active {
+        display: block;
+      }
+
+      .table {
+        display: grid;
+        gap: 8px;
+      }
+
+      .entry-table {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      .entry-head,
+      .entry {
+        display: grid;
+        grid-template-columns: 105px 96px 105px minmax(180px, 1fr) 170px 170px;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .entry-head {
+        padding: 0 12px 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .entry {
+        border: 1px solid var(--line);
+        background: #f8fafc;
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .entry-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 900px) {
+        .entry-head {
+          display: none;
+        }
+
+        .entry {
+          grid-template-columns: 1fr;
+        }
+
+        .entry-cell::before {
+          content: attr(data-label);
+          display: block;
+          margin-bottom: 3px;
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 900;
+        }
+      }
+
+      .entry-title {
+        font-weight: 900;
+        color: var(--navy);
+      }
+
+      .entry-amount {
+        text-align: right;
+        font-size: 17px;
+        color: var(--navy);
+        white-space: nowrap;
+      }
+
+      @media (max-width: 900px) {
+        .entry-amount {
+          text-align: left;
+        }
+
+        .entry-actions {
+          justify-content: flex-start;
+        }
+      }
+
+      .empty {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .summary-box {
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        padding: 16px;
+      }
+
+      .notice {
+        margin-top: 16px;
+        border-left: 4px solid var(--primary);
+        background: #eff6ff;
+        border-radius: 16px;
+        padding: 14px 16px;
+        color: var(--navy);
+        line-height: 1.6;
+      }
+
+      .demo-guide {
+        margin-bottom: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .guide-item {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.62);
+        border-radius: 18px;
+        padding: 14px;
+      }
+
+      .guide-item strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #ffffff;
+      }
+
+      @media (max-width: 900px) {
+        .demo-guide {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .chart-wrap {
+        display: grid;
+        gap: 12px;
+      }
+
+      .chart-row {
+        display: grid;
+        grid-template-columns: 86px 1fr 120px;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .chart-bars {
+        display: grid;
+        gap: 6px;
+      }
+
+      .chart-bar-line {
+        display: grid;
+        grid-template-columns: 58px 1fr;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .bar-track {
+        height: 13px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: inherit;
+        min-width: 3px;
+      }
+
+      .bar-fill.income {
+        background: var(--blue);
+      }
+
+      .bar-fill.expense {
+        background: var(--red);
+      }
+
+      .bar-fill.saving {
+        background: var(--green);
+      }
+
+      .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .subtabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 16px;
+      }
+
+      .subtab {
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: var(--navy);
+        border-radius: 999px;
+        padding: 9px 12px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .subtab.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+
+      .chart-panel {
+        display: none;
+      }
+
+      .chart-panel.active {
+        display: block;
+      }
+
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+      }
+
+      .mini-stat {
+        font-size: 13px;
+        color: var(--muted);
+        text-align: right;
+      }
+
+      .insight-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 15px;
+        background: #f8fafc;
+      }
+
+      .insight-card strong {
+        color: var(--navy);
+      }
+
+      @media (max-width: 760px) {
+        .chart-row {
+          grid-template-columns: 1fr;
+        }
+
+        .mini-stat {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <p class="eyebrow">OFFLINE DEMO · WEDDING MONEY PLANNER</p>
+          <h1>우리 결혼자금 노트</h1>
+          <p class="muted" style="margin: 10px 0 0">
+            각자 통장은 그대로 두고, 결혼 준비 자금만 둘이 함께 투명하게 관리하는 데모입니다.
+            인터넷 없이 이 파일 하나로 입력·수정·계산 흐름을 확인할 수 있습니다.
+          </p>
+        </div>
+        <button class="btn secondary" id="exportBtn">데이터 백업</button>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab active" data-panel="dashboard">한눈에 보기</button>
+        <button class="tab" data-panel="entry">월급·지출·저축</button>
+        <button class="tab" data-panel="charts">재무 그래프</button>
+        <button class="tab" data-panel="budget">결혼 비용 계획</button>
+        <button class="tab" data-panel="settings">우리 설정</button>
+      </nav>
+
+      <div class="demo-guide">
+        <div class="guide-item">
+          <strong>1. 돈은 합치지 않음</strong>
+          <span class="muted">각자 통장 기준으로 기록하고, 화면에서만 합산합니다.</span>
+        </div>
+        <div class="guide-item">
+          <strong>2. 입력하면 자동 계산</strong>
+          <span class="muted">월급, 지출, 저축을 넣으면 목표 달성률이 바로 바뀝니다.</span>
+        </div>
+        <div class="guide-item">
+          <strong>3. 둘만 보는 계획표</strong>
+          <span class="muted">결혼 비용과 합의 메모를 같이 관리하는 구조입니다.</span>
+        </div>
+      </div>
+
+      <section id="dashboard" class="panel active">
+        <div class="grid grid-2">
+          <div class="card hero">
+            <p class="muted" id="ddayText">결혼식까지</p>
+            <div class="hero-number" id="savedTotal">0원</div>
+            <p class="muted">현재 결혼자금으로 모은 금액</p>
+            <div class="progress"><div class="bar" id="goalBar"></div></div>
+            <strong id="goalSummary">목표 대비 0%</strong>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <h2>이번 달 흐름</h2>
+              <div class="grid grid-3">
+                <div class="summary-box">
+                  <span class="tag income">월급/수입</span>
+                  <p class="money" id="monthIncome">0원</p>
+                </div>
+                <div class="summary-box">
+                  <span class="tag expense">지출</span>
+                  <p class="money" id="monthExpense">0원</p>
+                </div>
+                <div class="summary-box">
+                  <span class="tag saving">저축</span>
+                  <p class="money" id="monthSaving">0원</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>사람별 결혼자금</h2>
+              <div class="list" id="personSummary"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px">
+          <h2>최근 입력 내역</h2>
+          <div class="table" id="recentEntries"></div>
+        </div>
+      </section>
+
+      <section id="entry" class="panel">
+        <div class="grid">
+          <form class="card" id="entryForm">
+            <h2 id="entryFormTitle">새 내역 입력</h2>
+            <p class="muted">
+              월급/수입, 지출, 저축을 각각 입력합니다. 이미 입력한 내역은 아래 표에서 바로 수정할 수 있습니다.
+            </p>
+            <input type="hidden" id="entryId" />
+
+            <div class="grid grid-2">
+              <div>
+                <label for="entryDate">날짜</label>
+                <input id="entryDate" type="date" required />
+              </div>
+              <div>
+                <label for="entryPerson">대상</label>
+                <select id="entryPerson">
+                  <option value="groom">예비신랑</option>
+                  <option value="bride">예비신부</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-2">
+              <div>
+                <label for="entryType">구분</label>
+                <select id="entryType">
+                  <option value="income">월급/수입</option>
+                  <option value="expense">지출</option>
+                  <option value="saving">저축/자산 증가</option>
+                </select>
+              </div>
+              <div>
+                <label for="entryAmount">금액</label>
+                <input
+                  id="entryAmount"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="예: 2000000"
+                  required
+                />
+              </div>
+            </div>
+
+            <label for="entryCategory">항목</label>
+            <input
+              id="entryCategory"
+              list="categorySuggestions"
+              placeholder="예: 월급, 적금, 예식장 계약금, 생활비"
+              required
+            />
+            <datalist id="categorySuggestions">
+              <option value="월급"></option>
+              <option value="상여금"></option>
+              <option value="결혼자금 적금"></option>
+              <option value="신혼집 보증금"></option>
+              <option value="예식장 계약금"></option>
+              <option value="생활비"></option>
+              <option value="식비"></option>
+              <option value="술값/모임"></option>
+              <option value="데이트비"></option>
+              <option value="세금"></option>
+              <option value="교통비"></option>
+              <option value="통신비"></option>
+              <option value="보험"></option>
+              <option value="쇼핑"></option>
+              <option value="경조사"></option>
+            </datalist>
+
+            <label for="entryMemo">메모</label>
+            <textarea id="entryMemo" placeholder="둘이 공유할 메모를 남겨주세요."></textarea>
+
+            <div class="actions">
+              <button class="btn" type="submit">저장</button>
+              <button class="btn secondary" type="button" id="cancelEditBtn">
+                입력 초기화
+              </button>
+            </div>
+          </form>
+
+          <div class="card">
+            <h2>전체 입력 내역</h2>
+            <p class="muted">
+              날짜, 구분, 대상, 항목, 금액을 한눈에 확인합니다. 수정 버튼을 누르면 위 입력칸에 불러와집니다.
+            </p>
+            <div class="table" id="entryList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="charts" class="panel">
+        <div class="card">
+          <h2>재무 그래프</h2>
+          <p class="muted">
+            월별 흐름, 개인별 소비, 소비 항목, AI 관점 분석을 나눠서 봅니다.
+          </p>
+          <div class="subtabs">
+            <button class="subtab active" data-chart="monthly">월별 흐름</button>
+            <button class="subtab" data-chart="personExpense">개인별 소비</button>
+            <button class="subtab" data-chart="categoryExpense">소비 항목</button>
+            <button class="subtab" data-chart="aiInsight">AI 분석</button>
+          </div>
+
+          <div id="monthly" class="chart-panel active">
+            <div class="chart-legend">
+              <span><i class="legend-dot" style="background: var(--blue)"></i>수입</span>
+              <span><i class="legend-dot" style="background: var(--red)"></i>지출</span>
+              <span><i class="legend-dot" style="background: var(--green)"></i>저축</span>
+            </div>
+            <div class="chart-wrap" id="monthlyChart"></div>
+          </div>
+
+          <div id="personExpense" class="chart-panel">
+            <p class="muted">
+              두 사람을 비교하기 위한 화면이 아니라, 각자의 고정/변동 지출 흐름을 확인하는 화면입니다.
+            </p>
+            <div class="chart-wrap" id="personExpenseChart"></div>
+          </div>
+
+          <div id="categoryExpense" class="chart-panel">
+            <p class="muted">
+              식비, 술값/모임, 세금, 데이트비 등 소비 항목을 기준으로 어디에 돈이 쓰이는지 확인합니다.
+            </p>
+            <div class="chart-wrap" id="categoryExpenseChart"></div>
+          </div>
+
+          <div id="aiInsight" class="chart-panel">
+            <p class="muted">
+              실제 배포 버전에서는 Gemini가 이 데이터를 바탕으로 조언을 만들 수 있습니다.
+              이 데모는 AI 관점 분석 예시를 보여줍니다.
+            </p>
+            <div class="grid grid-2" id="aiInsightCards"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top: 16px">
+          <div class="card">
+            <h2>재무 해석</h2>
+            <div class="list" id="financeInsights"></div>
+          </div>
+          <div class="card">
+            <h2>사람별 월별 저축</h2>
+            <p class="muted">
+              비교가 목적이 아니라, 둘이 목표에 맞춰 무리 없이 가고 있는지 확인하는 용도입니다.
+            </p>
+            <div class="chart-wrap" id="personSavingChart"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="budget" class="panel">
+        <div class="grid grid-2">
+          <form class="card" id="budgetForm">
+            <h2 id="budgetFormTitle">비용 항목 입력</h2>
+            <input type="hidden" id="budgetId" />
+
+            <label for="budgetName">항목명</label>
+            <input id="budgetName" placeholder="예: 신혼집 보증금" required />
+
+            <label for="budgetExpected">예상 예산</label>
+            <input id="budgetExpected" type="number" min="0" step="10000" required />
+
+            <label for="budgetPaid">이미 지출한 금액</label>
+            <input id="budgetPaid" type="number" min="0" step="10000" value="0" />
+
+            <label for="budgetMemo">메모</label>
+            <textarea id="budgetMemo" placeholder="계약일, 결제 예정일, 담당 등"></textarea>
+
+            <div class="actions">
+              <button class="btn" type="submit">비용 항목 저장</button>
+              <button class="btn secondary" type="button" id="cancelBudgetBtn">
+                입력 초기화
+              </button>
+            </div>
+          </form>
+
+          <div class="card">
+            <h2>결혼 비용 계획</h2>
+            <p class="muted">
+              신혼집, 예식장, 신혼여행처럼 큰 항목을 먼저 잡고 예상 예산과 실제 지출을 비교합니다.
+            </p>
+            <div class="list" id="budgetList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings" class="panel">
+        <form class="card" id="settingsForm">
+          <h2>기본 설정</h2>
+          <div class="grid grid-2">
+            <div>
+              <label for="weddingDate">결혼 예정일</label>
+              <input id="weddingDate" type="date" />
+            </div>
+            <div>
+              <label for="goalAmount">결혼 목표금액</label>
+              <input id="goalAmount" type="number" min="0" step="100000" />
+            </div>
+          </div>
+
+          <div class="grid grid-2">
+            <div>
+              <label for="groomName">예비신랑 이름</label>
+              <input id="groomName" />
+            </div>
+            <div>
+              <label for="brideName">예비신부 이름</label>
+              <input id="brideName" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" type="submit">설정 저장</button>
+            <button class="btn danger" type="button" id="resetAllBtn">
+              전체 데이터 초기화
+            </button>
+          </div>
+
+          <div class="notice">
+            이 앱은 돈을 실제로 이동시키지 않습니다. 각자 통장에 있는 금액을 직접
+            기록하고, 결혼 준비 목표만 함께 보는 관리 도구입니다. 실제 배포 버전에서는
+            둘만 로그인해서 보는 클라우드 앱으로 바꿀 수 있습니다.
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "wedding-budget-app-v1";
+
+      const defaultData = {
+        settings: {
+          weddingDate: "2027-05-18",
+          goalAmount: 80000000,
+          groomName: "예비신랑",
+          brideName: "예비신부",
+        },
+        entries: [
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-2, 5),
+            person: "groom",
+            type: "income",
+            amount: 3500000,
+            category: "월급",
+            memo: "두 달 전 신랑 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-2, 10),
+            person: "groom",
+            type: "saving",
+            amount: 1800000,
+            category: "결혼자금 적금",
+            memo: "두 달 전 저축",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-2, 8),
+            person: "bride",
+            type: "income",
+            amount: 3000000,
+            category: "월급",
+            memo: "두 달 전 신부 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-2, 12),
+            person: "bride",
+            type: "saving",
+            amount: 1300000,
+            category: "결혼자금 적금",
+            memo: "두 달 전 저축",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-1, 5),
+            person: "groom",
+            type: "income",
+            amount: 3500000,
+            category: "월급",
+            memo: "지난달 신랑 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-1, 10),
+            person: "groom",
+            type: "saving",
+            amount: 1900000,
+            category: "결혼자금 적금",
+            memo: "지난달 저축",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-1, 8),
+            person: "bride",
+            type: "income",
+            amount: 3000000,
+            category: "월급",
+            memo: "지난달 신부 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: monthDate(-1, 12),
+            person: "bride",
+            type: "saving",
+            amount: 1400000,
+            category: "결혼자금 적금",
+            memo: "지난달 저축",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "groom",
+            type: "income",
+            amount: 3500000,
+            category: "월급",
+            memo: "이번 달 신랑 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "groom",
+            type: "saving",
+            amount: 2000000,
+            category: "결혼자금 적금",
+            memo: "신혼집 보증금 목표로 적립",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "bride",
+            type: "income",
+            amount: 3000000,
+            category: "월급",
+            memo: "이번 달 신부 급여",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "bride",
+            type: "saving",
+            amount: 1500000,
+            category: "결혼자금 적금",
+            memo: "공동 목표에 반영",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "groom",
+            type: "expense",
+            amount: 2000000,
+            category: "예식장 계약금",
+            memo: "계약금 지출 기록",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "groom",
+            type: "expense",
+            amount: 380000,
+            category: "식비",
+            memo: "이번 달 외식/점심",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "groom",
+            type: "expense",
+            amount: 180000,
+            category: "술값/모임",
+            memo: "친구 모임",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "bride",
+            type: "expense",
+            amount: 260000,
+            category: "식비",
+            memo: "이번 달 식비",
+          },
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            person: "bride",
+            type: "expense",
+            amount: 210000,
+            category: "세금",
+            memo: "지방세/공과금",
+          },
+        ],
+        budgets: [
+          {
+            id: crypto.randomUUID(),
+            name: "신혼집 보증금",
+            expected: 50000000,
+            paid: 0,
+            memo: "가장 큰 목표",
+          },
+          {
+            id: crypto.randomUUID(),
+            name: "예식장",
+            expected: 15000000,
+            paid: 2000000,
+            memo: "계약금 반영",
+          },
+          {
+            id: crypto.randomUUID(),
+            name: "신혼여행",
+            expected: 8000000,
+            paid: 0,
+            memo: "예산 조정 가능",
+          },
+        ],
+      };
+
+      let data = loadData();
+
+      function today() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+
+      function monthDate(offset, day) {
+        const d = new Date();
+        d.setMonth(d.getMonth() + offset);
+        d.setDate(day);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+
+      function loadData() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return structuredClone(defaultData);
+          const parsed = JSON.parse(raw);
+          return {
+            ...structuredClone(defaultData),
+            ...parsed,
+            settings: { ...defaultData.settings, ...parsed.settings },
+            entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+            budgets: Array.isArray(parsed.budgets) ? parsed.budgets : [],
+          };
+        } catch {
+          return structuredClone(defaultData);
+        }
+      }
+
+      function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      function won(value) {
+        return `${Number(value || 0).toLocaleString("ko-KR")}원`;
+      }
+
+      function personName(person) {
+        return person === "groom"
+          ? data.settings.groomName
+          : data.settings.brideName;
+      }
+
+      function typeLabel(type) {
+        return {
+          income: "월급/수입",
+          expense: "지출",
+          saving: "저축",
+        }[type];
+      }
+
+      function monthKey(date = today()) {
+        return date.slice(0, 7);
+      }
+
+      function sumEntries(filter) {
+        return data.entries
+          .filter(filter)
+          .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+      }
+
+      function currentSavedTotal() {
+        return sumEntries((entry) => entry.type === "saving");
+      }
+
+      function renderAll() {
+        renderSettings();
+        renderDashboard();
+        renderEntries();
+        renderBudgets();
+        renderCharts();
+        saveData();
+      }
+
+      function renderSettings() {
+        document.getElementById("weddingDate").value = data.settings.weddingDate;
+        document.getElementById("goalAmount").value = data.settings.goalAmount;
+        document.getElementById("groomName").value = data.settings.groomName;
+        document.getElementById("brideName").value = data.settings.brideName;
+
+        document.querySelectorAll("#entryPerson option").forEach((option) => {
+          option.textContent =
+            option.value === "groom"
+              ? data.settings.groomName
+              : data.settings.brideName;
+        });
+      }
+
+      function renderDashboard() {
+        const saved = currentSavedTotal();
+        const goal = Number(data.settings.goalAmount || 0);
+        const percent = goal > 0 ? Math.min(100, (saved / goal) * 100) : 0;
+        const currentMonth = monthKey();
+
+        document.getElementById("savedTotal").textContent = won(saved);
+        document.getElementById("goalBar").style.width = `${percent}%`;
+        document.getElementById("goalSummary").textContent = `${percent.toFixed(
+          1
+        )}% 달성 · 목표까지 ${won(Math.max(0, goal - saved))}`;
+
+        const dday = Math.ceil(
+          (new Date(data.settings.weddingDate) - new Date()) / 86400000
+        );
+        document.getElementById("ddayText").textContent =
+          dday >= 0 ? `결혼식까지 D-${dday}` : "결혼식 이후";
+
+        document.getElementById("monthIncome").textContent = won(
+          sumEntries((e) => e.type === "income" && monthKey(e.date) === currentMonth)
+        );
+        document.getElementById("monthExpense").textContent = won(
+          sumEntries((e) => e.type === "expense" && monthKey(e.date) === currentMonth)
+        );
+        document.getElementById("monthSaving").textContent = won(
+          sumEntries((e) => e.type === "saving" && monthKey(e.date) === currentMonth)
+        );
+
+        const personBox = document.getElementById("personSummary");
+        personBox.innerHTML = ["groom", "bride"]
+          .map((person) => {
+            const savedByPerson = sumEntries(
+              (e) => e.type === "saving" && e.person === person
+            );
+            return `<div class="row">
+              <span>${personName(person)}</span>
+              <strong>${won(savedByPerson)}</strong>
+            </div>`;
+          })
+          .join("");
+
+        const recent = [...data.entries]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 5);
+        document.getElementById("recentEntries").innerHTML = entryTable(
+          recent,
+          "아직 입력 내역이 없습니다."
+        );
+      }
+
+      function entryTemplate(entry) {
+        return `<div class="entry">
+          <div class="entry-cell" data-label="날짜">${entry.date}</div>
+          <div class="entry-cell" data-label="구분">
+            <span class="tag ${entry.type}">${typeLabel(entry.type)}</span>
+          </div>
+          <div class="entry-cell" data-label="대상">${personName(entry.person)}</div>
+          <div class="entry-cell" data-label="항목/메모">
+            <div class="entry-title">${entry.category}</div>
+            <div class="muted">${entry.memo || "메모 없음"}</div>
+          </div>
+          <strong class="entry-cell entry-amount" data-label="금액">${won(entry.amount)}</strong>
+          <div class="entry-cell entry-actions" data-label="관리">
+            <button class="btn secondary small" onclick="editEntry('${entry.id}')">수정</button>
+            <button class="btn danger small" onclick="deleteEntry('${entry.id}')">삭제</button>
+          </div>
+        </div>`;
+      }
+
+      function entryTable(entries, emptyText) {
+        if (entries.length === 0) {
+          return `<div class="empty">${emptyText}</div>`;
+        }
+        return `<div class="entry-table">
+          <div class="entry-head">
+            <div>날짜</div>
+            <div>구분</div>
+            <div>대상</div>
+            <div>항목/메모</div>
+            <div style="text-align:right">금액</div>
+            <div style="text-align:center">수정/삭제</div>
+          </div>
+          <div class="table">${entries.map(entryTemplate).join("")}</div>
+        </div>`;
+      }
+
+      function renderEntries() {
+        const box = document.getElementById("entryList");
+        const sorted = [...data.entries].sort((a, b) => b.date.localeCompare(a.date));
+        box.innerHTML = entryTable(sorted, "입력 내역이 없습니다.");
+      }
+
+      function monthlyStats() {
+        const months = [...new Set(data.entries.map((entry) => monthKey(entry.date)))]
+          .sort()
+          .slice(-6);
+
+        return months.map((month) => {
+          const entries = data.entries.filter((entry) => monthKey(entry.date) === month);
+          return {
+            month,
+            income: entries
+              .filter((entry) => entry.type === "income")
+              .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+            expense: entries
+              .filter((entry) => entry.type === "expense")
+              .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+            saving: entries
+              .filter((entry) => entry.type === "saving")
+              .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+            groomSaving: entries
+              .filter((entry) => entry.type === "saving" && entry.person === "groom")
+              .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+            brideSaving: entries
+              .filter((entry) => entry.type === "saving" && entry.person === "bride")
+              .reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+          };
+        });
+      }
+
+      function barLine(label, value, max, type) {
+        const width = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+        return `<div class="chart-bar-line">
+          <span class="muted">${label}</span>
+          <div class="bar-track">
+            <div class="bar-fill ${type}" style="width:${width}%"></div>
+          </div>
+        </div>`;
+      }
+
+      function expenseByPersonStats() {
+        return ["groom", "bride"].map((person) => {
+          const entries = data.entries.filter(
+            (entry) => entry.type === "expense" && entry.person === person
+          );
+          const total = entries.reduce(
+            (sum, entry) => sum + Number(entry.amount || 0),
+            0
+          );
+          const byCategory = {};
+          entries.forEach((entry) => {
+            byCategory[entry.category] =
+              (byCategory[entry.category] || 0) + Number(entry.amount || 0);
+          });
+          return { person, total, byCategory };
+        });
+      }
+
+      function expenseByCategoryStats() {
+        const map = {};
+        data.entries
+          .filter((entry) => entry.type === "expense")
+          .forEach((entry) => {
+            map[entry.category] =
+              (map[entry.category] || 0) + Number(entry.amount || 0);
+          });
+
+        return Object.entries(map)
+          .map(([category, amount]) => ({ category, amount }))
+          .sort((a, b) => b.amount - a.amount);
+      }
+
+      function renderAiInsights(totalIncome, totalExpense, totalSaving) {
+        const categoryStats = expenseByCategoryStats();
+        const topExpense = categoryStats[0];
+        const savingRate = totalIncome > 0 ? (totalSaving / totalIncome) * 100 : 0;
+        const expenseRate = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
+        const goal = Number(data.settings.goalAmount || 0);
+        const remaining = Math.max(0, goal - currentSavedTotal());
+        const monthlyAverageSaving = totalSaving / Math.max(1, monthlyStats().length);
+        const monthsToGoal =
+          monthlyAverageSaving > 0
+            ? Math.ceil(remaining / monthlyAverageSaving)
+            : null;
+
+        const cards = [
+          {
+            title: "가장 먼저 볼 지표",
+            body:
+              savingRate >= 45
+                ? `수입 대비 저축률이 ${savingRate.toFixed(
+                    1
+                  )}%로 좋은 편입니다. 이 흐름을 유지하면 결혼 준비금 관리가 안정적입니다.`
+                : `수입 대비 저축률이 ${savingRate.toFixed(
+                    1
+                  )}%입니다. 목표금액이 크다면 고정 지출과 변동 지출을 먼저 나눠볼 필요가 있습니다.`,
+          },
+          {
+            title: "소비 관리 포인트",
+            body: topExpense
+              ? `현재 가장 큰 소비 항목은 '${topExpense.category}' (${won(
+                  topExpense.amount
+                )})입니다. 무조건 줄이기보다, 매월 상한선을 정하는 방식이 현실적입니다.`
+              : "아직 지출 데이터가 충분하지 않습니다. 식비, 술값/모임, 세금, 데이트비처럼 항목을 나눠 기록해보세요.",
+          },
+          {
+            title: "목표 달성 전망",
+            body: monthsToGoal
+              ? `최근 평균 저축 속도라면 목표까지 약 ${monthsToGoal}개월이 필요합니다. 결혼 예정일과 비교해 월 목표 저축액을 조정하면 좋습니다.`
+              : "저축 데이터가 부족해 목표 달성 예상 기간을 계산하기 어렵습니다. 매월 저축 내역을 먼저 꾸준히 기록하세요.",
+          },
+          {
+            title: "AI 관점 제안",
+            body:
+              expenseRate > 45
+                ? "소비 비율이 높은 편입니다. 결혼 준비 기간에는 술값/모임, 데이트비, 쇼핑처럼 조정 가능한 지출에 월 한도를 두는 방식이 효과적입니다."
+                : "현재는 지출보다 저축 흐름을 유지하는 것이 더 중요합니다. 큰 항목인 신혼집, 예식장 예산을 먼저 확정하는 것이 좋습니다.",
+          },
+        ];
+
+        document.getElementById("aiInsightCards").innerHTML = cards
+          .map(
+            (card) => `<div class="insight-card">
+              <strong>${card.title}</strong>
+              <p class="muted" style="margin:8px 0 0">${card.body}</p>
+            </div>`
+          )
+          .join("");
+      }
+
+      function renderCharts() {
+        const stats = monthlyStats();
+        const max = Math.max(
+          1,
+          ...stats.flatMap((item) => [item.income, item.expense, item.saving])
+        );
+
+        const chart = document.getElementById("monthlyChart");
+        if (!chart) return;
+
+        chart.innerHTML =
+          stats.length === 0
+            ? `<div class="empty">그래프로 보여줄 입력 내역이 없습니다.</div>`
+            : stats
+                .map(
+                  (item) => `<div class="chart-row">
+                    <strong>${item.month}</strong>
+                    <div class="chart-bars">
+                      ${barLine("수입", item.income, max, "income")}
+                      ${barLine("지출", item.expense, max, "expense")}
+                      ${barLine("저축", item.saving, max, "saving")}
+                    </div>
+                    <div class="mini-stat">
+                      수입 ${won(item.income)}<br />
+                      지출 ${won(item.expense)}<br />
+                      저축 ${won(item.saving)}
+                    </div>
+                  </div>`
+                )
+                .join("");
+
+        const personExpense = expenseByPersonStats();
+        const personExpenseMax = Math.max(1, ...personExpense.map((item) => item.total));
+        document.getElementById("personExpenseChart").innerHTML =
+          personExpense.every((item) => item.total === 0)
+            ? `<div class="empty">개인별 소비 내역이 없습니다.</div>`
+            : personExpense
+                .map((item) => {
+                  const categories = Object.entries(item.byCategory)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 4)
+                    .map(([category, amount]) => `${category} ${won(amount)}`)
+                    .join(" · ");
+                  return `<div class="chart-row">
+                    <strong>${personName(item.person)}</strong>
+                    <div class="chart-bars">
+                      ${barLine("총 소비", item.total, personExpenseMax, "expense")}
+                      <div class="muted" style="font-size:13px">${categories || "소비 항목 없음"}</div>
+                    </div>
+                    <div class="mini-stat">${won(item.total)}</div>
+                  </div>`;
+                })
+                .join("");
+
+        const categoryStats = expenseByCategoryStats();
+        const categoryMax = Math.max(1, ...categoryStats.map((item) => item.amount));
+        document.getElementById("categoryExpenseChart").innerHTML =
+          categoryStats.length === 0
+            ? `<div class="empty">소비 항목 데이터가 없습니다.</div>`
+            : categoryStats
+                .map(
+                  (item) => `<div class="chart-row">
+                    <strong>${item.category}</strong>
+                    <div class="chart-bars">
+                      ${barLine("소비", item.amount, categoryMax, "expense")}
+                    </div>
+                    <div class="mini-stat">${won(item.amount)}</div>
+                  </div>`
+                )
+                .join("");
+
+        const personMax = Math.max(
+          1,
+          ...stats.flatMap((item) => [item.groomSaving, item.brideSaving])
+        );
+        document.getElementById("personSavingChart").innerHTML =
+          stats.length === 0
+            ? `<div class="empty">저축 내역이 없습니다.</div>`
+            : stats
+                .map(
+                  (item) => `<div class="chart-row">
+                    <strong>${item.month}</strong>
+                    <div class="chart-bars">
+                      ${barLine(data.settings.groomName, item.groomSaving, personMax, "saving")}
+                      ${barLine(data.settings.brideName, item.brideSaving, personMax, "income")}
+                    </div>
+                    <div class="mini-stat">
+                      ${data.settings.groomName} ${won(item.groomSaving)}<br />
+                      ${data.settings.brideName} ${won(item.brideSaving)}
+                    </div>
+                  </div>`
+                )
+                .join("");
+
+        const totalIncome = stats.reduce((sum, item) => sum + item.income, 0);
+        const totalExpense = stats.reduce((sum, item) => sum + item.expense, 0);
+        const totalSaving = stats.reduce((sum, item) => sum + item.saving, 0);
+        const savingRate =
+          totalIncome > 0 ? ((totalSaving / totalIncome) * 100).toFixed(1) : "0.0";
+
+        document.getElementById("financeInsights").innerHTML = `
+          <div class="row"><span>분석 기간</span><strong>${stats[0]?.month ?? "-"} ~ ${
+          stats.at(-1)?.month ?? "-"
+        }</strong></div>
+          <div class="row"><span>총 수입</span><strong>${won(totalIncome)}</strong></div>
+          <div class="row"><span>총 지출</span><strong>${won(totalExpense)}</strong></div>
+          <div class="row"><span>총 저축</span><strong>${won(totalSaving)}</strong></div>
+          <div class="row"><span>수입 대비 저축률</span><strong>${savingRate}%</strong></div>
+        `;
+
+        renderAiInsights(totalIncome, totalExpense, totalSaving);
+      }
+
+      function renderBudgets() {
+        const box = document.getElementById("budgetList");
+        if (data.budgets.length === 0) {
+          box.innerHTML = `<div class="empty">비용 계획 항목이 없습니다.</div>`;
+          return;
+        }
+        box.innerHTML = data.budgets
+          .map((item) => {
+            const remain = Math.max(0, Number(item.expected) - Number(item.paid));
+            return `<div class="row">
+              <div>
+                <strong>${item.name}</strong>
+                <div class="muted">예상 ${won(item.expected)} · 지출 ${won(item.paid)} · 남은 금액 ${won(remain)}</div>
+                ${item.memo ? `<div class="muted">${item.memo}</div>` : ""}
+              </div>
+              <div class="actions" style="margin:0">
+                <button class="btn secondary small" onclick="editBudget('${item.id}')">수정</button>
+                <button class="btn danger small" onclick="deleteBudget('${item.id}')">삭제</button>
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function resetEntryForm() {
+        document.getElementById("entryFormTitle").textContent = "새 내역 입력";
+        document.getElementById("entryId").value = "";
+        document.getElementById("entryDate").value = today();
+        document.getElementById("entryPerson").value = "groom";
+        document.getElementById("entryType").value = "income";
+        document.getElementById("entryAmount").value = "";
+        document.getElementById("entryCategory").value = "";
+        document.getElementById("entryMemo").value = "";
+      }
+
+      window.editEntry = function (id) {
+        const entry = data.entries.find((item) => item.id === id);
+        if (!entry) return;
+        showPanel("entry");
+        document.getElementById("entryFormTitle").textContent = "내역 수정";
+        document.getElementById("entryId").value = entry.id;
+        document.getElementById("entryDate").value = entry.date;
+        document.getElementById("entryPerson").value = entry.person;
+        document.getElementById("entryType").value = entry.type;
+        document.getElementById("entryAmount").value = entry.amount;
+        document.getElementById("entryCategory").value = entry.category;
+        document.getElementById("entryMemo").value = entry.memo || "";
+      };
+
+      window.deleteEntry = function (id) {
+        if (!confirm("이 내역을 삭제할까요?")) return;
+        data.entries = data.entries.filter((item) => item.id !== id);
+        renderAll();
+      };
+
+      function resetBudgetForm() {
+        document.getElementById("budgetFormTitle").textContent = "비용 항목 입력";
+        document.getElementById("budgetId").value = "";
+        document.getElementById("budgetName").value = "";
+        document.getElementById("budgetExpected").value = "";
+        document.getElementById("budgetPaid").value = 0;
+        document.getElementById("budgetMemo").value = "";
+      }
+
+      window.editBudget = function (id) {
+        const item = data.budgets.find((budget) => budget.id === id);
+        if (!item) return;
+        showPanel("budget");
+        document.getElementById("budgetFormTitle").textContent = "비용 항목 수정";
+        document.getElementById("budgetId").value = item.id;
+        document.getElementById("budgetName").value = item.name;
+        document.getElementById("budgetExpected").value = item.expected;
+        document.getElementById("budgetPaid").value = item.paid;
+        document.getElementById("budgetMemo").value = item.memo || "";
+      };
+
+      window.deleteBudget = function (id) {
+        if (!confirm("이 비용 항목을 삭제할까요?")) return;
+        data.budgets = data.budgets.filter((item) => item.id !== id);
+        renderAll();
+      };
+
+      function showPanel(panelId) {
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.panel === panelId);
+        });
+        document.querySelectorAll(".panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.id === panelId);
+        });
+      }
+
+      document.querySelectorAll(".tab").forEach((button) => {
+        button.addEventListener("click", () => showPanel(button.dataset.panel));
+      });
+
+      document.querySelectorAll(".subtab").forEach((button) => {
+        button.addEventListener("click", () => {
+          document
+            .querySelectorAll(".subtab")
+            .forEach((tab) => tab.classList.remove("active"));
+          document
+            .querySelectorAll(".chart-panel")
+            .forEach((panel) => panel.classList.remove("active"));
+          button.classList.add("active");
+          document.getElementById(button.dataset.chart).classList.add("active");
+        });
+      });
+
+      document.getElementById("entryForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const id = document.getElementById("entryId").value || crypto.randomUUID();
+        const next = {
+          id,
+          date: document.getElementById("entryDate").value,
+          person: document.getElementById("entryPerson").value,
+          type: document.getElementById("entryType").value,
+          amount: Number(document.getElementById("entryAmount").value),
+          category: document.getElementById("entryCategory").value.trim(),
+          memo: document.getElementById("entryMemo").value.trim(),
+        };
+
+        const idx = data.entries.findIndex((entry) => entry.id === id);
+        if (idx >= 0) data.entries[idx] = next;
+        else data.entries.push(next);
+
+        resetEntryForm();
+        renderAll();
+      });
+
+      document.getElementById("budgetForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const id = document.getElementById("budgetId").value || crypto.randomUUID();
+        const next = {
+          id,
+          name: document.getElementById("budgetName").value.trim(),
+          expected: Number(document.getElementById("budgetExpected").value),
+          paid: Number(document.getElementById("budgetPaid").value || 0),
+          memo: document.getElementById("budgetMemo").value.trim(),
+        };
+
+        const idx = data.budgets.findIndex((budget) => budget.id === id);
+        if (idx >= 0) data.budgets[idx] = next;
+        else data.budgets.push(next);
+
+        resetBudgetForm();
+        renderAll();
+      });
+
+      document.getElementById("settingsForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        data.settings = {
+          weddingDate: document.getElementById("weddingDate").value,
+          goalAmount: Number(document.getElementById("goalAmount").value),
+          groomName: document.getElementById("groomName").value.trim() || "예비신랑",
+          brideName: document.getElementById("brideName").value.trim() || "예비신부",
+        };
+        renderAll();
+      });
+
+      document.getElementById("cancelEditBtn").onclick = resetEntryForm;
+      document.getElementById("cancelBudgetBtn").onclick = resetBudgetForm;
+
+      document.getElementById("resetAllBtn").onclick = () => {
+        if (!confirm("모든 데이터를 초기화할까요?")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        data = structuredClone(defaultData);
+        resetEntryForm();
+        resetBudgetForm();
+        renderAll();
+      };
+
+      document.getElementById("exportBtn").onclick = () => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json;charset=utf-8",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "wedding-budget-backup.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      };
+
+      resetEntryForm();
+      resetBudgetForm();
+      renderAll();
+    </script>
+  </body>
+</html>
