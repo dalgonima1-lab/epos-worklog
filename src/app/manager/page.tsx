@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { ManagerReportModal } from "@/components/ManagerReportModal";
+import { WeeklySummaryReport } from "@/components/WeeklySummaryReport";
 import { getWeekRange, shiftWeek } from "@/lib/dates";
-import { photoApiUrl } from "@/lib/photoUrl";
 import type { WeeklySummary } from "@/lib/summary";
 import type { DailyReport } from "@/lib/types";
-import { formatWorkDuration } from "@/lib/workTime";
 
 export default function ManagerPage() {
   const [teamName, setTeamName] = useState("epos 관리팀");
@@ -166,122 +165,55 @@ export default function ManagerPage() {
           </div>
 
           {summary && (
-            <div className="space-y-3">
-              {summary.members.map((m) => {
-                const rate = Math.round(
-                  (m.submittedDays / m.expectedDays) * 100
-                );
-                const badge =
-                  rate >= 100
-                    ? "badge-ok"
-                    : rate >= 60
-                      ? "badge-warn"
-                      : "badge-danger";
-                return (
-                  <article key={m.member.id} className="card p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-lg font-bold">{m.member.name}</h3>
-                      <span className={`badge ${badge}`}>
-                        {m.submittedDays}/{m.expectedDays}일 ({rate}%)
-                      </span>
-                    </div>
-                    {m.missingDates.length > 0 && (
-                      <p className="muted mt-2 text-sm">
-                        미제출: {m.missingDates.join(", ")}
-                      </p>
-                    )}
-                    <p className="muted mt-1 text-xs">
-                      날짜별 카드를 누르면 사진 포함 보고서 형식으로 큰 화면에서
-                      볼 수 있습니다.
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {m.reports.map((r) => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-left text-sm transition hover:border-blue-300 hover:bg-blue-50/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          onClick={() =>
-                            setReportView({ memberName: m.member.name, report: r })
-                          }
-                        >
-                          <p className="flex flex-wrap items-center justify-between gap-2 font-semibold">
-                            <span>
-                              {r.date}
-                              {r.stationName && (
-                                <span className="ml-2 text-sm font-normal text-blue-800">
-                                  {r.stationName}
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-xs font-medium text-blue-600">
-                              보고서 보기 →
-                            </span>
-                          </p>
-                          {r.processingRole && (
-                            <p className="muted mt-1 text-xs">
-                              공종: <strong>{r.processingRole}</strong>
-                              {r.workMinutes != null && (
-                                <>
-                                  {" "}
-                                  · 작업{" "}
-                                  {formatWorkDuration(r.workMinutes)}
-                                </>
-                              )}
-                            </p>
-                          )}
-                          {(r.hasBeforePhoto || r.hasAfterPhoto) && (
-                            <div className="manager-photo-row">
-                              {r.hasBeforePhoto && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={`${photoApiUrl(
-                                    r.memberId,
-                                    r.date,
-                                    "before"
-                                  )}${r.beforePhotoAt ? `&t=${encodeURIComponent(r.beforePhotoAt)}` : ""}`}
-                                  alt="작업 전"
-                                  title="작업 전"
-                                />
-                              )}
-                              {r.hasAfterPhoto && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={`${photoApiUrl(
-                                    r.memberId,
-                                    r.date,
-                                    "after"
-                                  )}${r.afterPhotoAt ? `&t=${encodeURIComponent(r.afterPhotoAt)}` : ""}`}
-                                  alt="작업 후"
-                                  title="작업 후"
-                                />
-                              )}
-                            </div>
-                          )}
-                          <p className="mt-2 whitespace-pre-wrap">
-                            <span className="font-medium">금일:</span> {r.done}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap">
-                            <span className="font-medium">익일:</span> {r.plan}
-                          </p>
-                          {r.issues && (
-                            <p className="mt-1 whitespace-pre-wrap text-amber-800">
-                              <span className="font-medium">이슈:</span>{" "}
-                              {r.issues}
-                            </p>
-                          )}
-                          {r.deficiencies && (
-                            <p className="mt-1 whitespace-pre-wrap text-red-800">
-                              <span className="font-medium">미비사항:</span>{" "}
-                              {r.deficiencies}
-                            </p>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <section className="card mt-4 overflow-hidden p-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900">
+                    주간 요약 보고서
+                  </h3>
+                  <p className="muted text-xs">
+                    팀·직원별 제출 현황과 일일 기록을 한 페이지에 정리했습니다.
+                    일별 카드를 누르면 사진 포함 상세 보고서가 열립니다.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary text-sm"
+                    title="브라우저 인쇄에서 PDF 저장 가능"
+                    onClick={() => window.print()}
+                  >
+                    인쇄 / PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary text-sm"
+                    disabled={!markdown}
+                    onClick={downloadMarkdown}
+                  >
+                    .md 다운로드
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 sm:p-6">
+                <WeeklySummaryReport
+                  summary={summary}
+                  onDayClick={(memberName, report) =>
+                    setReportView({ memberName, report })
+                  }
+                />
+              </div>
+              {markdown ? (
+                <details className="border-t border-slate-100 bg-slate-50/80 px-4 py-3">
+                  <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
+                    Markdown 원문 보기
+                  </summary>
+                  <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-900 p-4 text-xs text-slate-100">
+                    {markdown}
+                  </pre>
+                </details>
+              ) : null}
+            </section>
           )}
 
           {reportView && summary && (
@@ -294,23 +226,6 @@ export default function ManagerPage() {
             />
           )}
 
-          {markdown && (
-            <section className="card mt-4 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-semibold">주간 요약본 (Markdown)</h3>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={downloadMarkdown}
-                >
-                  .md 다운로드
-                </button>
-              </div>
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-900 p-4 text-xs text-slate-100">
-                {markdown}
-              </pre>
-            </section>
-          )}
         </>
       )}
     </>
