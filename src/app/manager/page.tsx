@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
+import { ManagerReportModal } from "@/components/ManagerReportModal";
 import { getWeekRange, shiftWeek } from "@/lib/dates";
 import { photoApiUrl } from "@/lib/photoUrl";
 import type { WeeklySummary } from "@/lib/summary";
+import type { DailyReport } from "@/lib/types";
 import { formatWorkDuration } from "@/lib/workTime";
 
 export default function ManagerPage() {
@@ -15,6 +17,10 @@ export default function ManagerPage() {
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
   const [markdown, setMarkdown] = useState("");
   const [error, setError] = useState("");
+  const [reportView, setReportView] = useState<{
+    memberName: string;
+    report: DailyReport;
+  } | null>(null);
 
   const week = useMemo(() => getWeekRange(anchor), [anchor]);
 
@@ -184,19 +190,32 @@ export default function ManagerPage() {
                         미제출: {m.missingDates.join(", ")}
                       </p>
                     )}
+                    <p className="muted mt-1 text-xs">
+                      날짜별 카드를 누르면 사진 포함 보고서 형식으로 큰 화면에서
+                      볼 수 있습니다.
+                    </p>
                     <div className="mt-3 space-y-3">
                       {m.reports.map((r) => (
-                        <div
+                        <button
                           key={r.id}
-                          className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"
+                          type="button"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-left text-sm transition hover:border-blue-300 hover:bg-blue-50/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          onClick={() =>
+                            setReportView({ memberName: m.member.name, report: r })
+                          }
                         >
-                          <p className="font-semibold">
-                            {r.date}
-                            {r.stationName && (
-                              <span className="ml-2 text-sm font-normal text-blue-800">
-                                {r.stationName}
-                              </span>
-                            )}
+                          <p className="flex flex-wrap items-center justify-between gap-2 font-semibold">
+                            <span>
+                              {r.date}
+                              {r.stationName && (
+                                <span className="ml-2 text-sm font-normal text-blue-800">
+                                  {r.stationName}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-xs font-medium text-blue-600">
+                              보고서 보기 →
+                            </span>
                           </p>
                           {r.processingRole && (
                             <p className="muted mt-1 text-xs">
@@ -215,11 +234,11 @@ export default function ManagerPage() {
                               {r.hasBeforePhoto && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                  src={photoApiUrl(
+                                  src={`${photoApiUrl(
                                     r.memberId,
                                     r.date,
                                     "before"
-                                  )}
+                                  )}${r.beforePhotoAt ? `&t=${encodeURIComponent(r.beforePhotoAt)}` : ""}`}
                                   alt="작업 전"
                                   title="작업 전"
                                 />
@@ -227,11 +246,11 @@ export default function ManagerPage() {
                               {r.hasAfterPhoto && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                  src={photoApiUrl(
+                                  src={`${photoApiUrl(
                                     r.memberId,
                                     r.date,
                                     "after"
-                                  )}
+                                  )}${r.afterPhotoAt ? `&t=${encodeURIComponent(r.afterPhotoAt)}` : ""}`}
                                   alt="작업 후"
                                   title="작업 후"
                                 />
@@ -256,13 +275,23 @@ export default function ManagerPage() {
                               {r.deficiencies}
                             </p>
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </article>
                 );
               })}
             </div>
+          )}
+
+          {reportView && summary && (
+            <ManagerReportModal
+              open
+              teamName={summary.teamName}
+              memberName={reportView.memberName}
+              report={reportView.report}
+              onClose={() => setReportView(null)}
+            />
           )}
 
           {markdown && (
