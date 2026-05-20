@@ -1,15 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface StationPickerProps {
   value: string;
   onChange: (name: string) => void;
   disabled?: boolean;
+  /**
+   * 등록된 역 탭이 많을 때 검색창으로 목록을 좁힙니다.
+   * @default true
+   */
+  enableTabSearch?: boolean;
 }
 
-export function StationPicker({ value, onChange, disabled }: StationPickerProps) {
+function stationTabMatches(name: string, query: string): boolean {
+  const q = query.trim().toLowerCase().replace(/\s+/g, "");
+  if (!q) return true;
+  const n = name.toLowerCase().replace(/\s+/g, "");
+  return n.includes(q);
+}
+
+export function StationPicker({
+  value,
+  onChange,
+  disabled,
+  enableTabSearch = true,
+}: StationPickerProps) {
   const [stations, setStations] = useState<string[]>([]);
+  const [tabQuery, setTabQuery] = useState("");
 
   const loadStations = useCallback(() => {
     fetch("/api/stations")
@@ -39,6 +57,13 @@ export function StationPicker({ value, onChange, disabled }: StationPickerProps)
 
   const isKnown = value && stations.some((s) => s === value);
 
+  const filteredTabs = useMemo(
+    () => stations.filter((s) => stationTabMatches(s, tabQuery)),
+    [stations, tabQuery]
+  );
+
+  const tabsToShow = enableTabSearch ? filteredTabs : stations;
+
   return (
     <div className="station-picker">
       <label className="label">
@@ -51,21 +76,52 @@ export function StationPicker({ value, onChange, disabled }: StationPickerProps)
         }
       </p>
 
+      {enableTabSearch && stations.length > 0 && (
+        <div className="mb-3">
+          <label className="label text-xs font-medium text-slate-600">
+            역사명 검색 (탭 목록 좁히기)
+          </label>
+          <input
+            type="search"
+            className="input mt-1"
+            placeholder="예: 길음, 명동, 서울…"
+            value={tabQuery}
+            disabled={disabled}
+            autoComplete="off"
+            onChange={(e) => setTabQuery(e.target.value)}
+          />
+          {tabQuery.trim() && filteredTabs.length === 0 ? (
+            <p className="muted mt-1 text-xs">
+              일치하는 등록 역이 없습니다. 아래 입력란에 역 이름을 직접 적을 수
+              있습니다.
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {stations.length > 0 && (
-        <div className="station-tabs" role="tablist">
-          {stations.map((name) => (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={value === name}
-              className={`station-tab ${value === name ? "active" : ""}`}
-              disabled={disabled}
-              onClick={() => selectStation(name)}
-            >
-              {name}
-            </button>
-          ))}
+        <div
+          className={
+            enableTabSearch
+              ? "max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white/80 p-2"
+              : undefined
+          }
+        >
+          <div className="station-tabs" role="tablist">
+            {tabsToShow.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="tab"
+                aria-selected={value === name}
+                className={`station-tab ${value === name ? "active" : ""}`}
+                disabled={disabled}
+                onClick={() => selectStation(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

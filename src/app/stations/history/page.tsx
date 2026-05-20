@@ -24,6 +24,7 @@ export default function StationHistoryPage() {
     memberName: string;
     report: DailyReport;
   } | null>(null);
+  const [recordQuery, setRecordQuery] = useState("");
 
   useEffect(() => {
     fetch("/api/members")
@@ -43,6 +44,29 @@ export default function StationHistoryPage() {
     return m;
   }, [members]);
 
+  const visibleReports = useMemo(() => {
+    const q = recordQuery.trim().toLowerCase();
+    if (!q) return reports;
+    return reports.filter((r) => {
+      const name = memberNameById.get(r.memberId) ?? r.memberId;
+      const blob = [
+        r.date,
+        name,
+        r.stationName,
+        r.processingRole,
+        r.done,
+        r.plan,
+        r.issues ?? "",
+        r.deficiencies ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return blob.includes(q);
+    });
+  }, [reports, recordQuery, memberNameById]);
+
+  const showVisitGaps = !recordQuery.trim();
+
   const loadHistory = useCallback(async () => {
     const q = station.trim();
     if (!q) {
@@ -59,12 +83,15 @@ export default function StationHistoryPage() {
       const data = (await res.json()) as { reports?: DailyReport[]; error?: string };
       if (!res.ok) {
         setReports([]);
+        setRecordQuery("");
         setError(data.error ?? "불러오지 못했습니다.");
         return;
       }
       setReports(data.reports ?? []);
+      setRecordQuery("");
     } catch {
       setReports([]);
+      setRecordQuery("");
       setError("네트워크 오류입니다.");
     } finally {
       setLoading(false);
@@ -106,9 +133,12 @@ export default function StationHistoryPage() {
               「{searchedStation}」 방문 기록
             </h2>
             <p className="muted text-sm">
-              총 {reports.length}건 · 각 카드에서{" "}
-              <strong className="text-slate-600">보고서 보기</strong>로 전체
-              화면 확인
+              전체 {reports.length}건
+              {recordQuery.trim()
+                ? ` · 표시 ${visibleReports.length}건`
+                : ""}{" "}
+              · 각 카드{" "}
+              <strong className="text-slate-600">보고서 보기</strong>
             </p>
           </div>
 
@@ -118,12 +148,39 @@ export default function StationHistoryPage() {
               확인해 보세요.
             </p>
           ) : (
-            <ol className="mt-4 list-none space-y-0 p-0">
-              {reports.map((r, i) => {
+            <>
+              <div className="mt-4">
+                <label className="label text-sm text-slate-700">
+                  방문 기록 검색 (이름·날짜·공종·본문)
+                </label>
+                <input
+                  type="search"
+                  className="input mt-1"
+                  placeholder="예: 노희찬, 2025-05, 콘크리트, 타일…"
+                  value={recordQuery}
+                  disabled={loading}
+                  autoComplete="off"
+                  onChange={(e) => setRecordQuery(e.target.value)}
+                />
+                {recordQuery.trim() ? (
+                  <p className="muted mt-1 text-xs">
+                    검색 중에는 &quot;며칠 간격&quot; 표시를 숨깁니다 (목록이
+                    건너뛰어지면 간격이 어긋날 수 있음).
+                  </p>
+                ) : null}
+              </div>
+
+              {visibleReports.length === 0 ? (
+                <p className="muted mt-4 text-sm">
+                  검색어와 일치하는 기록이 없습니다. 검색어를 바꿔 보세요.
+                </p>
+              ) : (
+                <ol className="mt-4 list-none space-y-0 p-0">
+                  {visibleReports.map((r, i) => {
                 const name = memberNameById.get(r.memberId) ?? r.memberId;
-                const newer = i > 0 ? reports[i - 1] : null;
+                const newer = i > 0 ? visibleReports[i - 1] : null;
                 const gapDays =
-                  newer != null
+                  showVisitGaps && newer != null
                     ? calendarDaysBetween(r.date, newer.date)
                     : null;
                 const beforeSrc = r.hasBeforePhoto
@@ -135,7 +192,7 @@ export default function StationHistoryPage() {
 
                 return (
                   <li key={r.id}>
-                    {gapDays != null && gapDays > 0 ? (
+                    {showVisitGaps && gapDays != null && gapDays > 0 ? (
                       <div className="my-3 border-t border-dashed border-slate-300 pt-3 text-center text-xs text-slate-500">
                         다음 방문({newer!.date})까지{" "}
                         <strong className="text-slate-700">{gapDays}일</strong>{" "}
@@ -217,8 +274,10 @@ export default function StationHistoryPage() {
                     </article>
                   </li>
                 );
-              })}
-            </ol>
+                  })}
+                </ol>
+              )}
+            </>
           )}
         </section>
       )}
