@@ -40,6 +40,14 @@ export function shiftWeek(anchor: Date, delta: number): Date {
   return d;
 }
 
+const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
+/** 해당 주 월~금 각 날짜의 요일 라벨 (예: "월") */
+export function weekdayLabel(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return WEEKDAY_KO[d.getDay()];
+}
+
 /** `YYYY-MM-DD` 두 날짜 사이의 달력 일 수 (시작 ≤ 끝일 때 양수) */
 export function calendarDaysBetween(
   startIsoDate: string,

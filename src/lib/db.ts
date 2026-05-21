@@ -1,6 +1,12 @@
 import { promises as fs } from "fs";
 import path from "path";
-import type { Database, DailyReport, Member, StationRecord } from "./types";
+import type {
+  Database,
+  DailyReport,
+  Member,
+  ScheduleEntry,
+  StationRecord,
+} from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
 import {
@@ -22,6 +28,7 @@ const DEFAULT_DB: Database = {
   members: [...DEFAULT_TEAM_MEMBERS],
   reports: [],
   stationHistory: seedStationHistory(),
+  schedules: [],
 };
 
 const DEFAULT_MEMBERS: Member[] = DEFAULT_DB.members;
@@ -86,6 +93,7 @@ function migrateDb(db: Database): Database {
 
   db.reports = db.reports.map(normalizeReport);
   db.stationHistory = sortStations(db.stationHistory);
+  db.schedules = Array.isArray(db.schedules) ? db.schedules : [];
   return db;
 }
 
@@ -356,4 +364,76 @@ export async function updatePhotoTimestamp(
   await syncPhotoFlags(report);
   await saveDb(db);
   return report;
+}
+
+export async function getSchedulesInRange(
+  startDate: string,
+  endDate: string
+): Promise<ScheduleEntry[]> {
+  const db = await ensureDb();
+  return db.schedules
+    .filter((s) => s.date >= startDate && s.date <= endDate)
+    .sort((a, b) => {
+      const byDate = a.date.localeCompare(b.date);
+      if (byDate !== 0) return byDate;
+      return a.updatedAt.localeCompare(b.updatedAt);
+    });
+}
+
+export async function upsertSchedule(payload: {
+  id?: string;
+  date: string;
+  memberId: string;
+  title: string;
+  stationName?: string;
+  note?: string;
+}): Promise<ScheduleEntry> {
+  const db = await ensureDb();
+  const now = new Date().toISOString();
+  const title = payload.title.trim();
+  if (!title) throw new Error("일정 제목을 입력해 주세요.");
+  if (!payload.date || !payload.memberId) {
+    throw new Error("날짜와 담당자가 필요합니다.");
+  }
+
+  let entry: ScheduleEntry;
+  if (payload.id) {
+    const idx = db.schedules.findIndex((s) => s.id === payload.id);
+    if (idx < 0) throw new Error("일정을 찾을 수 없습니다.");
+    entry = {
+      ...db.schedules[idx],
+      date: payload.date,
+      memberId: payload.memberId,
+      title,
+      stationName: payload.stationName?.trim() || undefined,
+      note: payload.note?.trim() || undefined,
+      updatedAt: now,
+    };
+    db.schedules[idx] = entry;
+  } else {
+    entry = {
+      id: `sch_${payload.memberId}_${payload.date}_${Date.now()}`,
+      date: payload.date,
+      memberId: payload.memberId,
+      title,
+      stationName: payload.stationName?.trim() || undefined,
+      note: payload.note?.trim() || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.schedules.push(entry);
+  }
+
+  await saveDb(db);
+  return entry;
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  const db = await ensureDb();
+  const before = db.schedules.length;
+  db.schedules = db.schedules.filter((s) => s.id !== id);
+  if (db.schedules.length === before) {
+    throw new Error("일정을 찾을 수 없습니다.");
+  }
+  await saveDb(db);
 }

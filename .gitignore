@@ -8,5 +8,8 @@ data/references/**
 .env
 .env.local
 .env*.local
+# Firebase 비공개 키 JSON — GitHub에 올리면 푸시 차단·유출 위험
+*-firebase-adminsdk-*.json
+*firebase*adminsdk*.json
 .DS_Store
 .vercel

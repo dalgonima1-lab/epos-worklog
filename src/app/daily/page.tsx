@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
@@ -23,11 +24,16 @@ const DEFAULT_WRITERS: Member[] = DEFAULT_TEAM_MEMBERS.filter(
   (m) => m.role === "member"
 );
 
-export default function DailyPage() {
+function DailyPageInner() {
+  const searchParams = useSearchParams();
   const [teamName, setTeamName] = useState(DEFAULT_TEAM_NAME);
   const [members, setMembers] = useState<Member[]>(DEFAULT_WRITERS);
-  const [memberId, setMemberId] = useState(DEFAULT_WRITERS[0]?.id ?? "");
-  const [date, setDate] = useState(formatDate(new Date()));
+  const [memberId, setMemberId] = useState(
+    () => searchParams.get("memberId") ?? DEFAULT_WRITERS[0]?.id ?? ""
+  );
+  const [date, setDate] = useState(
+    () => searchParams.get("date") ?? formatDate(new Date())
+  );
   const [stationName, setStationName] = useState("");
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
@@ -65,6 +71,15 @@ export default function DailyPage() {
         }
       });
   }, [memberId]);
+
+  useEffect(() => {
+    const qDate = searchParams.get("date");
+    const qMember = searchParams.get("memberId");
+    const qStation = searchParams.get("station");
+    if (qDate) setDate(qDate);
+    if (qMember) setMemberId(qMember);
+    if (qStation) setStationName(qStation);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!memberId || !date) return;
@@ -161,8 +176,13 @@ export default function DailyPage() {
     <>
       <Header
         teamName={teamName}
-        subtitle={"\uc77c\uc77c \uc5c5\ubb34 \uae30\ub85d \u00b7 \uc0ac\uc9c4\u00b7\uc791\uc5c5\uc2dc\uac04"}
+        subtitle={`${date} · 일일 업무 기록 · 사진·작업시간`}
       />
+      <p className="muted -mt-4 mb-4 text-sm">
+        <a href="/" className="link-accent">
+          ← 홈 일정으로
+        </a>
+      </p>
 
       <form onSubmit={handleSubmit} className="card space-y-5 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -348,5 +368,17 @@ export default function DailyPage() {
         </div>
       </form>
     </>
+  );
+}
+
+export default function DailyPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="muted py-8 text-center text-sm">일일 기록 불러오는 중…</p>
+      }
+    >
+      <DailyPageInner />
+    </Suspense>
   );
 }

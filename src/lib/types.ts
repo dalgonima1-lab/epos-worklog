@@ -40,6 +40,18 @@ export interface DailyReport {
   updatedAt: string;
 }
 
+/** 홈 주간 캘린더 일정 */
+export interface ScheduleEntry {
+  id: string;
+  date: string;
+  memberId: string;
+  title: string;
+  stationName?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Database {
   teamName: string;
   managerPin: string;
@@ -47,4 +59,5 @@ export interface Database {
   reports: DailyReport[];
   /** 최근 사용 역사 목록 (탭 선택용) */
   stationHistory: StationRecord[];
+  schedules: ScheduleEntry[];
 }
