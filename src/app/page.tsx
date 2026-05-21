@@ -1,17 +1,11 @@
-import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { HomeWeekCalendar } from "@/components/HomeWeekCalendar";
 import { DEFAULT_TEAM_NAME } from "@/lib/constants";
-import { isStaffDeployment } from "@/lib/staffMode";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  if (isStaffDeployment()) {
-    redirect("/daily");
-  }
-
   let teamName = DEFAULT_TEAM_NAME;
   try {
     const db = await getDb();

@@ -12,10 +12,6 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/daily", request.url));
-  }
-
   if (pathname.startsWith("/api/")) {
     if (
       pathname.startsWith("/api/auth/manager") ||
@@ -40,7 +36,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
     "/manager/:path*",
     "/api/auth/manager",
     "/api/summary",
