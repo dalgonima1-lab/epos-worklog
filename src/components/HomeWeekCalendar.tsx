@@ -428,7 +428,18 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 className="btn btn-primary"
                 disabled={saving}
               >
-                {saving ? "저장 중…" : "저장"}
+                {saving ? "저장 중…" : "일정 저장"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={saving || !formDate || !formMemberId}
+                onClick={() => {
+                  setModalOpen(false);
+                  goDaily(formDate, formMemberId, formStation);
+                }}
+              >
+                일일 기록 작성
               </button>
               <button
                 type="button"
@@ -438,6 +449,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 취소
               </button>
             </div>
+            {formStation.trim() ? (
+              <p className="muted mt-2 text-xs">
+                「일일 기록 작성」 시 역사 <strong>{formStation.trim()}</strong>
+                가 자동으로 채워집니다.
+              </p>
+            ) : null}
           </form>
         </div>
       )}

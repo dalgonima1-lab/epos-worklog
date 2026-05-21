@@ -4,6 +4,12 @@ import {
   getSchedulesInRange,
   upsertSchedule,
 } from "@/lib/db";
+import { formatFirestoreUserError } from "@/lib/firebaseAdmin";
+
+function formatApiError(e: unknown): string {
+  if (e instanceof Error) return formatFirestoreUserError(e);
+  return formatFirestoreUserError(e);
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,8 +21,12 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
-  const schedules = await getSchedulesInRange(start, end);
-  return NextResponse.json({ schedules });
+  try {
+    const schedules = await getSchedulesInRange(start, end);
+    return NextResponse.json({ schedules });
+  } catch (e) {
+    return NextResponse.json({ error: formatApiError(e) }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -32,8 +42,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ schedule });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "저장 실패";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return NextResponse.json({ error: formatApiError(e) }, { status: 500 });
   }
 }
 
@@ -46,7 +55,6 @@ export async function DELETE(request: NextRequest) {
     await deleteSchedule(id);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "삭제 실패";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return NextResponse.json({ error: formatApiError(e) }, { status: 500 });
   }
 }

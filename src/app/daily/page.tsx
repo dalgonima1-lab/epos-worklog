@@ -34,7 +34,9 @@ function DailyPageInner() {
   const [date, setDate] = useState(
     () => searchParams.get("date") ?? formatDate(new Date())
   );
-  const [stationName, setStationName] = useState("");
+  const [stationName, setStationName] = useState(
+    () => searchParams.get("station")?.trim() ?? ""
+  );
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
   const [done, setDone] = useState("");
@@ -83,6 +85,7 @@ function DailyPageInner() {
 
   useEffect(() => {
     if (!memberId || !date) return;
+    const stationFromSchedule = searchParams.get("station")?.trim() ?? "";
     setLoading(true);
     setBeforePhotoAt(undefined);
     setAfterPhotoAt(undefined);
@@ -105,7 +108,15 @@ function DailyPageInner() {
           setProcessingRole("");
           setCustomRole("");
         }
-        setStationName(report?.stationName ?? "");
+        const fromReport = report?.stationName?.trim() ?? "";
+        setStationName(fromReport || stationFromSchedule);
+        if (stationFromSchedule && !fromReport) {
+          void fetch("/api/stations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: stationFromSchedule }),
+          });
+        }
         setDone(report?.done ?? "");
         setPlan(report?.plan ?? "");
         setIssues(report?.issues ?? "");
@@ -120,7 +131,7 @@ function DailyPageInner() {
         );
       })
       .finally(() => setLoading(false));
-  }, [memberId, date]);
+  }, [memberId, date, searchParams]);
 
   function applyWorkTime(
     before?: string,
@@ -182,6 +193,11 @@ function DailyPageInner() {
         <a href="/" className="link-accent">
           ← 홈 일정으로
         </a>
+        {searchParams.get("station")?.trim() ? (
+          <span className="ml-2">
+            · 일정 역사 <strong>{searchParams.get("station")}</strong> 반영됨
+          </span>
+        ) : null}
       </p>
 
       <form onSubmit={handleSubmit} className="card space-y-5 p-5">
