@@ -13,7 +13,7 @@ import { photoApiUrl } from "@/lib/photoUrl";
 import { formatWorkDuration } from "@/lib/workTime";
 
 export default function StationHistoryPage() {
-  const [teamName, setTeamName] = useState("epos 관리팀");
+  const [teamName, setTeamName] = useState("EPOS 관리팀");
   const [members, setMembers] = useState<Member[]>([]);
   const [station, setStation] = useState("");
   const [reports, setReports] = useState<DailyReport[]>([]);
@@ -30,7 +30,7 @@ export default function StationHistoryPage() {
     fetch("/api/members")
       .then((r) => r.json())
       .then((d) => {
-        setTeamName(d.teamName ?? "epos 관리팀");
+        setTeamName(d.teamName ?? "EPOS 관리팀");
         setMembers(d.members ?? []);
       })
       .catch(() => {});

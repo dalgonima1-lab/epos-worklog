@@ -1,4 +1,4 @@
-/** epos 관리팀 공종 */
+/** EPOS 관리팀 공종 */
 export const PROCESSING_ROLES = [
   "전력감시시스템",
   "조명제어시스템",
@@ -8,7 +8,7 @@ export const PROCESSING_ROLES = [
 
 export type ProcessingRole = (typeof PROCESSING_ROLES)[number];
 
-export const DEFAULT_TEAM_NAME = "epos 관리팀";
+export const DEFAULT_TEAM_NAME = "EPOS 관리팀";
 
 export const DEFAULT_TEAM_MEMBERS = [
   { id: "m1", name: "노희찬 과장", role: "member" },

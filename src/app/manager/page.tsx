@@ -9,7 +9,7 @@ import type { WeeklySummary } from "@/lib/summary";
 import type { DailyReport } from "@/lib/types";
 
 export default function ManagerPage() {
-  const [teamName, setTeamName] = useState("epos 관리팀");
+  const [teamName, setTeamName] = useState("EPOS 관리팀");
   const [anchor, setAnchor] = useState(new Date());
   const [pin, setPin] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -176,7 +176,7 @@ export default function ManagerPage() {
                     일별 카드를 누르면 사진 포함 상세 보고서가 열립니다.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="no-print flex flex-wrap gap-2">
                   <button
                     type="button"
                     className="btn btn-secondary text-sm"

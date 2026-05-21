@@ -29,19 +29,19 @@ export function WeeklySummaryReport({
 
   return (
     <div className="weekly-summary-report text-slate-900">
-      <header className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 px-5 py-8 text-white shadow-lg sm:px-8">
+      <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 px-5 py-8 text-white shadow-lg sm:px-8">
         <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-indigo-400/20" />
-        <p className="relative text-xs font-semibold uppercase tracking-widest text-blue-100">
+        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-indigo-400/25" />
+        <p className="relative text-xs font-semibold uppercase tracking-widest text-indigo-200">
           Weekly summary
         </p>
-        <h2 className="relative mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+        <h2 className="relative mt-2 text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
           {summary.teamName}
         </h2>
-        <p className="relative mt-3 text-sm text-blue-100/95">
+        <p className="relative mt-3 text-sm text-indigo-100/95">
           기간 <span className="font-semibold text-white">{summary.weekLabel}</span>
         </p>
-        <p className="relative mt-1 text-xs text-blue-200/90">
+        <p className="relative mt-1 text-xs text-indigo-200/90">
           생성 {generated} · 근무일 {summary.expectedDays}일 기준
         </p>
       </header>

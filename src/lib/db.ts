@@ -53,6 +53,9 @@ export type ReportPayload = Pick<
 >;
 
 function migrateDb(db: Database): Database {
+  if (db.teamName === "epos 관리팀") {
+    db.teamName = DEFAULT_TEAM_NAME;
+  }
   db.teamName = db.teamName || DEFAULT_DB.teamName;
   const normalizedPin = normalizeManagerPinInput(db.managerPin);
   db.managerPin = normalizedPin.length > 0 ? normalizedPin : DEFAULT_DB.managerPin;

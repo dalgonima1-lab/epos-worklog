@@ -27,9 +27,9 @@ export default async function HomePage() {
         subtitle="매일 짧게 기록하고, 주간에는 한 번에 요약합니다."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="text-lg font-bold">직원 · 일일 기록</h2>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <section className="card feature-card">
+          <h2>직원 · 일일 기록</h2>
           <p className="muted mt-2">
             금일 수행, 익일 계획, 이슈를 하루 3~5분 안에 입력합니다. 같은 날
             수정·저장도 가능합니다.
@@ -42,8 +42,8 @@ export default async function HomePage() {
           </Link>
         </section>
 
-        <section className="card p-5">
-          <h2 className="text-lg font-bold">팀장 · 주간 요약</h2>
+        <section className="card feature-card">
+          <h2>팀장 · 주간 요약</h2>
           <p className="muted mt-2">
             팀원별 제출 현황, 미제출일, 주간 통합 요약본(Markdown)을
             확인·다운로드합니다.
@@ -57,8 +57,10 @@ export default async function HomePage() {
         </section>
       </div>
 
-      <section className="card mt-4 p-5">
-        <h3 className="font-semibold">MVP에 포함된 기능</h3>
+      <section className="card mt-5 p-5 sm:p-6">
+        <h3 className="text-base font-bold tracking-tight text-slate-900">
+          포함된 기능
+        </h3>
         <ul className="muted mt-2 list-inside list-disc space-y-1 text-sm">
           <li>공종, 작업 전·후 사진(자동 시각), 작업시간 산정, 미비사항</li>
           <li>직원별 일일 업무 입력 (금일/익일/이슈)</li>
@@ -75,7 +77,7 @@ export default async function HomePage() {
         </ul>
         <p className="muted mt-3 text-sm">
           브라우저만으로 체험:{" "}
-          <a className="text-blue-700 underline" href="/demo/index.html">
+          <a className="link-accent" href="/demo/index.html">
             오프라인 데모
           </a>
         </p>
