@@ -1,5 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { loadWeeklyAnalysis, saveWeeklyAnalysis } from "./db";
+import type { WeeklyAnalysisRecord } from "./types";
 
 const REF_DIR = path.join(process.cwd(), "data", "references");
 const ANALYSIS_DIR = path.join(process.cwd(), "data", "analyses");
@@ -24,22 +26,30 @@ export async function loadReferenceAnalysis(
 
 export async function saveGeneratedAnalysis(
   weekKey: string,
-  markdown: string
+  markdown: string,
+  source: WeeklyAnalysisRecord["source"] = "gemini"
 ): Promise<string> {
   await fs.mkdir(ANALYSIS_DIR, { recursive: true });
   const filePath = path.join(ANALYSIS_DIR, `${weekKey}.md`);
   await fs.writeFile(filePath, markdown, "utf-8");
+  await saveWeeklyAnalysis(weekKey, markdown, source);
   return filePath;
 }
 
 export async function loadGeneratedAnalysis(
   weekKey: string
-): Promise<string | null> {
+): Promise<{ markdown: string; source: WeeklyAnalysisRecord["source"] } | null> {
+  const fromDb = await loadWeeklyAnalysis(weekKey);
+  if (fromDb?.markdown) {
+    return { markdown: fromDb.markdown, source: fromDb.source };
+  }
+
   try {
-    return await fs.readFile(
+    const markdown = await fs.readFile(
       path.join(ANALYSIS_DIR, `${weekKey}.md`),
       "utf-8"
     );
+    return { markdown, source: "file" };
   } catch {
     return null;
   }

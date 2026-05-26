@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "import:weekly": "tsx scripts/import-and-analyze.ts"
+    "import:weekly": "tsx scripts/import-and-analyze.ts",
+    "upload:analysis": "tsx scripts/upload-cursor-analysis.ts"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

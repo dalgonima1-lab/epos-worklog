@@ -52,6 +52,13 @@ export interface ScheduleEntry {
   updatedAt: string;
 }
 
+/** 주간 팀장 분석 (Gemini 또는 Cursor 등) */
+export interface WeeklyAnalysisRecord {
+  markdown: string;
+  source: "gemini" | "cursor" | "file";
+  updatedAt: string;
+}
+
 export interface Database {
   teamName: string;
   managerPin: string;
@@ -60,4 +67,6 @@ export interface Database {
   /** 최근 사용 역사 목록 (탭 선택용) */
   stationHistory: StationRecord[];
   schedules: ScheduleEntry[];
+  /** `{start}_{end}` → 분석 본문 */
+  weeklyAnalyses?: Record<string, WeeklyAnalysisRecord>;
 }

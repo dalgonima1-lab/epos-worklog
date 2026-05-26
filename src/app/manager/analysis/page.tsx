@@ -16,6 +16,10 @@ export default function ManagerAnalysisPage() {
   const [strategicChecklist, setStrategicChecklist] = useState("");
   const [managerNotes, setManagerNotes] = useState("");
   const [analysis, setAnalysis] = useState("");
+  const [analysisNotice, setAnalysisNotice] = useState("");
+  const [analysisSource, setAnalysisSource] = useState<
+    "gemini" | "cursor" | "file" | ""
+  >("");
   const [generating, setGenerating] = useState(false);
   const [meta, setMeta] = useState<{
     currentWeek: string;
@@ -46,7 +50,19 @@ export default function ManagerAnalysisPage() {
     )
       .then((r) => r.json())
       .then((d) => {
-        if (d.markdown) setAnalysis(d.markdown);
+        if (d.markdown) {
+          setAnalysis(d.markdown);
+          setAnalysisSource(d.source ?? "file");
+          setAnalysisNotice(
+            d.source === "cursor"
+              ? "저장된 Cursor 주간 분석입니다. Gemini 없이도 확인할 수 있습니다."
+              : ""
+          );
+        } else {
+          setAnalysis("");
+          setAnalysisSource("");
+          setAnalysisNotice("");
+        }
       });
   }, [authed, pin, week.start, week.end, prevWeek.start, prevWeek.end]);
 
@@ -111,10 +127,36 @@ export default function ManagerAnalysisPage() {
     setPreviousAnalysis(text);
   }
 
+  async function loadSavedAnalysis() {
+    setError("");
+    setAnalysisNotice("");
+    const res = await fetch(
+      `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "저장된 분석을 불러오지 못했습니다.");
+      return;
+    }
+    if (!data.markdown) {
+      setError(
+        "이 주차에 저장된 분석이 없습니다. Cursor로 작성·업로드 후 다시 시도하거나 Gemini를 사용하세요."
+      );
+      return;
+    }
+    setAnalysis(data.markdown);
+    setAnalysisSource(data.source ?? "file");
+    setAnalysisNotice(
+      data.source === "cursor"
+        ? "저장된 Cursor 주간 분석입니다."
+        : "저장된 주간 분석입니다."
+    );
+  }
+
   async function generateAnalysis() {
     setGenerating(true);
     setError("");
-    setAnalysis("");
+    setAnalysisNotice("");
     try {
       const res = await fetch("/api/analysis/weekly", {
         method: "POST",
@@ -131,13 +173,20 @@ export default function ManagerAnalysisPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "\ubd84\uc11d \uc0dd\uc131 \uc2e4\ud328");
+        setError(data.error ?? "분석 생성 실패");
         return;
       }
       setAnalysis(data.markdown);
-      setMeta(data.meta);
+      setMeta(data.meta ?? null);
+      setAnalysisSource(data.source ?? (data.fromCache ? "cursor" : "gemini"));
+      if (data.notice) setAnalysisNotice(data.notice);
+      else if (data.fromCache) {
+        setAnalysisNotice(
+          "Gemini 대신 저장해 둔 주간 분석을 표시했습니다."
+        );
+      }
     } catch {
-      setError("\ub124\ud2b8\uc6cc\ud06c \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4.");
+      setError("네트워크 오류가 발생했습니다.");
     } finally {
       setGenerating(false);
     }
@@ -157,7 +206,7 @@ export default function ManagerAnalysisPage() {
     <>
       <Header
         teamName={teamName}
-        subtitle={"\uc8fc\uac04 \uc5c5\ubb34 \ubd84\uc11d \ubc0f \uc81c\uc548 (Gemini AI)"}
+        subtitle="주간 업무 분석 및 제언 (Gemini 또는 Cursor 저장본)"
       />
 
       <p className="muted mb-4 text-sm">
@@ -219,13 +268,20 @@ export default function ManagerAnalysisPage() {
               </button>
               <button
                 type="button"
+                className="btn btn-secondary"
+                onClick={loadSavedAnalysis}
+              >
+                저장된 분석 보기
+              </button>
+              <button
+                type="button"
                 className="btn btn-primary"
                 onClick={generateAnalysis}
                 disabled={generating}
               >
                 {generating
-                  ? "Gemini \ubd84\uc11d \uc0dd\uc131 \uc911..."
-                  : "Gemini\ub85c \uc8fc\uac04 \ubd84\uc11d \uc0dd\uc131"}
+                  ? "분석 요청 중…"
+                  : "Gemini로 새로 생성 (실패 시 저장본)"}
               </button>
             </div>
           </div>
@@ -313,6 +369,12 @@ export default function ManagerAnalysisPage() {
             </section>
           </div>
 
+          {analysisNotice && (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {analysisNotice}
+            </p>
+          )}
+
           {error && (
             <p className="mt-3 text-sm text-red-600">{error}</p>
           )}
@@ -330,7 +392,17 @@ export default function ManagerAnalysisPage() {
             <section className="card mt-4 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold">
-                  {"\uc0dd\uc131\ub41c \uc8fc\uac04 \ubd84\uc11d \ubc0f \uc81c\uc548 \ubcf4\uace0\uc11c"}
+                  주간 분석 및 제언 보고서
+                  {analysisSource === "cursor" && (
+                    <span className="ml-2 rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">
+                      Cursor
+                    </span>
+                  )}
+                  {analysisSource === "gemini" && (
+                    <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                      Gemini
+                    </span>
+                  )}
                 </h3>
                 <button
                   type="button"

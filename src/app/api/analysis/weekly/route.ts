@@ -36,26 +36,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "팀장 PIN이 올바르지 않습니다." }, { status: 403 });
   }
 
+  const key = weekKey(start, end);
   if (!process.env.GEMINI_API_KEY) {
+    const cached = await loadGeneratedAnalysis(key);
+    if (cached?.markdown) {
+      return NextResponse.json({
+        markdown: cached.markdown,
+        weekKey: key,
+        source: cached.source,
+        fromCache: true,
+        notice:
+          "GEMINI_API_KEY가 없어 Gemini 생성은 건너뛰었습니다. 저장된 주간 분석을 표시합니다.",
+      });
+    }
     return NextResponse.json(
       {
         error:
-          "GEMINI_API_KEY가 설정되지 않았습니다. 프로젝트 루트에 .env.local 파일을 만든 뒤 API 키를 추가해 주세요.",
+          "GEMINI_API_KEY가 설정되지 않았습니다. 저장된 분석도 없습니다.",
       },
       { status: 503 }
     );
   }
 
+  const anchor = anchorDate
+    ? new Date(anchorDate + "T12:00:00")
+    : new Date(end + "T12:00:00");
+  const prevWeek = getWeekRange(shiftWeek(anchor, -1));
+  const currentLabel = `${start} ~ ${end}`;
+  const prevLabel = prevWeek.label;
+  let currentReports: Awaited<ReturnType<typeof getReportsInRange>> = [];
+  let previousReports: Awaited<ReturnType<typeof getReportsInRange>> = [];
+
   try {
     const db = await getDb();
     const members = await getMembers();
-    const anchor = anchorDate ? new Date(anchorDate + "T12:00:00") : new Date(end + "T12:00:00");
-    const prevWeek = getWeekRange(shiftWeek(anchor, -1));
-    const currentLabel = `${start} ~ ${end}`;
-    const prevLabel = prevWeek.label;
 
-    const currentReports = await getReportsInRange(start, end);
-    const previousReports = await getReportsInRange(prevWeek.start, prevWeek.end);
+    currentReports = await getReportsInRange(start, end);
+    previousReports = await getReportsInRange(prevWeek.start, prevWeek.end);
 
     const currentWeekData = buildWeeklyReportsContext(
       db.teamName,
@@ -90,11 +107,12 @@ export async function POST(request: NextRequest) {
 
     const markdown = await generateWithGemini(prompt);
     const key = weekKey(start, end);
-    await saveGeneratedAnalysis(key, markdown);
+    await saveGeneratedAnalysis(key, markdown, "gemini");
 
     return NextResponse.json({
       markdown,
       weekKey: key,
+      source: "gemini",
       meta: {
         currentWeek: currentLabel,
         previousWeek: prevLabel,
@@ -104,6 +122,30 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "분석 생성 실패";
+    const key = weekKey(start, end);
+    const cached = await loadGeneratedAnalysis(key);
+    if (cached?.markdown) {
+      const sourceLabel =
+        cached.source === "cursor"
+          ? "Cursor"
+          : cached.source === "gemini"
+            ? "Gemini"
+            : "저장본";
+      return NextResponse.json({
+        markdown: cached.markdown,
+        weekKey: key,
+        source: cached.source,
+        fromCache: true,
+        notice: `Gemini API 오류로 새로 생성하지 못했습니다. 대신 ${sourceLabel}에서 저장해 둔 주간 분석을 표시합니다.`,
+        geminiError: message,
+        meta: {
+          currentWeek: currentLabel,
+          previousWeek: prevLabel,
+          reportCount: currentReports.length,
+          previousReportCount: previousReports.length,
+        },
+      });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -124,7 +166,13 @@ export async function GET(request: NextRequest) {
   }
 
   const saved = await loadGeneratedAnalysis(weekKey(start, end));
-  return NextResponse.json({ markdown: saved });
+  if (!saved) {
+    return NextResponse.json({ markdown: null });
+  }
+  return NextResponse.json({
+    markdown: saved.markdown,
+    source: saved.source,
+  });
 }
 
 function formatWeekTitle(anchor: Date, teamName: string): string {

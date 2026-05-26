@@ -129,7 +129,7 @@ async function generateWeeklyAnalysis() {
     console.warn(`\n⚠ Gemini 실패: ${msg.slice(0, 120)}…`);
     try {
       const markdown = await fs.readFile(fallbackPath, "utf-8");
-      await saveGeneratedAnalysis(key, markdown);
+      await saveGeneratedAnalysis(key, markdown, "cursor");
       console.log(`✓ 정리본 보고서 사용: ${fallbackPath}`);
       return { start, end, key, source: "fallback" as const };
     } catch {

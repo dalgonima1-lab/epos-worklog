@@ -6,6 +6,7 @@ import type {
   Member,
   ScheduleEntry,
   StationRecord,
+  WeeklyAnalysisRecord,
 } from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
@@ -94,6 +95,7 @@ function migrateDb(db: Database): Database {
   db.reports = db.reports.map(normalizeReport);
   db.stationHistory = sortStations(db.stationHistory);
   db.schedules = Array.isArray(db.schedules) ? db.schedules : [];
+  db.weeklyAnalyses = db.weeklyAnalyses ?? {};
   return db;
 }
 
@@ -436,4 +438,26 @@ export async function deleteSchedule(id: string): Promise<void> {
     throw new Error("일정을 찾을 수 없습니다.");
   }
   await saveDb(db);
+}
+
+export async function saveWeeklyAnalysis(
+  key: string,
+  markdown: string,
+  source: WeeklyAnalysisRecord["source"]
+): Promise<void> {
+  const db = await ensureDb();
+  db.weeklyAnalyses = db.weeklyAnalyses ?? {};
+  db.weeklyAnalyses[key] = {
+    markdown,
+    source,
+    updatedAt: new Date().toISOString(),
+  };
+  await saveDb(db);
+}
+
+export async function loadWeeklyAnalysis(
+  key: string
+): Promise<WeeklyAnalysisRecord | null> {
+  const db = await ensureDb();
+  return db.weeklyAnalyses?.[key] ?? null;
 }
