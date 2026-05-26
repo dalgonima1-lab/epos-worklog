@@ -311,7 +311,7 @@ export default function ManagerAnalysisPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             <section className="card space-y-3 p-4">
               <h3 className="font-semibold">
                 1. 직전 주 분석 보고서 ({prevWeek.label})
@@ -416,8 +416,8 @@ export default function ManagerAnalysisPage() {
           )}
 
           {analysis && (
-            <section className="mt-6 print:mt-0">
-              <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <section className="mt-6 w-full min-w-0 print:mt-0">
+              <div className="no-print mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-medium text-slate-700">
                   아래는 인쇄·공유용 보고서 화면입니다.
                 </p>

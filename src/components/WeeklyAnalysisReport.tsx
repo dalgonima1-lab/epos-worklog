@@ -15,7 +15,7 @@ interface WeeklyAnalysisReportProps {
 function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
-    <>
+    <span className="war-inline break-keep [overflow-wrap:anywhere]">
       {parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
           return (
@@ -26,7 +26,7 @@ function InlineText({ text }: { text: string }) {
         }
         return <span key={i}>{part}</span>;
       })}
-    </>
+    </span>
   );
 }
 
@@ -45,10 +45,48 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex min-w-[2rem] justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${cls}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${cls}`}
     >
       {s || "—"}
     </span>
+  );
+}
+
+/** 라벨 + 본문 2열 (모바일에서도 줄 맞춤) */
+function MetaGrid({ children }: { children: React.ReactNode }) {
+  return <dl className="war-meta-grid">{children}</dl>;
+}
+
+function MetaItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="war-meta-item">
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+/** 불릿: 마커 열 + 본문 열 */
+function BulletList({
+  items,
+  marker = "dot",
+}: {
+  items: string[];
+  marker?: "dot" | "num";
+}) {
+  return (
+    <ul className="war-bullet-list">
+      {items.map((item, i) => (
+        <li key={i} className="war-bullet-row">
+          <span className="war-bullet-marker" aria-hidden>
+            {marker === "num" ? i + 1 : "•"}
+          </span>
+          <span className="war-bullet-body text-[0.9375rem] leading-[1.65] text-slate-700">
+            <InlineText text={item} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -68,57 +106,36 @@ function ReportHeader({
   const refLine = report.meta.find((m) => /참조/.test(m.label))?.value;
 
   return (
-    <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-700 via-indigo-700 to-slate-900 px-6 py-9 text-white shadow-xl sm:px-10 print:rounded-lg print:py-6">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-32 w-full bg-gradient-to-t from-black/20 to-transparent" />
-      <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">
-        Executive Report
-      </p>
-      <h1 className="relative mt-2 text-2xl font-bold leading-snug tracking-tight sm:text-3xl">
-        {report.title}
-      </h1>
+    <header className="war-report-header">
+      <p className="war-report-eyebrow">Executive Report</p>
+      <h1 className="war-report-title">{report.title}</h1>
       {period ? (
-        <p className="relative mt-4 text-base text-violet-100">
-          분석 기간{" "}
-          <span className="font-semibold text-white">{period}</span>
+        <p className="war-report-period">
+          <span className="war-report-period-label">분석 기간</span>
+          <span className="war-report-period-value">{period}</span>
         </p>
       ) : null}
-      <dl className="relative mt-5 grid gap-2 text-sm text-indigo-100/95 sm:grid-cols-2">
-        {dateLine ? (
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-violet-300">
-              일시
-            </dt>
-            <dd className="mt-0.5 font-medium text-white">{dateLine}</dd>
-          </div>
-        ) : null}
+      <MetaGrid>
+        {dateLine ? <MetaItem label="일시">{dateLine}</MetaItem> : null}
         {fromLine ? (
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-violet-300">
-              발신
-            </dt>
-            <dd className="mt-0.5">
-              <InlineText text={fromLine} />
-            </dd>
-          </div>
+          <MetaItem label="발신">
+            <InlineText text={fromLine} />
+          </MetaItem>
         ) : null}
         {refLine ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase tracking-wide text-violet-300">
-              참조
-            </dt>
-            <dd className="mt-0.5">{refLine}</dd>
-          </div>
+          <MetaItem label="참조">
+            <span className="break-keep [overflow-wrap:anywhere]">{refLine}</span>
+          </MetaItem>
         ) : null}
-      </dl>
+      </MetaGrid>
       {source ? (
-        <p className="relative mt-4 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+        <span className="war-source-badge">
           {source === "cursor"
             ? "Cursor 분석"
             : source === "gemini"
               ? "Gemini AI 생성"
               : "저장된 보고서"}
-        </p>
+        </span>
       ) : null}
     </header>
   );
@@ -135,27 +152,85 @@ function SectionCard({
   icon?: string;
   accent?: "indigo" | "emerald" | "amber" | "slate";
 }) {
-  const bar =
-    accent === "emerald"
-      ? "from-emerald-500 to-teal-600"
-      : accent === "amber"
-        ? "from-amber-500 to-orange-600"
-        : accent === "slate"
-          ? "from-slate-500 to-slate-700"
-          : "from-indigo-500 to-violet-600";
-
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-100 print:break-inside-avoid">
-      <div
-        className={`flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r ${bar} px-5 py-3.5 text-white`}
-      >
-        {icon ? <span className="text-lg" aria-hidden>{icon}</span> : null}
-        <h2 className="text-base font-bold tracking-tight sm:text-lg">
-          {title}
-        </h2>
+    <section className={`war-section war-section--${accent}`}>
+      <div className="war-section-head">
+        {icon ? <span className="war-section-icon" aria-hidden>{icon}</span> : null}
+        <h2 className="war-section-title">{title}</h2>
       </div>
-      <div className="px-5 py-5 sm:px-6">{children}</div>
+      <div className="war-section-body">{children}</div>
     </section>
+  );
+}
+
+function MemberEvalBlock({
+  variant,
+  title,
+  items,
+}: {
+  variant: "positive" | "negative";
+  title: string;
+  items: string[];
+}) {
+  const isPos = variant === "positive";
+  return (
+    <div
+      className={
+        isPos ? "war-member-block war-member-block--pos" : "war-member-block war-member-block--neg"
+      }
+    >
+      <p className="war-member-block-title">
+        <span className="war-member-block-emoji" aria-hidden>
+          {isPos ? "👍" : "👎"}
+        </span>
+        {title}
+      </p>
+      <BulletList items={items} />
+    </div>
+  );
+}
+
+function ChecklistTable({
+  rows,
+}: {
+  rows: { task: string; status: string; note: string }[];
+}) {
+  return (
+    <>
+      <div className="war-checklist-cards lg:hidden">
+        {rows.map((row, i) => (
+          <article key={i} className="war-checklist-card">
+            <p className="war-checklist-card-task">{row.task}</p>
+            <div className="war-checklist-card-meta">
+              <StatusBadge status={row.status} />
+              <span className="war-checklist-card-note">{row.note}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="war-checklist-table-wrap hidden lg:block">
+        <table className="war-checklist-table">
+          <thead>
+            <tr>
+              <th>전략 과제</th>
+              <th className="w-[5.5rem] text-center">상태</th>
+              <th className="w-[38%]">근거</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                <td>{row.task}</td>
+                <td className="text-center align-middle">
+                  <StatusBadge status={row.status} />
+                </td>
+                <td className="text-slate-600">{row.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -167,40 +242,33 @@ export function WeeklyAnalysisReport({
   const report = useMemo(() => parseAnalysisMarkdown(markdown), [markdown]);
 
   return (
-    <article className="weekly-analysis-report mx-auto max-w-4xl text-slate-800">
+    <article className="weekly-analysis-report w-full min-w-0">
       <ReportHeader report={report} weekLabel={weekLabel} source={source} />
 
-      <div className="mt-8 space-y-6 print:mt-6 print:space-y-4">
+      <div className="war-sections">
         {report.sections.map((section, idx) => {
           if (section.kind === "summary") {
             return (
-              <SectionCard
-                key={idx}
-                title={section.title}
-                icon="📋"
-                accent="indigo"
-              >
-                <div className="space-y-4 text-[0.95rem] leading-relaxed text-slate-700">
+              <SectionCard key={idx} title={section.title} icon="📋" accent="indigo">
+                <div className="space-y-4">
                   {section.paragraphs.map((p, i) => (
-                    <p key={i}>
+                    <p key={i} className="war-prose">
                       <InlineText text={p} />
                     </p>
                   ))}
                   {section.memberBullets.length > 0 ? (
-                    <ul className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-4">
+                    <div className="war-summary-members">
                       {section.memberBullets.map((b, i) => (
-                        <li key={i} className="flex gap-2 text-sm">
+                        <div key={i} className="war-summary-member-card">
                           {b.name ? (
-                            <span className="shrink-0 font-bold text-indigo-800">
-                              {b.name}
-                            </span>
+                            <p className="war-summary-member-name">{b.name}</p>
                           ) : null}
-                          <span>
+                          <p className="war-summary-member-text">
                             <InlineText text={b.text} />
-                          </span>
-                        </li>
+                          </p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   ) : null}
                 </div>
               </SectionCard>
@@ -209,119 +277,46 @@ export function WeeklyAnalysisReport({
 
           if (section.kind === "members") {
             return (
-              <div key={idx} className="space-y-4">
-                <h2 className="px-1 text-lg font-bold text-slate-900">
-                  {section.title}
-                </h2>
-                {section.members.map((m) => (
-                  <section
-                    key={m.name}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:break-inside-avoid"
-                  >
-                    <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {m.name}
-                      </h3>
-                    </div>
-                    <div className="grid gap-0 md:grid-cols-2">
-                      <div className="border-b border-slate-100 p-5 md:border-b-0 md:border-r">
-                        <p className="mb-3 flex items-center gap-2 text-sm font-bold text-emerald-800">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-base">
-                            👍
-                          </span>
-                          잘한 부분
-                        </p>
-                        <ul className="space-y-2 text-sm leading-relaxed text-slate-700">
-                          {m.positives.map((item, i) => (
-                            <li key={i} className="flex gap-2">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                              <InlineText text={item} />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="p-5">
-                        <p className="mb-3 flex items-center gap-2 text-sm font-bold text-amber-900">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-base">
-                            👎
-                          </span>
-                          보완이 필요한 부분
-                        </p>
-                        <ul className="space-y-2 text-sm leading-relaxed text-slate-700">
-                          {m.negatives.map((item, i) => (
-                            <li key={i} className="flex gap-2">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                              <InlineText text={item} />
-                            </li>
-                          ))}
-                        </ul>
+              <SectionCard key={idx} title={section.title} icon="👥" accent="indigo">
+                <div className="war-members-stack">
+                  {section.members.map((m) => (
+                    <div key={m.name} className="war-member-card">
+                      <h3 className="war-member-name">{m.name}</h3>
+                      <div className="war-member-eval-stack">
+                        <MemberEvalBlock
+                          variant="positive"
+                          title="잘한 부분"
+                          items={m.positives}
+                        />
+                        <MemberEvalBlock
+                          variant="negative"
+                          title="보완이 필요한 부분"
+                          items={m.negatives}
+                        />
                       </div>
                     </div>
-                  </section>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </SectionCard>
             );
           }
 
           if (section.kind === "checklist") {
             return (
-              <SectionCard
-                key={idx}
-                title={section.title}
-                icon="✓"
-                accent="emerald"
-              >
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
-                  <table className="w-full min-w-[320px] border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        <th className="px-4 py-3">전략 과제</th>
-                        <th className="px-4 py-3 w-24 text-center">상태</th>
-                        <th className="px-4 py-3">근거</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.rows.map((row, i) => (
-                        <tr
-                          key={i}
-                          className="border-t border-slate-100 even:bg-slate-50/50"
-                        >
-                          <td className="px-4 py-3 font-medium text-slate-900">
-                            {row.task}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <StatusBadge status={row.status} />
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {row.note}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <SectionCard key={idx} title={section.title} icon="✓" accent="emerald">
+                <ChecklistTable rows={section.rows} />
               </SectionCard>
             );
           }
 
           if (section.kind === "numbered") {
             return (
-              <SectionCard
-                key={idx}
-                title={section.title}
-                icon="💡"
-                accent="amber"
-              >
-                <ol className="space-y-3">
+              <SectionCard key={idx} title={section.title} icon="💡" accent="amber">
+                <ol className="war-numbered-list">
                   {section.items.map((item, i) => (
-                    <li
-                      key={i}
-                      className="flex gap-3 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm leading-relaxed text-slate-800"
-                    >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-950">
-                        {i + 1}
-                      </span>
-                      <span className="pt-0.5">
+                    <li key={i} className="war-numbered-item">
+                      <span className="war-numbered-badge">{i + 1}</span>
+                      <span className="war-numbered-text">
                         <InlineText text={item} />
                       </span>
                     </li>
@@ -333,29 +328,17 @@ export function WeeklyAnalysisReport({
 
           if (section.kind === "bullets") {
             return (
-              <SectionCard
-                key={idx}
-                title={section.title}
-                icon="📝"
-                accent="slate"
-              >
-                <ul className="space-y-2 text-sm leading-relaxed text-slate-700">
-                  {section.items.map((item, i) => (
-                    <li key={i} className="flex gap-2 rounded-md bg-slate-50 px-3 py-2">
-                      <span className="text-slate-400">•</span>
-                      <InlineText text={item} />
-                    </li>
-                  ))}
-                </ul>
+              <SectionCard key={idx} title={section.title} icon="📝" accent="slate">
+                <BulletList items={section.items} />
               </SectionCard>
             );
           }
 
           return (
             <SectionCard key={idx} title={section.title} accent="indigo">
-              <div className="space-y-3 text-sm leading-relaxed text-slate-700">
+              <div className="space-y-3">
                 {section.paragraphs.map((p, i) => (
-                  <p key={i}>
+                  <p key={i} className="war-prose">
                     <InlineText text={p} />
                   </p>
                 ))}
