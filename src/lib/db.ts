@@ -26,6 +26,12 @@ import {
 } from "./stations";
 import { getFirebaseDb, isFirebaseConfigured, formatFirestoreUserError } from "./firebaseAdmin";
 import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "./constants";
+import {
+  isSecurityTestPlaceholder,
+  sanitizeDatabaseTestArtifacts,
+} from "./sanitizeTestData";
+
+export const DATA_SANITIZE_VERSION = 1;
 
 const DATA_PATH = path.join(process.cwd(), "data", "store.json");
 const CLOUD_DB_COLLECTION = "epos-worklog";
@@ -81,6 +87,11 @@ function migrateDb(db: Database): Database {
     db.members = [...DEFAULT_MEMBERS];
   }
 
+  if ((db.dataSanitizeVersion ?? 0) < DATA_SANITIZE_VERSION) {
+    sanitizeDatabaseTestArtifacts(db);
+    db.dataSanitizeVersion = DATA_SANITIZE_VERSION;
+  }
+
   if ((db.stationCatalogVersion ?? 0) < STATION_CATALOG_VERSION) {
     sanitizeReportStationNames(db.reports);
     db.stationHistory = buildMetroStationCatalog(
@@ -108,6 +119,7 @@ function migrateDb(db: Database): Database {
 async function ensureDb(): Promise<Database> {
   let db: Database;
   let catalogVersionBefore = 0;
+  let dataSanitizeVersionBefore = 0;
 
   if (isFirebaseConfigured()) {
     try {
@@ -122,6 +134,7 @@ async function ensureDb(): Promise<Database> {
 
       db = snapshot.data() as Database;
       catalogVersionBefore = db.stationCatalogVersion ?? 0;
+      dataSanitizeVersionBefore = db.dataSanitizeVersion ?? 0;
       db = migrateDb(db);
     } catch (e) {
       throw new Error(formatFirestoreUserError(e));
@@ -131,6 +144,7 @@ async function ensureDb(): Promise<Database> {
       const raw = await fs.readFile(DATA_PATH, "utf-8");
       db = JSON.parse(raw) as Database;
       catalogVersionBefore = db.stationCatalogVersion ?? 0;
+      dataSanitizeVersionBefore = db.dataSanitizeVersion ?? 0;
       db = migrateDb(db);
     } catch {
       await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
@@ -139,7 +153,10 @@ async function ensureDb(): Promise<Database> {
     }
   }
 
-  if ((db.stationCatalogVersion ?? 0) !== catalogVersionBefore) {
+  if (
+    (db.stationCatalogVersion ?? 0) !== catalogVersionBefore ||
+    (db.dataSanitizeVersion ?? 0) !== dataSanitizeVersionBefore
+  ) {
     await saveDb(db);
   }
 
@@ -270,6 +287,10 @@ export async function getStationHistory() {
 }
 
 export async function registerStation(name: string): Promise<StationRecord[]> {
+  if (isSecurityTestPlaceholder(name)) {
+    const db = await ensureDb();
+    return db.stationHistory;
+  }
   const db = await ensureDb();
   db.stationHistory = registerStationInHistory(db.stationHistory, name);
   await saveDb(db);
@@ -279,6 +300,7 @@ export async function registerStation(name: string): Promise<StationRecord[]> {
 function normalizeReportStationName(raw: string): string {
   const t = raw.trim();
   if (!t) return "";
+  if (isSecurityTestPlaceholder(t)) return "";
   if (isBundledStationName(t)) {
     return extractPrimaryStationName(t);
   }

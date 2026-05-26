@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
+import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
 import {
@@ -109,7 +110,10 @@ function DailyPageInner() {
           setCustomRole("");
         }
         const fromReport = report?.stationName?.trim() ?? "";
-        setStationName(fromReport || stationFromSchedule);
+        const safeReportStation = isSecurityTestPlaceholder(fromReport)
+          ? ""
+          : fromReport;
+        setStationName(safeReportStation || stationFromSchedule);
         if (stationFromSchedule && !fromReport) {
           void fetch("/api/stations", {
             method: "POST",

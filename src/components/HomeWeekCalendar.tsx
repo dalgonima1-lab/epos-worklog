@@ -10,6 +10,7 @@ import {
   weekdayLabel,
   weekdaysBetween,
 } from "@/lib/dates";
+import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
 
 type WeekTab = -1 | 0 | 1;
@@ -25,6 +26,15 @@ interface HomeWeekCalendarProps {
 }
 
 function reportHasContent(r: DailyReport): boolean {
+  if (isSecurityTestPlaceholder(r.stationName ?? "")) {
+    return Boolean(
+      r.processingRole?.trim() ||
+        r.done?.trim() ||
+        r.plan?.trim() ||
+        r.hasBeforePhoto ||
+        r.hasAfterPhoto
+    );
+  }
   return Boolean(
     r.stationName?.trim() ||
       r.processingRole?.trim() ||
@@ -294,7 +304,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                               <p className="mt-0.5 text-[11px] text-slate-600">
                                 {memberNameById.get(s.memberId) ?? s.memberId}
                               </p>
-                              {s.stationName ? (
+                              {s.stationName &&
+                              !isSecurityTestPlaceholder(s.stationName) ? (
                                 <p className="mt-0.5 text-[11px] text-blue-700">
                                   {s.stationName}
                                 </p>

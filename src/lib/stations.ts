@@ -3,6 +3,7 @@ import {
   buildMetroStationCatalog,
   isBundledStationName,
 } from "./stationCatalog";
+import { isSecurityTestPlaceholder } from "./sanitizeTestData";
 import {
   canonicalStationDisplayName,
   normalizeStationName,
@@ -22,7 +23,9 @@ export function registerStationInHistory(
   history: StationRecord[],
   rawName: string
 ): StationRecord[] {
-  if (isBundledStationName(rawName)) return history;
+  if (isBundledStationName(rawName) || isSecurityTestPlaceholder(rawName)) {
+    return history;
+  }
   const name = canonicalStationDisplayName(rawName);
   if (!name) return history;
 
