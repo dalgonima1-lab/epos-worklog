@@ -5,16 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import {
+  getProcessingRolesForFacility,
+  isProcessingRoleAllowedForFacility,
   isStationFacilityArea,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
-import {
-  DEFAULT_TEAM_MEMBERS,
-  DEFAULT_TEAM_NAME,
-  PROCESSING_ROLES,
-} from "@/lib/constants";
+import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
 import { calcWorkMinutes } from "@/lib/workTime";
 
@@ -65,6 +63,10 @@ function DailyPageInner() {
   const effectiveRole =
     processingRole === ROLE_OTHER ? customRole.trim() : processingRole;
 
+  const rolesForFacility = getProcessingRolesForFacility(
+    facilityArea || undefined
+  );
+
   useEffect(() => {
     fetch("/api/members")
       .then((r) => r.json())
@@ -84,6 +86,23 @@ function DailyPageInner() {
         }
       });
   }, [memberId]);
+
+  useEffect(() => {
+    if (!facilityArea) {
+      setProcessingRole("");
+      setCustomRole("");
+      return;
+    }
+    const allowed = getProcessingRolesForFacility(facilityArea);
+    if (
+      processingRole &&
+      processingRole !== ROLE_OTHER &&
+      !allowed.includes(processingRole)
+    ) {
+      setProcessingRole("");
+      setCustomRole("");
+    }
+  }, [facilityArea, processingRole]);
 
   useEffect(() => {
     const qDate = searchParams.get("date");
@@ -110,8 +129,16 @@ function DailyPageInner() {
       .then((data) => {
         const report = data.report;
         const role = report?.processingRole ?? "";
+        const loadedFacility = report?.facilityArea?.trim() ?? "";
+        const facilityForRole = isStationFacilityArea(loadedFacility)
+          ? loadedFacility
+          : isStationFacilityArea(facilityFromSchedule)
+            ? facilityFromSchedule
+            : "";
         if (
-          PROCESSING_ROLES.includes(role as (typeof PROCESSING_ROLES)[number])
+          role &&
+          facilityForRole &&
+          isProcessingRoleAllowedForFacility(role, facilityForRole)
         ) {
           setProcessingRole(role);
           setCustomRole("");
@@ -183,6 +210,15 @@ function DailyPageInner() {
     }
     if (!effectiveRole) {
       setStatus("\uacf5\uc885\uc744 \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.");
+      return;
+    }
+    if (
+      processingRole !== ROLE_OTHER &&
+      !isProcessingRoleAllowedForFacility(effectiveRole, facilityArea)
+    ) {
+      setStatus(
+        `${facilityArea}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
+      );
       return;
     }
     setStatus("\uc800\uc7a5 \uc911...");
@@ -277,15 +313,27 @@ function DailyPageInner() {
             {"\uacf5\uc885 "}
             <span className="text-red-600">*</span>
           </label>
+          {!facilityArea ? (
+            <p className="muted text-xs">
+              작업 장소(전기실·변전소·역무실)를 먼저 선택하면 공종 목록이
+              표시됩니다.
+            </p>
+          ) : (
+            <p className="muted mb-1 text-xs">
+              {facilityArea === "역무실"
+                ? "역무실: 조명제어시스템 · 유지보수 용역 · A/S"
+                : "전기실·변전소: 전력감시시스템 · 유지보수 용역 · A/S"}
+            </p>
+          )}
           <select
             id="role"
             className="select"
             value={processingRole}
             onChange={(e) => setProcessingRole(e.target.value)}
-            disabled={loading}
+            disabled={loading || !facilityArea}
           >
             <option value="">{"\uc120\ud0dd\ud558\uc138\uc694"}</option>
-            {PROCESSING_ROLES.map((r) => (
+            {rolesForFacility.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
@@ -294,7 +342,7 @@ function DailyPageInner() {
           {processingRole === ROLE_OTHER && (
             <input
               className="input mt-2"
-              placeholder={"\uacf5\uc885 \uc9c1\uc811 \uc785\ub825"}
+              placeholder={"\uacf5\uc885 \uc9c1\uc811 \uc785\ub825 (이전 기록 등)"}
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
               disabled={loading}

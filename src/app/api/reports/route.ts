@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
-import { isStationFacilityArea } from "@/lib/stationFacility";
+import {
+  isProcessingRoleAllowedForFacility,
+  isStationFacilityArea,
+} from "@/lib/stationFacility";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -68,6 +71,17 @@ export async function POST(request: NextRequest) {
   if (!processingRole?.trim()) {
     return NextResponse.json(
       { error: "공종을 선택해 주세요." },
+      { status: 400 }
+    );
+  }
+
+  const facility = String(facilityArea).trim();
+  const role = String(processingRole).trim();
+  if (!isProcessingRoleAllowedForFacility(role, facility)) {
+    return NextResponse.json(
+      {
+        error: `${facility}에 맞지 않는 공종입니다. 작업 장소별 공종 목록에서 선택해 주세요.`,
+      },
       { status: 400 }
     );
   }
