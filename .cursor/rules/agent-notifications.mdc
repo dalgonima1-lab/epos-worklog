@@ -1,0 +1,22 @@
+---
+description: 작업 완료·승인 대기 시 Windows 알림음 재생
+alwaysApply: true
+---
+
+# 에이전트 알림음 (Windows)
+
+## 작업 완료 (커밋·푸시·빌드 등 마무리)
+사용자가 커밋·푸시를 요청했거나, 작업을 끝냈을 때 **완료 소리**를 재생한다:
+
+```powershell
+[System.Media.SystemSounds]::Asterisk.Play(); [console]::beep(880, 200); Start-Sleep -Milliseconds 100; [console]::beep(1100, 250)
+```
+
+## RUN / 허용 버튼이 필요할 때
+터미널·MCP·파일 쓰기 등으로 `required_permissions`가 필요하거나, 사용자 승인이 예상되면 **승인 대기 소리**(완료음과 다름)를 **해당 도구 호출 직전**에 재생한다:
+
+```powershell
+[System.Media.SystemSounds]::Exclamation.Play(); Start-Sleep -Milliseconds 80; [console]::beep(523, 180); Start-Sleep -Milliseconds 90; [console]::beep(440, 180); Start-Sleep -Milliseconds 90; [console]::beep(523, 220)
+```
+
+사용자 PC에는 `~/.cursor/hooks.json`의 `beforeShellExecution` / `beforeMCPExecution` 훅이 같은 승인 대기음을 자동 재생한다. 훅이 없는 환경에서는 위 PowerShell을 에이전트가 직접 실행한다.
