@@ -1293,9 +1293,34 @@ a {
   background: color-mix(in srgb, var(--metro-line-color) 8%, white);
 }
 
-.metro-station-area {
+.metro-station-facilities {
+  display: block;
   font-size: 0.6875rem;
-  color: #64748b;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 0.125rem;
+}
+
+.metro-station-facilities--empty {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.metro-station-option--no-product {
+  opacity: 0.42;
+}
+
+.metro-station-option--no-product .font-medium {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.metro-station-option--no-product:hover {
+  opacity: 0.55;
+}
+
+.metro-station-option--lined.metro-station-option--no-product.active {
+  opacity: 0.72;
 }
 
 /* 역사 내 작업 장소 */

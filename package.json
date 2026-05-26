@@ -13,7 +13,8 @@
     "cron:weekly:sunday": "tsx scripts/run-weekly-auto.ts --sunday",
     "generate:cursor": "tsx scripts/generate-cursor-analysis.ts",
     "build:metro": "node scripts/build-seoul-metro-data.mjs",
-    "seed:stations": "tsx scripts/seed-metro-stations-db.ts"
+    "seed:stations": "tsx scripts/seed-metro-stations-db.ts",
+    "build:product": "node scripts/build-epos-product-stations.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

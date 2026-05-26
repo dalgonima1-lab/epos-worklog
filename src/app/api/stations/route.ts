@@ -7,7 +7,7 @@ export async function GET() {
   const recent = records
     .filter((s) => s.useCount > 0)
     .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))
-    .slice(0, 40);
+    .slice(0, 5);
   return NextResponse.json({
     stations: records.map((s) => s.name),
     records,

@@ -17,9 +17,16 @@ import {
   type MetroLineInfo,
 } from "@/lib/metroStations";
 import {
+  formatEposFacilitiesLabel,
+  getEposProductFacilities,
+  hasEposProductAtStation,
+} from "@/lib/eposProductStations";
+import {
   formatStationVisitLabel,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
+
+const RECENT_STATION_LIMIT = 5;
 
 interface StationPickerProps {
   value: string;
@@ -115,10 +122,27 @@ export function StationPicker({
   const filteredStations = useMemo(() => {
     if (selectedLine === "") return [];
     const q = stationQuery.trim();
-    return q
+    const list = q
       ? filterMetroStations(selectedLine, q)
       : allLineStations;
+    return [...list].sort((a, b) => {
+      const ha = hasEposProductAtStation(selectedLine, a.name);
+      const hb = hasEposProductAtStation(selectedLine, b.name);
+      if (ha !== hb) return ha ? -1 : 1;
+      return a.name.localeCompare(b.name, "ko");
+    });
   }, [selectedLine, stationQuery, allLineStations]);
+
+  const productFacilitiesForSelection = useMemo(() => {
+    if (selectedLine === "" || !selectedStation) return [];
+    return getEposProductFacilities(selectedLine, selectedStation);
+  }, [selectedLine, selectedStation]);
+
+  const productFacilitiesForValue = useMemo(() => {
+    const parsed = parseMetroStationValue(value);
+    if (parsed.line == null || !parsed.stationName) return [];
+    return getEposProductFacilities(parsed.line, parsed.stationName);
+  }, [value]);
 
   function setStationValue(name: string) {
     if (name.trim() !== value.trim()) {
@@ -175,10 +199,12 @@ export function StationPicker({
     await registerStation(trimmed);
   }
 
-  const filteredRecent = useMemo(
-    () => recentStations.filter((s) => recentTabMatches(s, recentQuery)),
-    [recentStations, recentQuery]
-  );
+  const filteredRecent = useMemo(() => {
+    const list = recentStations
+      .slice(0, RECENT_STATION_LIMIT)
+      .filter((s) => recentTabMatches(s, recentQuery));
+    return list;
+  }, [recentStations, recentQuery]);
 
   const lineInfo = lines.find((l) => l.line === selectedLine);
   const lineColor =
@@ -336,6 +362,12 @@ export function StationPicker({
                         {stationQuery.trim()
                           ? ` · 검색 결과 ${filteredStations.length}개`
                           : ` · 전체 ${allLineStations.length}개`}
+                        <span className="block mt-1">
+                          <strong className="text-slate-700">진한 글씨</strong>
+                          = EPOS 설치 역 ·{" "}
+                          <span className="text-slate-400">흐린 글씨</span>
+                          = 미설치
+                        </span>
                       </p>
                       <div
                         className={`metro-station-list mt-2${lineColor ? " metro-station-list--lined" : ""}`}
@@ -348,39 +380,59 @@ export function StationPicker({
                             일치하는 역이 없습니다. 검색어를 바꿔 보세요.
                           </p>
                         ) : (
-                          filteredStations.map((s) => (
-                            <button
-                              key={s.name}
-                              type="button"
-                              role="option"
-                              aria-selected={selectedStation === s.name}
-                              className={`metro-station-option ${
-                                selectedStation === s.name ? "active" : ""
-                              }${lineColor ? " metro-station-option--lined" : ""}`}
-                              style={
-                                lineColor
-                                  ? {
-                                      borderLeftColor: lineColor,
-                                      ...(selectedStation === s.name
-                                        ? {
-                                            borderColor: lineColor,
-                                            boxShadow: `inset 3px 0 0 ${lineColor}`,
-                                          }
-                                        : {}),
-                                    }
-                                  : undefined
-                              }
-                              disabled={disabled}
-                              onClick={() => handleStationPick(s.name)}
-                            >
-                              <span className="font-medium">{s.name}</span>
-                              {s.areas?.length ? (
-                                <span className="metro-station-area">
-                                  {s.areas.join(", ")}
-                                </span>
-                              ) : null}
-                            </button>
-                          ))
+                          filteredStations.map((s) => {
+                            const lineNum =
+                              typeof selectedLine === "number" ? selectedLine : null;
+                            const hasProduct =
+                              lineNum != null &&
+                              hasEposProductAtStation(lineNum, s.name);
+                            const facilities =
+                              lineNum != null
+                                ? getEposProductFacilities(lineNum, s.name)
+                                : [];
+                            const facilityLabel =
+                              formatEposFacilitiesLabel(facilities);
+
+                            return (
+                              <button
+                                key={s.name}
+                                type="button"
+                                role="option"
+                                aria-selected={selectedStation === s.name}
+                                className={`metro-station-option ${
+                                  selectedStation === s.name ? "active" : ""
+                                }${hasProduct ? "" : " metro-station-option--no-product"}${
+                                  lineColor ? " metro-station-option--lined" : ""
+                                }`}
+                                style={
+                                  lineColor
+                                    ? {
+                                        borderLeftColor: lineColor,
+                                        ...(selectedStation === s.name
+                                          ? {
+                                              borderColor: lineColor,
+                                              boxShadow: `inset 3px 0 0 ${lineColor}`,
+                                            }
+                                          : {}),
+                                      }
+                                    : undefined
+                                }
+                                disabled={disabled}
+                                onClick={() => handleStationPick(s.name)}
+                              >
+                                <span className="font-medium">{s.name}</span>
+                                {facilityLabel ? (
+                                  <span className="metro-station-facilities">
+                                    {facilityLabel}
+                                  </span>
+                                ) : (
+                                  <span className="metro-station-facilities metro-station-facilities--empty">
+                                    미설치
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -456,7 +508,7 @@ export function StationPicker({
       {enableRecentTabs && recentStations.length > 0 && (
         <div className="mt-4">
           <label className="label text-xs font-medium text-slate-600">
-            최근 사용 역 (바로 선택)
+            최근 사용 역 (최대 {RECENT_STATION_LIMIT}개)
           </label>
           <input
             type="search"
@@ -496,6 +548,13 @@ export function StationPicker({
             onChange={onFacilityChange}
             disabled={disabled}
             accentColor={valueLineColor || lineColor || undefined}
+            availableFacilities={
+              productFacilitiesForValue.length
+                ? productFacilitiesForValue
+                : productFacilitiesForSelection.length
+                  ? productFacilitiesForSelection
+                  : undefined
+            }
           />
         </div>
       ) : null}

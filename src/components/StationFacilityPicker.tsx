@@ -11,6 +11,8 @@ interface StationFacilityPickerProps {
   disabled?: boolean;
   /** 호선색 테두리 (선택) */
   accentColor?: string;
+  /** EPOS 설치 기능실만 선택 가능 (없으면 3종 모두) */
+  availableFacilities?: StationFacilityArea[];
 }
 
 export function StationFacilityPicker({
@@ -18,17 +20,23 @@ export function StationFacilityPicker({
   onChange,
   disabled,
   accentColor,
+  availableFacilities,
 }: StationFacilityPickerProps) {
+  const options =
+    availableFacilities?.length ? availableFacilities : [...STATION_FACILITY_AREAS];
+
   return (
     <div className="station-facility-picker">
       <p className="label text-sm">
         작업 장소 <span className="text-red-600">*</span>
       </p>
       <p className="muted mb-2 text-xs">
-        같은 역사라도 전기실·변전소·역무실 중 어디에서 작업했는지 선택하세요.
+        {availableFacilities?.length
+          ? `이 역사 EPOS 설치 구역: ${options.join(" · ")}`
+          : "같은 역사라도 전기실·변전소·역무실 중 어디에서 작업했는지 선택하세요."}
       </p>
       <div className="station-facility-buttons" role="group" aria-label="작업 장소">
-        {STATION_FACILITY_AREAS.map((area) => {
+        {options.map((area) => {
           const active = value === area;
           return (
             <button
