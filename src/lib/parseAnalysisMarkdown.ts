@@ -11,10 +11,28 @@ export interface MemberEvaluation {
   negatives: string[];
 }
 
+export type ChecklistLevel = "ok" | "warn" | "bad" | "unknown";
+
 export interface ChecklistRow {
+  index: number;
   task: string;
   status: string;
   note: string;
+  /** 4열 이상 표에서 추가 근거·조치 */
+  action?: string;
+  level: ChecklistLevel;
+  statusLabel: string;
+  statusDetail: string;
+  actionHint: string;
+}
+
+export interface ChecklistSummary {
+  total: number;
+  ok: number;
+  warn: number;
+  bad: number;
+  unknown: number;
+  completionRate: number;
 }
 
 export type AnalysisSection =
@@ -60,8 +78,82 @@ function parseBullet(line: string): { name: string; text: string } | string | nu
   return null;
 }
 
+function resolveChecklistStatus(raw: string): Pick<
+  ChecklistRow,
+  "level" | "statusLabel" | "statusDetail" | "actionHint"
+> {
+  const s = stripBoldMarkers(raw);
+  if (/○|우수|완료|양호|달성/i.test(s)) {
+    return {
+      level: "ok",
+      statusLabel: "우수 (○)",
+      statusDetail: "계획 대비 목표를 달성했거나 핵심 산출물이 확인됨",
+      actionHint: "현행 방식 유지 · 타 역사·공종에 모범 사례 전파",
+    };
+  }
+  if (/△|보통|진행|일부|지연/i.test(s)) {
+    return {
+      level: "warn",
+      statusLabel: "보통 (△)",
+      statusDetail: "진행 중이거나 일부만 완료 · 리스크·미비가 남아 있음",
+      actionHint: "차주 마일스톤·담당자·완료 목표일을 일일 기록에 명시",
+    };
+  }
+  if (/[Xx✕×✗]|미흡|부족|미완|미달/i.test(s)) {
+    return {
+      level: "bad",
+      statusLabel: "미흡 (X)",
+      statusDetail: "목표 대비 지연·미착수 · 팀장 개입이 필요한 수준",
+      actionHint: "원인 분석 후 리소스·일정 재배치 · 주 1회 클로징 점검",
+    };
+  }
+  return {
+    level: "unknown",
+    statusLabel: s || "미평가",
+    statusDetail: "이행 등급이 표기되지 않았거나 기준 외 표기",
+    actionHint: "이행 여부(○/△/X)와 근거를 보완 기록",
+  };
+}
+
+function enrichChecklistRow(
+  cells: string[],
+  index: number
+): ChecklistRow | null {
+  if (cells.length < 2) return null;
+
+  const hasLeadingNo = /^\d+[.)]?$/.test(cells[0] ?? "");
+  const off = hasLeadingNo ? 1 : 0;
+  const task = cells[off] ?? "";
+  const status = cells[off + 1] ?? "";
+  const note = cells[off + 2] ?? "";
+  const action = cells[off + 3] ?? "";
+
+  const taskClean = stripBoldMarkers(task);
+  const statusClean = stripBoldMarkers(status);
+  const noteClean = stripBoldMarkers(note);
+  const actionClean = stripBoldMarkers(action);
+
+  if (!taskClean || /전략|과제|상태|근거|이행|^No$/i.test(taskClean)) {
+    return null;
+  }
+
+  const resolved = resolveChecklistStatus(statusClean);
+  const actionHint = actionClean || resolved.actionHint;
+
+  return {
+    index,
+    task: taskClean,
+    status: statusClean,
+    note: noteClean,
+    action: actionClean || undefined,
+    ...resolved,
+    actionHint,
+  };
+}
+
 function parseTable(sectionBody: string): ChecklistRow[] {
   const rows: ChecklistRow[] = [];
+  let n = 0;
   for (const line of sectionBody.split("\n")) {
     const t = line.trim();
     if (!t.startsWith("|") || t.includes("---")) continue;
@@ -69,15 +161,24 @@ function parseTable(sectionBody: string): ChecklistRow[] {
       .split("|")
       .map((c) => c.trim())
       .filter(Boolean);
-    if (cells.length < 2) continue;
-    if (/전략|과제|상태|근거/i.test(cells[0])) continue;
-    rows.push({
-      task: stripBoldMarkers(cells[0] ?? ""),
-      status: stripBoldMarkers(cells[1] ?? ""),
-      note: stripBoldMarkers(cells[2] ?? ""),
-    });
+    const row = enrichChecklistRow(cells, n + 1);
+    if (row) {
+      rows.push(row);
+      n++;
+    }
   }
   return rows;
+}
+
+export function summarizeChecklist(rows: ChecklistRow[]): ChecklistSummary {
+  const ok = rows.filter((r) => r.level === "ok").length;
+  const warn = rows.filter((r) => r.level === "warn").length;
+  const bad = rows.filter((r) => r.level === "bad").length;
+  const unknown = rows.filter((r) => r.level === "unknown").length;
+  const total = rows.length;
+  const completionRate =
+    total > 0 ? Math.round(((ok + warn * 0.5) / total) * 100) : 0;
+  return { total, ok, warn, bad, unknown, completionRate };
 }
 
 function parseMembers(sectionBody: string): MemberEvaluation[] {

@@ -760,86 +760,321 @@ a {
   min-width: 0;
 }
 
-.war-checklist-cards {
+/* 전략 과제 체크리스트 (상세) */
+.war-checklist-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.war-checklist-summary {
+  padding: 1rem 1.125rem;
+  border-radius: 0.75rem;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+}
+
+.war-checklist-summary-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #312e81;
+}
+
+.war-checklist-summary-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.war-checklist-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+
+.war-checklist-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.625rem;
+  border: 1px solid transparent;
+}
+
+.war-checklist-stat-num {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.war-checklist-stat-label {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.war-checklist-stat--ok {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.war-checklist-stat--warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.war-checklist-stat--bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.war-checklist-progress {
+  margin-top: 1rem;
+}
+
+.war-checklist-progress-track {
+  display: flex;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+
+.war-checklist-progress-seg--ok {
+  background: #10b981;
+}
+.war-checklist-progress-seg--warn {
+  background: #f59e0b;
+}
+.war-checklist-progress-seg--bad {
+  background: #ef4444;
+}
+
+.war-checklist-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.war-checklist-legend {
+  padding: 0.875rem 1rem;
+  border-radius: 0.625rem;
+  border: 1px dashed var(--border);
+  background: #fafafa;
+}
+
+.war-checklist-legend-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.war-checklist-legend-list {
+  margin: 0;
+  padding: 0 0 0 1.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.war-status-pill {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.war-status-pill--ok {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.war-status-pill--warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.war-status-pill--bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.war-status-pill--unknown {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.war-status-pill-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.war-status-pill-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.war-status-pill-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.war-status-pill-desc {
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.war-checklist-detail-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.war-checklist-detail-card {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.war-checklist-detail-card--ok {
+  border-left: 4px solid #10b981;
+}
+.war-checklist-detail-card--warn {
+  border-left: 4px solid #f59e0b;
+}
+.war-checklist-detail-card--bad {
+  border-left: 4px solid #ef4444;
+}
+
+.war-checklist-detail-card-head {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.625rem;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
+
+.war-checklist-detail-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #6366f1;
+  background: #eef2ff;
+}
+
+.war-checklist-detail-task {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.war-checklist-detail-dl {
+  margin: 0.75rem 0 0;
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
 }
 
-.war-checklist-card {
-  padding: 0.875rem 1rem;
-  border-radius: 0.625rem;
-  border: 1px solid var(--border);
-  background: #f8fafc;
+.war-checklist-detail-dl > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
 }
 
-.war-checklist-card-task {
-  margin: 0 0 0.5rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.45;
-  color: var(--text);
-}
-
-.war-checklist-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-}
-
-.war-checklist-card-note {
-  flex: 1 1 8rem;
-  min-width: 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
+.war-checklist-detail-dl dt {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.war-checklist-table-wrap {
+.war-checklist-detail-dl dd {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.war-checklist-detail-table-wrap {
   overflow-x: auto;
-  border-radius: 0.625rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--border);
 }
 
-.war-checklist-table {
+.war-checklist-detail-table {
   width: 100%;
+  min-width: 42rem;
   border-collapse: collapse;
-  font-size: 0.875rem;
-  table-layout: fixed;
+  font-size: 0.8125rem;
 }
 
-.war-checklist-table th,
-.war-checklist-table td {
-  padding: 0.75rem 1rem;
+.war-checklist-detail-table th,
+.war-checklist-detail-table td {
+  padding: 0.875rem 1rem;
   text-align: left;
   vertical-align: top;
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.war-checklist-table thead th {
+.war-checklist-detail-table thead th {
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  background: #f8fafc;
+  background: #f1f5f9;
   border-bottom: 1px solid var(--border);
 }
 
-.war-checklist-table tbody tr {
-  border-top: 1px solid var(--border-subtle);
+.war-checklist-detail-row--ok {
+  background: #fafffe;
 }
-
-.war-checklist-table tbody tr:nth-child(even) {
-  background: #fafafa;
+.war-checklist-detail-row--warn {
+  background: #fffdf7;
 }
-
-.war-checklist-table tbody td:first-child {
-  font-weight: 600;
-  color: var(--text);
+.war-checklist-detail-row--bad {
+  background: #fffbfb;
 }
 
 .war-numbered-list {

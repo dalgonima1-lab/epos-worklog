@@ -5,6 +5,7 @@ import {
   parseAnalysisMarkdown,
   type ParsedAnalysisReport,
 } from "@/lib/parseAnalysisMarkdown";
+import { StrategicChecklistPanel } from "@/components/StrategicChecklistPanel";
 
 interface WeeklyAnalysisReportProps {
   markdown: string;
@@ -26,28 +27,6 @@ function InlineText({ text }: { text: string }) {
         }
         return <span key={i}>{part}</span>;
       })}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const s = status.trim();
-  const ok = /○|완료|양호/i.test(s);
-  const warn = /△|진행|일부/i.test(s);
-  const bad = /[Xx✕]|미흡|부족/i.test(s);
-  const cls = ok
-    ? "bg-emerald-100 text-emerald-900 ring-emerald-200"
-    : warn
-      ? "bg-amber-100 text-amber-950 ring-amber-200"
-      : bad
-        ? "bg-red-100 text-red-900 ring-red-200"
-        : "bg-slate-100 text-slate-800 ring-slate-200";
-
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${cls}`}
-    >
-      {s || "—"}
     </span>
   );
 }
@@ -190,50 +169,6 @@ function MemberEvalBlock({
   );
 }
 
-function ChecklistTable({
-  rows,
-}: {
-  rows: { task: string; status: string; note: string }[];
-}) {
-  return (
-    <>
-      <div className="war-checklist-cards lg:hidden">
-        {rows.map((row, i) => (
-          <article key={i} className="war-checklist-card">
-            <p className="war-checklist-card-task">{row.task}</p>
-            <div className="war-checklist-card-meta">
-              <StatusBadge status={row.status} />
-              <span className="war-checklist-card-note">{row.note}</span>
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="war-checklist-table-wrap hidden lg:block">
-        <table className="war-checklist-table">
-          <thead>
-            <tr>
-              <th>전략 과제</th>
-              <th className="w-[5.5rem] text-center">상태</th>
-              <th className="w-[38%]">근거</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
-                <td>{row.task}</td>
-                <td className="text-center align-middle">
-                  <StatusBadge status={row.status} />
-                </td>
-                <td className="text-slate-600">{row.note}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
 export function WeeklyAnalysisReport({
   markdown,
   weekLabel,
@@ -304,7 +239,7 @@ export function WeeklyAnalysisReport({
           if (section.kind === "checklist") {
             return (
               <SectionCard key={idx} title={section.title} icon="✓" accent="emerald">
-                <ChecklistTable rows={section.rows} />
+                <StrategicChecklistPanel rows={section.rows} />
               </SectionCard>
             );
           }
