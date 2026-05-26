@@ -1,14 +1,6 @@
 import productData from "@/data/epos-product-stations.json";
-import { getEposProductFacilities } from "@/lib/eposProductStations";
-import {
-  getStationDisplayNamesForOffice,
-  resolveManagementOffice,
-} from "@/lib/eposStationOffices";
-import {
-  formatMetroStationValue,
-  normalizeStationName,
-  parseMetroStationValue,
-} from "@/lib/metroStations";
+import { resolveManagementOffice } from "@/lib/eposStationOffices";
+import { formatMetroStationValue, normalizeStationName } from "@/lib/metroStations";
 import type { MaintenanceVisitTarget } from "@/lib/maintenanceVisit";
 import type { StationFacilityArea } from "@/lib/stationFacility";
 
@@ -45,48 +37,26 @@ export function getDefaultMaintenanceSelections(
   }));
 }
 
-/**
- * 관리소 소속 전체 역·기능실 (정기점검=선명, 기능실현황=서브)
- * 유지보수 일정·일일기록 초기 선택용
- */
+/** 정기점검계획서만 — 유지보수 초기 선택 */
 export function buildMaintenanceSelectionsForOffice(
   officeIdOrShort: string
 ): MaintenanceVisitTarget[] {
+  return getDefaultMaintenanceSelections(officeIdOrShort);
+}
+
+/** 정기점검계획서 역 목록 (`2호선 강남역` 형식, 중복 제거) */
+export function getMaintenancePlanStationDisplaysForOffice(
+  officeIdOrShort: string
+): string[] {
   const seen = new Set<string>();
-  const out: MaintenanceVisitTarget[] = [];
-
-  function push(
-    station: string,
-    facility: StationFacilityArea,
-    fromPlan: boolean
-  ) {
-    const k = `${station}::${facility}`;
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push({ station, facility, fromPlan });
-  }
-
+  const out: string[] = [];
   for (const e of getMaintenancePlanForOffice(officeIdOrShort)) {
-    push(
-      formatMetroStationValue(e.line, e.stationName),
-      e.facility,
-      true
-    );
+    const d = formatMetroStationValue(e.line, e.stationName);
+    if (seen.has(d)) continue;
+    seen.add(d);
+    out.push(d);
   }
-
-  for (const display of getStationDisplayNamesForOffice(officeIdOrShort)) {
-    const { line, stationName } = parseMetroStationValue(display);
-    if (line == null || !stationName) continue;
-    const station = formatMetroStationValue(line, stationName);
-    const planSet = new Set(
-      getMaintenancePlanFacilities(officeIdOrShort, line, stationName)
-    );
-    for (const facility of getEposProductFacilities(line, stationName)) {
-      push(station, facility, planSet.has(facility));
-    }
-  }
-
-  return out;
+  return out.sort((a, b) => a.localeCompare(b, "ko"));
 }
 
 /** URL·저장 역 목록만 있을 때 역·기능실 단위로 복원 */

@@ -14,6 +14,7 @@ import { StationPicker } from "@/components/StationPicker";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import {
   buildMaintenanceSelectionsForOffice,
+  getMaintenancePlanStationDisplaysForOffice,
   maintenanceSelectionsFromStationDisplays,
 } from "@/lib/maintenancePlan";
 import {
@@ -26,7 +27,6 @@ import {
   type MaintenanceVisitTarget,
 } from "@/lib/maintenanceVisit";
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
-import { getStationDisplayNamesForOffice } from "@/lib/eposStationOffices";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import {
   formatStationVisitLabel,
@@ -238,7 +238,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       const planned =
         entry.maintenanceStationNames?.length
           ? entry.maintenanceStationNames
-          : getStationDisplayNamesForOffice(entry.managementOffice);
+          : getMaintenancePlanStationDisplaysForOffice(entry.managementOffice);
       setSelectedStations(planned);
       setMultiStationMode(planned.length > 0);
       setFormStation(planned[0] ?? "");

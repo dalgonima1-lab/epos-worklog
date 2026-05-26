@@ -5,7 +5,6 @@ import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
   formatStationNameWithOffice,
-  getStationDisplayNamesForOffice,
   getOfficeMetroLine,
   resolveManagementOffice,
 } from "@/lib/eposStationOffices";
@@ -22,6 +21,7 @@ import { MaintenanceVisitList } from "@/components/MaintenanceVisitList";
 import {
   buildMaintenanceSelectionsForOffice,
   getMaintenancePlanFacilities,
+  isStationInMaintenancePlan,
 } from "@/lib/maintenancePlan";
 import {
   formatEposFacilitiesLabel,
@@ -150,6 +150,11 @@ export function StationPicker({
       ? filterMetroStations(selectedLine, q)
       : allLineStations;
     const lineNum = typeof selectedLine === "number" ? selectedLine : null;
+    if (maintenanceMode && managementOffice && lineNum != null) {
+      list = list.filter((s) =>
+        isStationInMaintenancePlan(managementOffice, lineNum, s.name)
+      );
+    }
     return [...list].sort((a, b) => {
       if (lineNum == null) return a.name.localeCompare(b.name, "ko");
       const aPrimary = isMaintenancePlanPrimaryStation(
@@ -215,7 +220,6 @@ export function StationPicker({
 
     const office = resolveManagementOffice(officeId);
     const line = office ? getOfficeMetroLine(office) : null;
-    const displays = getStationDisplayNamesForOffice(officeId);
 
     if (line != null) {
       setSelectedLine(line);
@@ -231,13 +235,6 @@ export function StationPicker({
       onSelectedStationsChange?.(stationNames);
       onChange(stationNames[0]!);
       for (const name of stationNames) {
-        void registerStation(name);
-      }
-    } else if (displays.length > 0) {
-      onMultiStationModeChange?.(true);
-      onSelectedStationsChange?.(displays);
-      onChange(displays[0]!);
-      for (const name of displays) {
         void registerStation(name);
       }
     } else {
@@ -286,22 +283,16 @@ export function StationPicker({
         line,
         stationName
       );
-      const planSet = new Set(planFacilities);
-      const allFacilities = getEposProductFacilities(line, stationName);
       const keys = new Set(
         maintenanceSelections.map((t) =>
           maintenanceTargetKey(t.station, t.facility)
         )
       );
       const toAdd: MaintenanceVisitTarget[] = [];
-      for (const facility of allFacilities) {
+      for (const facility of planFacilities) {
         const k = maintenanceTargetKey(formatted, facility);
         if (!keys.has(k)) {
-          toAdd.push({
-            station: formatted,
-            facility,
-            fromPlan: planSet.has(facility),
-          });
+          toAdd.push({ station: formatted, facility, fromPlan: true });
         }
       }
       if (toAdd.length) {
@@ -462,8 +453,8 @@ export function StationPicker({
           <span className="text-sm">
             <strong className="text-amber-950">유지보수 용역</strong>
             <span className="mt-0.5 block text-xs font-normal text-amber-900/90">
-              체크 시 전기관리소를 선택하면 소속 역·기능실이 묶여 일정 1건으로
-              등록됩니다. 일일기록에서는 방문하지 않은 역은 해제할 수 있습니다.
+              체크 시 전기관리소를 선택하면 정기점검계획서 대상 역·기능실만
+              표시됩니다. 일일기록에서 미방문 기능실은 ×로 해제할 수 있습니다.
             </span>
           </span>
         </label>
@@ -697,23 +688,11 @@ export function StationPicker({
                                   )
                                 : [];
                             const facilityLabel = maintenanceMode
-                              ? planFacilities.length
-                                ? formatEposFacilitiesLabel(planFacilities)
-                                : formatEposFacilitiesLabel(facilities)
+                              ? formatEposFacilitiesLabel(planFacilities)
                               : formatEposFacilitiesLabel(facilities);
-                            const inMaintenanceList =
-                              maintenanceMode &&
-                              maintenanceSelections.some((t) => {
-                                const p = parseMetroStationValue(t.station);
-                                return (
-                                  p.line === lineNum &&
-                                  normalizeStationName(p.stationName ?? "") ===
-                                    normalizeStationName(s.name)
-                                );
-                              });
                             const faint =
                               maintenanceMode && managementOffice
-                                ? !inPlan && hasProduct && !inMaintenanceList
+                                ? false
                                 : !hasProduct;
 
                             return (

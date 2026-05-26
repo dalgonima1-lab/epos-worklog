@@ -2,28 +2,16 @@
 
 import { useMemo } from "react";
 import {
-  getFacilitySheetOnlyFacilities,
-  getEposProductFacilities,
-} from "@/lib/eposProductStations";
-import { getStationDisplayNamesForOffice } from "@/lib/eposStationOffices";
-import {
   getMaintenancePlanFacilities,
-  isStationInMaintenancePlan,
+  getMaintenancePlanStationDisplaysForOffice,
 } from "@/lib/maintenancePlan";
-import {
-  formatMetroStationValue,
-  getMetroLineColor,
-  parseMetroStationValue,
-} from "@/lib/metroStations";
+import { getMetroLineColor, parseMetroStationValue } from "@/lib/metroStations";
 import {
   formatMaintenanceVisitSummary,
   maintenanceTargetKey,
   type MaintenanceVisitTarget,
 } from "@/lib/maintenanceVisit";
-import {
-  STATION_FACILITY_AREAS,
-  type StationFacilityArea,
-} from "@/lib/stationFacility";
+import type { StationFacilityArea } from "@/lib/stationFacility";
 
 interface MaintenanceVisitListProps {
   managementOffice: string;
@@ -43,21 +31,14 @@ export function MaintenanceVisitList({
   );
 
   const stationDisplays = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of getStationDisplayNamesForOffice(managementOffice)) {
-      set.add(d);
-    }
+    const set = new Set(getMaintenancePlanStationDisplaysForOffice(managementOffice));
     for (const t of selections) {
       if (t.station.trim()) set.add(t.station.trim());
     }
     return [...set].sort((a, b) => a.localeCompare(b, "ko"));
   }, [managementOffice, selections]);
 
-  function toggle(
-    station: string,
-    facility: StationFacilityArea,
-    fromPlan: boolean
-  ) {
+  function toggle(station: string, facility: StationFacilityArea) {
     const k = maintenanceTargetKey(station, facility);
     if (selectedKeys.has(k)) {
       onChange(
@@ -66,7 +47,7 @@ export function MaintenanceVisitList({
         )
       );
     } else {
-      onChange([...selections, { station, facility, fromPlan }]);
+      onChange([...selections, { station, facility, fromPlan: true }]);
     }
   }
 
@@ -91,10 +72,9 @@ export function MaintenanceVisitList({
         </p>
       ) : null}
       <p className="muted mb-2 text-xs">
-        <strong className="text-slate-800">정기점검계획</strong> = 선명 ·{" "}
-        <span className="text-slate-400">기능실 현황(서브)</span> = 흐림 ·
-        미방문 기능실은 <strong className="text-red-600">×</strong> 해제 ·
-        관리소는 기능실 1건으로 집계
+        정기점검계획서 대상만 표시됩니다. 미방문 기능실은{" "}
+        <strong className="text-red-600">×</strong> 해제 · 관리소는 기능실 1건으로
+        집계
       </p>
       {stationDisplays.length === 0 ? (
         <p className="muted rounded-lg border border-dashed border-amber-200 px-3 py-4 text-center text-xs">
@@ -103,18 +83,10 @@ export function MaintenanceVisitList({
       ) : (
         <ol className="max-h-64 list-none space-y-2 overflow-y-auto p-0">
           {stationDisplays.map((station) => {
-            const { line, stationName } = parseMetroStationValue(station);
+            const { line } = parseMetroStationValue(station);
             const lineColor =
               line != null ? getMetroLineColor(line) : undefined;
-            const inPlan =
-              line != null &&
-              stationName &&
-              isStationInMaintenancePlan(managementOffice, line, stationName);
-            const hasSelectedFacility = selections.some(
-              (t) =>
-                t.station === station &&
-                selectedKeys.has(maintenanceTargetKey(t.station, t.facility))
-            );
+            const { stationName } = parseMetroStationValue(station);
             const planFacilities =
               line != null && stationName
                 ? getMaintenancePlanFacilities(
@@ -123,25 +95,6 @@ export function MaintenanceVisitList({
                     stationName
                   )
                 : [];
-            const sheetOnly =
-              line != null && stationName
-                ? getFacilitySheetOnlyFacilities(
-                    line,
-                    stationName,
-                    managementOffice
-                  )
-                : [];
-            const allFacilities = [
-              ...new Set([
-                ...planFacilities,
-                ...sheetOnly,
-                ...(line != null && stationName
-                  ? getEposProductFacilities(line, stationName)
-                  : []),
-              ]),
-            ].filter((f): f is StationFacilityArea =>
-              (STATION_FACILITY_AREAS as readonly string[]).includes(f)
-            );
 
             return (
               <li
@@ -153,22 +106,12 @@ export function MaintenanceVisitList({
                     : undefined
                 }
               >
-                <p
-                  className={`text-sm font-semibold ${
-                    inPlan || hasSelectedFacility
-                      ? "text-slate-900"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {station}
-                </p>
+                <p className="text-sm font-semibold text-slate-900">{station}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {allFacilities.map((facility) => {
-                    const fromPlan = planFacilities.includes(facility);
+                  {planFacilities.map((facility) => {
                     const active = selectedKeys.has(
                       maintenanceTargetKey(station, facility)
                     );
-                    const subOnly = !fromPlan;
                     return (
                       <button
                         key={facility}
@@ -176,23 +119,14 @@ export function MaintenanceVisitList({
                         disabled={disabled}
                         className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium ${
                           active
-                            ? subOnly
-                              ? "border-slate-300 bg-slate-100 text-slate-700"
-                              : "border-amber-500 bg-amber-500 text-white"
-                            : subOnly
-                              ? "border-slate-200 bg-white text-slate-400"
-                              : "border-amber-200 bg-amber-50 text-amber-900"
+                            ? "border-amber-500 bg-amber-500 text-white"
+                            : "border-amber-200 bg-amber-50 text-amber-900"
                         }`}
-                        onClick={() => toggle(station, facility, fromPlan)}
+                        onClick={() => toggle(station, facility)}
                       >
                         {facility}
                         {active ? (
-                          <span
-                            className={
-                              subOnly ? "text-slate-500" : "text-amber-100"
-                            }
-                            aria-hidden
-                          >
+                          <span className="text-amber-100" aria-hidden>
                             ×
                           </span>
                         ) : null}
