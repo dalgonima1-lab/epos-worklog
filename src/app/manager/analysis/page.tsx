@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { WeeklyAnalysisReport } from "@/components/WeeklyAnalysisReport";
 import { getWeekRange, shiftWeek } from "@/lib/dates";
 
 export default function ManagerAnalysisPage() {
@@ -214,8 +215,12 @@ export default function ManagerAnalysisPage() {
     });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `\uc8fc\uac04\ubd84\uc11d_${week.start}.md`;
+    a.download = `주간분석_${week.start}.md`;
     a.click();
+  }
+
+  function printReport() {
+    window.print();
   }
 
   return (
@@ -411,32 +416,33 @@ export default function ManagerAnalysisPage() {
           )}
 
           {analysis && (
-            <section className="card mt-4 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-semibold">
-                  주간 분석 및 제언 보고서
-                  {analysisSource === "cursor" && (
-                    <span className="ml-2 rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">
-                      Cursor
-                    </span>
-                  )}
-                  {analysisSource === "gemini" && (
-                    <span className="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                      Gemini
-                    </span>
-                  )}
-                </h3>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={downloadAnalysis}
-                >
-                  {".md \ub2e4\uc6b4\ub85c\ub4dc"}
-                </button>
+            <section className="mt-6 print:mt-0">
+              <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <p className="text-sm font-medium text-slate-700">
+                  아래는 인쇄·공유용 보고서 화면입니다.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={printReport}
+                  >
+                    인쇄 / PDF 저장
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={downloadAnalysis}
+                  >
+                    Markdown 다운로드
+                  </button>
+                </div>
               </div>
-              <pre className="analysis-output max-h-[70vh] overflow-auto whitespace-pre-wrap">
-                {analysis}
-              </pre>
+              <WeeklyAnalysisReport
+                markdown={analysis}
+                weekLabel={week.label}
+                source={analysisSource}
+              />
             </section>
           )}
         </>

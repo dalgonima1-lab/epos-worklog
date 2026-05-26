@@ -427,12 +427,25 @@ a {
   text-decoration: underline;
 }
 
+.weekly-analysis-report {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
 @media print {
   body {
     background: white;
   }
+  .site-header,
   .site-nav,
   .no-print {
     display: none !important;
+  }
+  .weekly-analysis-report {
+    max-width: none;
+  }
+  .card {
+    box-shadow: none;
+    border: none;
   }
 }
