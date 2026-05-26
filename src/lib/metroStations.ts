@@ -1,5 +1,8 @@
 import metroData from "@/data/seoul-metro-1-9.json";
-import { normalizeStationName } from "./stations";
+
+export function normalizeStationName(name: string): string {
+  return name.trim().replace(/\s+/g, "");
+}
 
 export interface MetroLineInfo {
   line: number;
@@ -42,6 +45,17 @@ export function getMetroLineColor(line: number): string {
 export function getMetroStationsForLine(line: number): MetroStationInfo[] {
   const row = LINES.find((l) => l.line === line);
   return row?.stations ?? [];
+}
+
+/** DB·화면에 저장할 표기 (예: `2호선 강남역`) */
+export function canonicalStationDisplayName(raw: string): string {
+  const t = raw.trim().replace(/\s+/g, " ");
+  if (!t) return "";
+  const parsed = parseMetroStationValue(t);
+  if (parsed.line != null && parsed.stationName) {
+    return formatMetroStationValue(parsed.line, parsed.stationName);
+  }
+  return t;
 }
 
 /** 저장·표시용: `2호선 강남역` */
@@ -87,6 +101,22 @@ export function stationsMatch(a: string, b: string): boolean {
   const ka = stationMatchKeys(a);
   const kb = stationMatchKeys(b);
   return ka.some((x) => kb.includes(x));
+}
+
+/** 서울 1~9호선 전체 역 (DB 카탈로그용) */
+export function buildMetroStationCatalogNames(): string[] {
+  const names: string[] = [];
+  for (const line of LINES) {
+    for (const s of line.stations) {
+      names.push(formatMetroStationValue(line.line, s.name));
+    }
+  }
+  return names.sort((a, b) => {
+    const pa = parseMetroStationValue(a);
+    const pb = parseMetroStationValue(b);
+    if (pa.line !== pb.line) return (pa.line ?? 0) - (pb.line ?? 0);
+    return a.localeCompare(b, "ko");
+  });
 }
 
 export function filterMetroStations(

@@ -66,6 +66,8 @@ export interface Database {
   reports: DailyReport[];
   /** 최근 사용 역사 목록 (탭 선택용) */
   stationHistory: StationRecord[];
+  /** 2 = 서울 1~9호선 전체 역 카탈로그 */
+  stationCatalogVersion?: number;
   schedules: ScheduleEntry[];
   /** `{start}_{end}` → 분석 본문 */
   weeklyAnalyses?: Record<string, WeeklyAnalysisRecord>;

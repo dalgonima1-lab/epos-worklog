@@ -12,7 +12,14 @@ import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
 import { stationsMatch } from "./metroStations";
 import {
-  normalizeStationName,
+  buildMetroStationCatalog,
+  extractPrimaryStationName,
+  isBundledStationName,
+  sanitizeReportStationNames,
+  STATION_CATALOG_VERSION,
+} from "./stationCatalog";
+import { canonicalStationDisplayName } from "./metroStations";
+import {
   registerStationInHistory,
   seedStationHistory,
   sortStations,
@@ -74,17 +81,15 @@ function migrateDb(db: Database): Database {
     db.members = [...DEFAULT_MEMBERS];
   }
 
-  if (!db.stationHistory?.length) {
-    const fromReports = db.reports
-      .map((r) => r.stationName)
-      .filter(Boolean) as string[];
-    db.stationHistory =
-      fromReports.length > 0
-        ? fromReports.reduce(
-            (hist, name) => registerStationInHistory(hist, name),
-            [] as Database["stationHistory"]
-          )
-        : seedStationHistory();
+  if ((db.stationCatalogVersion ?? 0) < STATION_CATALOG_VERSION) {
+    sanitizeReportStationNames(db.reports);
+    db.stationHistory = buildMetroStationCatalog(
+      db.reports,
+      db.stationHistory ?? []
+    );
+    db.stationCatalogVersion = STATION_CATALOG_VERSION;
+  } else if (!db.stationHistory?.length) {
+    db.stationHistory = seedStationHistory();
   }
 
   for (const m of db.members) {
@@ -101,6 +106,9 @@ function migrateDb(db: Database): Database {
 }
 
 async function ensureDb(): Promise<Database> {
+  let db: Database;
+  let catalogVersionBefore = 0;
+
   if (isFirebaseConfigured()) {
     try {
       const cloudDb = getFirebaseDb();
@@ -112,21 +120,30 @@ async function ensureDb(): Promise<Database> {
         return DEFAULT_DB;
       }
 
-      return migrateDb(snapshot.data() as Database);
+      db = snapshot.data() as Database;
+      catalogVersionBefore = db.stationCatalogVersion ?? 0;
+      db = migrateDb(db);
     } catch (e) {
       throw new Error(formatFirestoreUserError(e));
     }
+  } else {
+    try {
+      const raw = await fs.readFile(DATA_PATH, "utf-8");
+      db = JSON.parse(raw) as Database;
+      catalogVersionBefore = db.stationCatalogVersion ?? 0;
+      db = migrateDb(db);
+    } catch {
+      await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
+      await fs.writeFile(DATA_PATH, JSON.stringify(DEFAULT_DB, null, 2), "utf-8");
+      return DEFAULT_DB;
+    }
   }
 
-  try {
-    const raw = await fs.readFile(DATA_PATH, "utf-8");
-    const db = migrateDb(JSON.parse(raw) as Database);
-    return db;
-  } catch {
-    await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
-    await fs.writeFile(DATA_PATH, JSON.stringify(DEFAULT_DB, null, 2), "utf-8");
-    return DEFAULT_DB;
+  if ((db.stationCatalogVersion ?? 0) !== catalogVersionBefore) {
+    await saveDb(db);
   }
+
+  return db;
 }
 
 function normalizeReport(r: DailyReport): DailyReport {
@@ -192,6 +209,53 @@ export async function getDb(): Promise<Database> {
   return ensureDb();
 }
 
+/** 전체 역 카탈로그 재구성·저장 (스크립트·마이그레이션) */
+export async function rebuildStationCatalog(): Promise<{
+  beforeCount: number;
+  afterCount: number;
+  usedCount: number;
+  reportFixes: number;
+  bundledReportsBefore: number;
+}> {
+  let db: Database;
+
+  if (isFirebaseConfigured()) {
+    const snapshot = await getFirebaseDb()
+      .collection(CLOUD_DB_COLLECTION)
+      .doc(CLOUD_DB_DOC)
+      .get();
+    db = snapshot.exists
+      ? (snapshot.data() as Database)
+      : { ...DEFAULT_DB };
+  } else {
+    try {
+      const raw = await fs.readFile(DATA_PATH, "utf-8");
+      db = JSON.parse(raw) as Database;
+    } catch {
+      db = { ...DEFAULT_DB };
+    }
+  }
+
+  const beforeCount = db.stationHistory?.length ?? 0;
+  const bundledReportsBefore = db.reports.filter((r) =>
+    /[,，、/·]/.test(r.stationName ?? "")
+  ).length;
+
+  const reportFixes = sanitizeReportStationNames(db.reports);
+  db.stationHistory = buildMetroStationCatalog(db.reports, db.stationHistory);
+  db.stationCatalogVersion = STATION_CATALOG_VERSION;
+  db = migrateDb(db);
+  await saveDb(db);
+
+  return {
+    beforeCount,
+    afterCount: db.stationHistory.length,
+    usedCount: db.stationHistory.filter((s) => s.useCount > 0).length,
+    reportFixes,
+    bundledReportsBefore,
+  };
+}
+
 export async function getMembers(): Promise<Member[]> {
   const db = await ensureDb();
   const members = db.members.filter((m) => m.role === "member");
@@ -212,12 +276,27 @@ export async function registerStation(name: string): Promise<StationRecord[]> {
   return db.stationHistory;
 }
 
+function normalizeReportStationName(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  if (isBundledStationName(t)) {
+    return extractPrimaryStationName(t);
+  }
+  return canonicalStationDisplayName(t);
+}
+
 export async function upsertReport(
   memberId: string,
   date: string,
   payload: ReportPayload
 ): Promise<DailyReport> {
   const db = await ensureDb();
+  if (payload.stationName) {
+    payload = {
+      ...payload,
+      stationName: normalizeReportStationName(payload.stationName),
+    };
+  }
   const existing = db.reports.find(
     (r) => r.memberId === memberId && r.date === date
   );

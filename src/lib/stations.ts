@@ -1,8 +1,14 @@
 import type { StationRecord } from "./types";
+import {
+  buildMetroStationCatalog,
+  isBundledStationName,
+} from "./stationCatalog";
+import {
+  canonicalStationDisplayName,
+  normalizeStationName,
+} from "./metroStations";
 
-export function normalizeStationName(name: string): string {
-  return name.trim().replace(/\s+/g, "");
-}
+export { canonicalStationDisplayName, normalizeStationName } from "./metroStations";
 
 export function sortStations(records: StationRecord[]): StationRecord[] {
   return [...records].sort((a, b) => {
@@ -16,44 +22,27 @@ export function registerStationInHistory(
   history: StationRecord[],
   rawName: string
 ): StationRecord[] {
-  const name = normalizeStationName(rawName);
+  if (isBundledStationName(rawName)) return history;
+  const name = canonicalStationDisplayName(rawName);
   if (!name) return history;
 
   const now = new Date().toISOString();
+  const norm = normalizeStationName(name).toLowerCase();
   const idx = history.findIndex(
-    (s) => s.name.toLowerCase() === name.toLowerCase()
+    (s) => normalizeStationName(s.name).toLowerCase() === norm
   );
 
   if (idx >= 0) {
-    const updated = { ...history[idx] };
+    const updated = { ...history[idx], name };
     updated.lastUsedAt = now;
     updated.useCount += 1;
     const rest = history.filter((_, i) => i !== idx);
     return sortStations([updated, ...rest]);
   }
 
-  return sortStations([
-    { name, lastUsedAt: now, useCount: 1 },
-    ...history,
-  ]);
+  return sortStations([{ name, lastUsedAt: now, useCount: 1 }, ...history]);
 }
 
-export const SEED_STATIONS = [
-  "명동역",
-  "회현역",
-  "경찰병원역",
-  "봉천역",
-  "을지로4가역",
-  "신대방역",
-  "종합운동장역",
-  "서울역",
-];
-
 export function seedStationHistory(): StationRecord[] {
-  const now = new Date().toISOString();
-  return SEED_STATIONS.map((name, i) => ({
-    name,
-    lastUsedAt: new Date(Date.now() - i * 86_400_000).toISOString(),
-    useCount: 1,
-  }));
+  return buildMetroStationCatalog();
 }

@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStationHistory, registerStation } from "@/lib/db";
 
 export async function GET() {
-  const stations = await getStationHistory();
+  const records = await getStationHistory();
+  const recent = records
+    .filter((s) => s.useCount > 0)
+    .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))
+    .slice(0, 40);
   return NextResponse.json({
-    stations: stations.map((s) => s.name),
-    records: stations,
+    stations: records.map((s) => s.name),
+    records,
+    recent: recent.map((s) => s.name),
+    catalogCount: records.length,
   });
 }
 

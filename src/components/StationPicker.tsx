@@ -58,7 +58,7 @@ export function StationPicker({
   const loadRecent = useCallback(() => {
     fetch("/api/stations")
       .then((r) => r.json())
-      .then((d) => setRecentStations(d.stations ?? []));
+      .then((d) => setRecentStations(d.recent ?? d.stations ?? []));
   }, []);
 
   useEffect(() => {
