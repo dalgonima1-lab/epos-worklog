@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/weekly-analysis",
       "schedule": "0 0 * * 6"
+    },
+    {
+      "path": "/api/cron/weekly-analysis-sunday",
+      "schedule": "0 0 * * 0"
     }
   ]
 }

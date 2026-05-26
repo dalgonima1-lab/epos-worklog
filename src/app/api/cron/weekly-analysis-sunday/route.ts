@@ -5,7 +5,7 @@ import { runWeeklyAutoAnalysis } from "@/lib/runWeeklyAutoAnalysis";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
-/** Vercel Cron: 매주 토요일 09:00(KST) — 전원 일일 기록 제출 시 주간 분석 자동 저장 */
+/** Vercel Cron: 매주 일요일 09:00(KST) — 제출된 일일 기록만 부분 분석·저장 */
 export async function GET(request: NextRequest) {
   if (!authorizeCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await runWeeklyAutoAnalysis({
-      schedule: "saturday",
+      schedule: "sunday",
       force,
       tryGemini: true,
     });
@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ...result,
       message: result.ok
-        ? `주간 분석 저장 완료 (${result.source})`
+        ? result.partial
+          ? `부분 주간 분석 저장 완료 (${result.source})`
+          : `주간 분석 저장 완료 (${result.source})`
         : result.skipped
           ? result.reason
           : "처리 실패",

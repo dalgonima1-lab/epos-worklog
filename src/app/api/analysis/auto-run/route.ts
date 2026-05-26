@@ -8,11 +8,13 @@ export const maxDuration = 120;
 /** 팀장: 제출 완료 주차 자동 분석 즉시 실행 */
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { pin, force, start, end } = body as {
+  const { pin, force, start, end, partial } = body as {
     pin?: string;
     force?: boolean;
     start?: string;
     end?: string;
+    /** true면 제출된 기록만 부분 분석(일요일 루틴과 동일) */
+    partial?: boolean;
   };
 
   if (!pin) {
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await runWeeklyAutoAnalysis({
+      schedule: partial ? "sunday" : "manual",
       force: Boolean(force),
       anchorDate,
       tryGemini: true,

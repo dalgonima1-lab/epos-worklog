@@ -227,7 +227,7 @@ export default function ManagerAnalysisPage() {
     window.print();
   }
 
-  async function runAutoAnalysis(force = false) {
+  async function runAutoAnalysis(force = false, partial = false) {
     setAutoRunning(true);
     setError("");
     try {
@@ -237,6 +237,7 @@ export default function ManagerAnalysisPage() {
         body: JSON.stringify({
           pin,
           force,
+          partial,
           start: week.start,
           end: week.end,
         }),
@@ -253,7 +254,12 @@ export default function ManagerAnalysisPage() {
             `자동 분석을 저장했습니다 (${data.source === "gemini" ? "Gemini" : "자동"})`
         );
       } else {
-        setError(data.reason ?? "아직 전원 제출이 완료되지 않았습니다.");
+        setError(
+          data.reason ??
+            (partial
+              ? "제출된 기록이 없거나 이미 전원 분석이 저장되어 있습니다."
+              : "아직 전원 제출이 완료되지 않았습니다.")
+        );
       }
     } catch {
       setError("네트워크 오류가 발생했습니다.");
@@ -315,8 +321,10 @@ export default function ManagerAnalysisPage() {
                 「이전 주」를 두 번 눌러 주차를 맞추세요.
               </p>
               <p className="mt-2 text-xs font-medium text-indigo-800">
-                매주 토요일 오전 9시: 팀원 전원 월~금 제출이 완료되면 주간 분석이
-                자동 저장됩니다.
+                <strong>토요일 09:00</strong> — 전원 월~금 제출 완료 시 전체 분석 저장
+                <br />
+                <strong>일요일 09:00</strong> — 미완료 시 <strong>제출된 기록만</strong>{" "}
+                부분 분석 저장 (토요일에 이미 전원 분석됐으면 생략)
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -340,7 +348,16 @@ export default function ManagerAnalysisPage() {
                 onClick={() => runAutoAnalysis(false)}
                 disabled={autoRunning}
               >
-                {autoRunning ? "자동 분석 중…" : "지금 자동 분석·저장"}
+                {autoRunning ? "자동 분석 중…" : "지금 자동 분석·저장 (전원)"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => runAutoAnalysis(true, true)}
+                disabled={autoRunning}
+                title="일요일 루틴과 동일 — 제출된 일일 기록만 반영"
+              >
+                {autoRunning ? "분석 중…" : "부분 분석·저장 (제출분)"}
               </button>
               <button
                 type="button"
