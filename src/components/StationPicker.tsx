@@ -8,11 +8,12 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  filterMetroStations,
   formatMetroStationValue,
   getMetroLineColor,
+  getMetroStationsForLine,
   parseMetroStationValue,
   type MetroLineInfo,
-  type MetroStationInfo,
 } from "@/lib/metroStations";
 
 interface StationPickerProps {
@@ -43,8 +44,7 @@ export function StationPicker({
   enableDirectInput = true,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
-  const [stations, setStations] = useState<MetroStationInfo[]>([]);
-  const [loadingStations, setLoadingStations] = useState(false);
+  const [stationListOpen, setStationListOpen] = useState(false);
 
   const [selectedLine, setSelectedLine] = useState<number | "">("");
   const [selectedStation, setSelectedStation] = useState("");
@@ -94,21 +94,18 @@ export function StationPicker({
     }
   }, [value]);
 
-  useEffect(() => {
-    if (!enableMetroPicker || selectedLine === "" || useDirectInput) {
-      setStations([]);
-      return;
-    }
-    setLoadingStations(true);
+  const allLineStations = useMemo(() => {
+    if (selectedLine === "") return [];
+    return getMetroStationsForLine(selectedLine);
+  }, [selectedLine]);
+
+  const filteredStations = useMemo(() => {
+    if (selectedLine === "") return [];
     const q = stationQuery.trim();
-    const url = q
-      ? `/api/metro/stations?line=${selectedLine}&q=${encodeURIComponent(q)}`
-      : `/api/metro/stations?line=${selectedLine}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((d) => setStations(d.stations ?? []))
-      .finally(() => setLoadingStations(false));
-  }, [enableMetroPicker, selectedLine, stationQuery, useDirectInput]);
+    return q
+      ? filterMetroStations(selectedLine, q)
+      : allLineStations;
+  }, [selectedLine, stationQuery, allLineStations]);
 
   function applyMetroSelection(line: number, stationName: string) {
     const formatted = formatMetroStationValue(line, stationName);
@@ -120,6 +117,7 @@ export function StationPicker({
     if (!lineStr) {
       setSelectedLine("");
       setSelectedStation("");
+      setStationListOpen(false);
       onChange("");
       return;
     }
@@ -127,6 +125,7 @@ export function StationPicker({
     setSelectedLine(line);
     setSelectedStation("");
     setStationQuery("");
+    setStationListOpen(false);
     onChange("");
   }
 
@@ -134,6 +133,7 @@ export function StationPicker({
     if (selectedLine === "") return;
     setSelectedStation(stationName);
     setStationQuery("");
+    setStationListOpen(false);
     applyMetroSelection(selectedLine, stationName);
   }
 
@@ -264,66 +264,107 @@ export function StationPicker({
                 <p className="muted mt-1 text-xs">먼저 호선을 선택해 주세요.</p>
               ) : (
                 <>
-                  <input
-                    id="metro-station-search"
-                    type="search"
-                    className={`input mt-1${lineColor ? " metro-input--lined" : ""}`}
-                    style={lineColor ? { borderColor: lineColor } : undefined}
-                    placeholder={`${lineInfo?.label ?? ""} 역 이름 검색 (예: 강남, 길음)`}
-                    value={stationQuery}
-                    disabled={disabled}
-                    autoComplete="off"
-                    onChange={(e) => setStationQuery(e.target.value)}
-                  />
-                  <div
-                    className={`metro-station-list mt-2${lineColor ? " metro-station-list--lined" : ""}`}
-                    style={lineColor ? { borderColor: lineColor } : undefined}
-                    role="listbox"
-                    aria-label="역 목록"
-                  >
-                    {loadingStations ? (
-                      <p className="muted p-2 text-xs">역 목록 불러오는 중…</p>
-                    ) : stations.length === 0 ? (
-                      <p className="muted p-2 text-xs">
-                        일치하는 역이 없습니다. 검색어를 바꾸거나 아래 직접
-                        입력을 이용하세요.
-                      </p>
-                    ) : (
-                      stations.map((s) => (
-                        <button
-                          key={s.name}
-                          type="button"
-                          role="option"
-                          aria-selected={selectedStation === s.name}
-                          className={`metro-station-option ${
-                            selectedStation === s.name ? "active" : ""
-                          }${lineColor ? " metro-station-option--lined" : ""}`}
-                          style={
-                            lineColor
-                              ? {
-                                  borderLeftColor: lineColor,
-                                  ...(selectedStation === s.name
-                                    ? {
-                                        borderColor: lineColor,
-                                        boxShadow: `inset 3px 0 0 ${lineColor}`,
-                                      }
-                                    : {}),
-                                }
-                              : undefined
+                  {selectedStation ? (
+                    <p className="mt-1 text-sm">
+                      선택한 역:{" "}
+                      <strong>
+                        {formatMetroStationValue(selectedLine, selectedStation)}
+                      </strong>
+                    </p>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    className={`metro-station-list-toggle mt-2${lineColor ? " metro-station-list-toggle--lined" : ""}`}
+                    style={
+                      lineColor
+                        ? {
+                            borderColor: lineColor,
+                            color: lineColor,
+                            ["--metro-line-color" as string]: lineColor,
                           }
-                          disabled={disabled}
-                          onClick={() => handleStationPick(s.name)}
-                        >
-                          <span className="font-medium">{s.name}</span>
-                          {s.areas?.length ? (
-                            <span className="metro-station-area">
-                              {s.areas.join(", ")}
-                            </span>
-                          ) : null}
-                        </button>
-                      ))
-                    )}
-                  </div>
+                        : undefined
+                    }
+                    disabled={disabled}
+                    aria-expanded={stationListOpen}
+                    aria-controls="metro-station-list-panel"
+                    onClick={() => setStationListOpen((open) => !open)}
+                  >
+                    {stationListOpen
+                      ? "역 목록 닫기"
+                      : `${lineInfo?.label ?? ""} 역 목록에서 선택 (${allLineStations.length}개)`}
+                  </button>
+
+                  {stationListOpen ? (
+                    <div
+                      id="metro-station-list-panel"
+                      className="metro-station-list-panel mt-2"
+                    >
+                      <input
+                        id="metro-station-search"
+                        type="search"
+                        className={`input${lineColor ? " metro-input--lined" : ""}`}
+                        style={lineColor ? { borderColor: lineColor } : undefined}
+                        placeholder={`역 이름 검색 (예: 서울, 종로)`}
+                        value={stationQuery}
+                        disabled={disabled}
+                        autoComplete="off"
+                        onChange={(e) => setStationQuery(e.target.value)}
+                      />
+                      <p className="muted mt-2 text-xs">
+                        아래 목록에서 역을 눌러 선택하세요.
+                        {stationQuery.trim()
+                          ? ` · 검색 결과 ${filteredStations.length}개`
+                          : ` · 전체 ${allLineStations.length}개`}
+                      </p>
+                      <div
+                        className={`metro-station-list mt-2${lineColor ? " metro-station-list--lined" : ""}`}
+                        style={lineColor ? { borderColor: lineColor } : undefined}
+                        role="listbox"
+                        aria-label={`${lineInfo?.label ?? ""} 역 목록`}
+                      >
+                        {filteredStations.length === 0 ? (
+                          <p className="muted p-3 text-xs text-center">
+                            일치하는 역이 없습니다. 검색어를 바꿔 보세요.
+                          </p>
+                        ) : (
+                          filteredStations.map((s) => (
+                            <button
+                              key={s.name}
+                              type="button"
+                              role="option"
+                              aria-selected={selectedStation === s.name}
+                              className={`metro-station-option ${
+                                selectedStation === s.name ? "active" : ""
+                              }${lineColor ? " metro-station-option--lined" : ""}`}
+                              style={
+                                lineColor
+                                  ? {
+                                      borderLeftColor: lineColor,
+                                      ...(selectedStation === s.name
+                                        ? {
+                                            borderColor: lineColor,
+                                            boxShadow: `inset 3px 0 0 ${lineColor}`,
+                                          }
+                                        : {}),
+                                    }
+                                  : undefined
+                              }
+                              disabled={disabled}
+                              onClick={() => handleStationPick(s.name)}
+                            >
+                              <span className="font-medium">{s.name}</span>
+                              {s.areas?.length ? (
+                                <span className="metro-station-area">
+                                  {s.areas.join(", ")}
+                                </span>
+                              ) : null}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
