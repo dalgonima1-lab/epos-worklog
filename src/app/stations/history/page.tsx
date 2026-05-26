@@ -108,9 +108,10 @@ export default function StationHistoryPage() {
       <section className="card p-5">
         <h2 className="text-lg font-bold">역사 선택</h2>
         <p className="muted mt-2 text-sm">
-          예: 길음역 — 과거에 이 역사에 기록된 일일 보고가 시간순(최신 위)으로
-          표시됩니다. 역사명은 일일 기록에 입력한 것과 같아야 합니다(띄어쓰기
-          차이는 자동으로 맞춥니다).
+          <strong>호선 → 역사명</strong> 순으로 선택한 뒤 조회하세요. 일일 기록에
+          저장된 이름과 같으면 찾을 수 있습니다(예:{" "}
+          <code className="text-xs">7호선 길음역</code>과{" "}
+          <code className="text-xs">길음역</code>도 같은 역으로 인식).
         </p>
         <div className="mt-4">
           <StationPicker value={station} onChange={setStation} disabled={loading} />

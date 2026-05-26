@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
+import { stationsMatch } from "./metroStations";
 import {
   normalizeStationName,
   registerStationInHistory,
@@ -299,12 +300,11 @@ export async function getReportsByStationName(
   limit = 300
 ): Promise<DailyReport[]> {
   const db = await ensureDb();
-  const target = normalizeStationName(stationQuery).toLowerCase();
-  if (!target) return [];
+  if (!stationQuery.trim()) return [];
 
   const list = db.reports.filter((r) => {
-    const n = normalizeStationName(r.stationName || "").toLowerCase();
-    return n.length > 0 && n === target;
+    const name = r.stationName || "";
+    return name.trim().length > 0 && stationsMatch(name, stationQuery);
   });
   list.sort((a, b) => {
     const byDate = b.date.localeCompare(a.date);
