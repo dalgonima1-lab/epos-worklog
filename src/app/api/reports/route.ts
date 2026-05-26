@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
+import { isStationFacilityArea } from "@/lib/stationFacility";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     memberId,
     date,
     stationName,
+    facilityArea,
     processingRole,
     done,
     plan,
@@ -56,6 +58,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!facilityArea?.trim() || !isStationFacilityArea(String(facilityArea).trim())) {
+    return NextResponse.json(
+      { error: "작업 장소(전기실·변전소·역무실)를 선택해 주세요." },
+      { status: 400 }
+    );
+  }
+
   if (!processingRole?.trim()) {
     return NextResponse.json(
       { error: "공종을 선택해 주세요." },
@@ -67,6 +76,7 @@ export async function POST(request: NextRequest) {
 
   const report = await upsertReport(memberId, date, {
     stationName: String(stationName).trim(),
+    facilityArea: String(facilityArea).trim(),
     processingRole: String(processingRole).trim(),
     done: done ?? "",
     plan: plan ?? "",

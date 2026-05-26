@@ -4,6 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
+import {
+  isStationFacilityArea,
+  type StationFacilityArea,
+} from "@/lib/stationFacility";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
 import {
@@ -37,6 +41,9 @@ function DailyPageInner() {
   );
   const [stationName, setStationName] = useState(
     () => searchParams.get("station")?.trim() ?? ""
+  );
+  const [facilityArea, setFacilityArea] = useState<StationFacilityArea | "">(
+    ""
   );
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
@@ -114,6 +121,8 @@ function DailyPageInner() {
           ? ""
           : fromReport;
         setStationName(safeReportStation || stationFromSchedule);
+        const area = report?.facilityArea?.trim() ?? "";
+        setFacilityArea(isStationFacilityArea(area) ? area : "");
         if (stationFromSchedule && !fromReport) {
           void fetch("/api/stations", {
             method: "POST",
@@ -156,6 +165,10 @@ function DailyPageInner() {
       setStatus("\uc5ed\uc0ac\uba85\uc744 \uc120\ud0dd\ud558\uac70\ub098 \uc785\ub825\ud574 \uc8fc\uc138\uc694.");
       return;
     }
+    if (!facilityArea) {
+      setStatus("작업 장소(전기실·변전소·역무실)를 선택해 주세요.");
+      return;
+    }
     if (!effectiveRole) {
       setStatus("\uacf5\uc885\uc744 \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.");
       return;
@@ -168,6 +181,7 @@ function DailyPageInner() {
         memberId,
         date,
         stationName: stationName.trim(),
+        facilityArea,
         processingRole: effectiveRole,
         done,
         plan,
@@ -240,6 +254,9 @@ function DailyPageInner() {
         <StationPicker
           value={stationName}
           onChange={setStationName}
+          facilityArea={facilityArea}
+          onFacilityChange={setFacilityArea}
+          requireFacility
           disabled={loading}
         />
 

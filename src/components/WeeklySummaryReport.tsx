@@ -3,6 +3,7 @@
 import type { WeeklySummary } from "@/lib/summary";
 import type { DailyReport } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
+import { formatStationVisitLabel } from "@/lib/stationFacility";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 
 interface WeeklySummaryReportProps {
@@ -114,7 +115,10 @@ export function WeeklySummaryReport({
                             </p>
                             {r.stationName ? (
                               <p className="mt-0.5 text-sm font-medium text-blue-800">
-                                {r.stationName}
+                                {formatStationVisitLabel(
+                                  r.stationName,
+                                  r.facilityArea
+                                )}
                               </p>
                             ) : null}
                             {r.processingRole ? (

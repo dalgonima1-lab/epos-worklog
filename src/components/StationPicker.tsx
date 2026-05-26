@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
   filterMetroStations,
   formatMetroStationValue,
@@ -15,6 +16,10 @@ import {
   parseMetroStationValue,
   type MetroLineInfo,
 } from "@/lib/metroStations";
+import {
+  formatStationVisitLabel,
+  type StationFacilityArea,
+} from "@/lib/stationFacility";
 
 interface StationPickerProps {
   value: string;
@@ -26,6 +31,11 @@ interface StationPickerProps {
   enableMetroPicker?: boolean;
   /** 호선 목록에 없을 때 직접 입력 */
   enableDirectInput?: boolean;
+  /** 역사 선택 후 작업 장소 (전기실·변전소·역무실) */
+  facilityArea?: string;
+  onFacilityChange?: (area: StationFacilityArea | "") => void;
+  /** 작업 장소 필수 (일일기록) */
+  requireFacility?: boolean;
 }
 
 function recentTabMatches(name: string, query: string): boolean {
@@ -42,6 +52,9 @@ export function StationPicker({
   enableRecentTabs = true,
   enableMetroPicker = true,
   enableDirectInput = true,
+  facilityArea = "",
+  onFacilityChange,
+  requireFacility = false,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
@@ -107,9 +120,16 @@ export function StationPicker({
       : allLineStations;
   }, [selectedLine, stationQuery, allLineStations]);
 
+  function setStationValue(name: string) {
+    if (name.trim() !== value.trim()) {
+      onFacilityChange?.("");
+    }
+    onChange(name);
+  }
+
   function applyMetroSelection(line: number, stationName: string) {
     const formatted = formatMetroStationValue(line, stationName);
-    onChange(formatted);
+    setStationValue(formatted);
     void registerStation(formatted);
   }
 
@@ -118,7 +138,7 @@ export function StationPicker({
       setSelectedLine("");
       setSelectedStation("");
       setStationListOpen(false);
-      onChange("");
+      setStationValue("");
       return;
     }
     const line = Number(lineStr);
@@ -126,7 +146,7 @@ export function StationPicker({
     setSelectedStation("");
     setStationQuery("");
     setStationListOpen(false);
-    onChange("");
+    setStationValue("");
   }
 
   function handleStationPick(stationName: string) {
@@ -151,7 +171,7 @@ export function StationPicker({
   async function commitDirect() {
     const trimmed = directValue.trim();
     if (!trimmed) return;
-    onChange(trimmed);
+    setStationValue(trimmed);
     await registerStation(trimmed);
   }
 
@@ -410,7 +430,7 @@ export function StationPicker({
                   disabled={disabled}
                   onChange={(e) => {
                     setDirectValue(e.target.value);
-                    onChange(e.target.value);
+                    setStationValue(e.target.value);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -458,7 +478,7 @@ export function StationPicker({
                 style={recentTabBorderStyle(name)}
                 disabled={disabled}
                 onClick={() => {
-                  onChange(name);
+                  setStationValue(name);
                   void registerStation(name);
                 }}
               >
@@ -468,6 +488,17 @@ export function StationPicker({
           </div>
         </div>
       )}
+
+      {value.trim() && onFacilityChange ? (
+        <div className="mt-4">
+          <StationFacilityPicker
+            value={facilityArea}
+            onChange={onFacilityChange}
+            disabled={disabled}
+            accentColor={valueLineColor || lineColor || undefined}
+          />
+        </div>
+      ) : null}
 
       {value.trim() ? (
         <p
@@ -480,8 +511,14 @@ export function StationPicker({
               : undefined
           }
         >
-          선택됨: <strong>{value}</strong>
+          선택됨:{" "}
+          <strong>
+            {formatStationVisitLabel(value, facilityArea) || value}
+          </strong>
           {isKnownRecent ? " · 최근 목록에 있음" : ""}
+          {requireFacility && !facilityArea ? (
+            <span className="text-red-600"> · 작업 장소를 선택해 주세요</span>
+          ) : null}
         </p>
       ) : null}
     </div>

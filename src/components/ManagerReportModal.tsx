@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { DailyReport } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
+import { formatStationVisitLabel } from "@/lib/stationFacility";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 
 function photoSrc(
@@ -122,7 +123,10 @@ export function ManagerReportModal({
                   역사
                 </dt>
                 <dd className="mt-0.5 font-semibold text-slate-900">
-                  {report.stationName}
+                  {formatStationVisitLabel(
+                    report.stationName,
+                    report.facilityArea
+                  )}
                 </dd>
               </div>
             ) : null}

@@ -16,8 +16,10 @@ export interface DailyReport {
   id: string;
   memberId: string;
   date: string;
-  /** 현장 역사명 (예: 명동역) */
+  /** 현장 역사명 (예: 2호선 강남역) */
   stationName: string;
+  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 */
+  facilityArea?: string;
   /** 공종 */
   processingRole: string;
   done: string;

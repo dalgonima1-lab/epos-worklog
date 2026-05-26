@@ -10,6 +10,7 @@ import {
 } from "@/lib/dates";
 import type { DailyReport, Member } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
+import { formatStationVisitLabel } from "@/lib/stationFacility";
 import { formatWorkDuration } from "@/lib/workTime";
 
 export default function StationHistoryPage() {
@@ -53,6 +54,7 @@ export default function StationHistoryPage() {
         r.date,
         name,
         r.stationName,
+        r.facilityArea ?? "",
         r.processingRole,
         r.done,
         r.plan,
@@ -211,6 +213,15 @@ export default function StationHistoryPage() {
                           </p>
                           <p className="mt-1 text-sm text-blue-900">
                             <strong>{name}</strong>
+                            {r.facilityArea ? (
+                              <>
+                                {" "}
+                                ·{" "}
+                                <span className="font-semibold">
+                                  {r.facilityArea}
+                                </span>
+                              </>
+                            ) : null}
                             {r.processingRole ? (
                               <>
                                 {" "}

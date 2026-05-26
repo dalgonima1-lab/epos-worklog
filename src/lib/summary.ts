@@ -81,7 +81,10 @@ export function summaryToMarkdown(summary: WeeklySummary): string {
     for (const r of m.reports) {
       lines.push(`### ${r.date}`);
       if (r.stationName) {
-        lines.push(`- **역사:** ${r.stationName}`);
+        const place = r.facilityArea?.trim()
+          ? `${r.stationName} · ${r.facilityArea}`
+          : r.stationName;
+        lines.push(`- **역사:** ${place}`);
       }
       if (r.processingRole) {
         lines.push(`- **공종:** ${r.processingRole}`);

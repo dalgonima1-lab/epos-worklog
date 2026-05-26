@@ -30,6 +30,7 @@ import {
   isSecurityTestPlaceholder,
   sanitizeDatabaseTestArtifacts,
 } from "./sanitizeTestData";
+import { isStationFacilityArea } from "./stationFacility";
 
 export const DATA_SANITIZE_VERSION = 1;
 
@@ -65,6 +66,7 @@ const MEMBER_NAME_MAP: Record<string, string> = {
 export type ReportPayload = Pick<
   DailyReport,
   | "stationName"
+  | "facilityArea"
   | "processingRole"
   | "done"
   | "plan"
@@ -167,6 +169,7 @@ function normalizeReport(r: DailyReport): DailyReport {
   return {
     ...r,
     stationName: r.stationName ?? "",
+    facilityArea: r.facilityArea ?? "",
     processingRole: r.processingRole ?? "",
     deficiencies: r.deficiencies ?? "",
     workMinutes:
@@ -307,6 +310,11 @@ function normalizeReportStationName(raw: string): string {
   return canonicalStationDisplayName(t);
 }
 
+function normalizeFacilityArea(raw?: string): string {
+  const t = raw?.trim() ?? "";
+  return isStationFacilityArea(t) ? t : "";
+}
+
 export async function upsertReport(
   memberId: string,
   date: string,
@@ -337,6 +345,7 @@ export async function upsertReport(
 
   if (existing) {
     existing.stationName = payload.stationName;
+    existing.facilityArea = normalizeFacilityArea(payload.facilityArea);
     existing.processingRole = payload.processingRole;
     existing.done = payload.done;
     existing.plan = payload.plan;
@@ -356,6 +365,7 @@ export async function upsertReport(
     memberId,
     date,
     stationName: payload.stationName,
+    facilityArea: normalizeFacilityArea(payload.facilityArea),
     processingRole: payload.processingRole,
     done: payload.done,
     plan: payload.plan,

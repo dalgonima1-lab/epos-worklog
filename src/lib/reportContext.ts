@@ -27,7 +27,12 @@ export function buildWeeklyReportsContext(
 
     for (const r of memberReports) {
       lines.push(`### ${r.date}`);
-      if (r.stationName) lines.push(`- 역사: ${r.stationName}`);
+      if (r.stationName) {
+        const place = r.facilityArea?.trim()
+          ? `${r.stationName} (${r.facilityArea})`
+          : r.stationName;
+        lines.push(`- 역사: ${place}`);
+      }
       if (r.processingRole) lines.push(`- 공종: ${r.processingRole}`);
       if (r.workMinutes != null) {
         lines.push(`- 작업 시간: ${formatWorkDuration(r.workMinutes)}`);
