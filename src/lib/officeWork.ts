@@ -1,6 +1,14 @@
 import { PROCESSING_ROLES } from "@/lib/constants";
 import { parseMetroStationValue } from "@/lib/metroStations";
 
+/** 역사 방문 없이 사무실에서만 수행한 작업( AI 자동화 등) */
+export const OFFICE_GENERAL_STATION = "사무실";
+
+export const OFFICE_AI_AUTOMATION_ROLE = "AI를 통한 자동화";
+
+/** 사무 작업 — 역사별 공종 */
+export const OFFICE_STATION_ROLES: readonly string[] = PROCESSING_ROLES;
+
 export interface OfficeWorkEntry {
   station: string;
   processingRole: string;
@@ -47,15 +55,47 @@ export function notesMapToOfficeWorkEntries(
   return out;
 }
 
+export function isOfficeGeneralStation(station: string): boolean {
+  return station.trim() === OFFICE_GENERAL_STATION;
+}
+
+export function isOfficeAiAutomationRole(role: string): boolean {
+  return role.trim() === OFFICE_AI_AUTOMATION_ROLE;
+}
+
 export function filledOfficeWorkEntries(
   entries: OfficeWorkEntry[]
 ): OfficeWorkEntry[] {
-  return entries.filter(
-    (e) =>
-      e.station.trim() &&
-      e.processingRole.trim() &&
-      e.done.trim()
+  return entries.filter((e) => {
+    if (!e.processingRole.trim() || !e.done.trim()) return false;
+    if (isOfficeAiAutomationRole(e.processingRole)) {
+      return isOfficeGeneralStation(e.station);
+    }
+    return Boolean(e.station.trim()) && !isOfficeGeneralStation(e.station);
+  });
+}
+
+/** 저장된 항목에서 오늘 작업한 역사 목록 복원 */
+export function officeVisitedStationsFromEntries(
+  entries: OfficeWorkEntry[],
+  candidateStations: string[]
+): string[] {
+  const fromEntries = new Set(
+    entries
+      .filter(
+        (e) =>
+          e.done.trim() &&
+          !isOfficeGeneralStation(e.station) &&
+          !isOfficeAiAutomationRole(e.processingRole)
+      )
+      .map((e) => e.station.trim())
+      .filter(Boolean)
   );
+  const candidates = candidateStations.map((s) => s.trim()).filter(Boolean);
+  if (fromEntries.size) {
+    return candidates.filter((s) => fromEntries.has(s));
+  }
+  return [];
 }
 
 /** 일정 제목: `2호선-강남역-사무-전력감시시스템-작업요약` */
@@ -67,8 +107,18 @@ export function buildOfficeWorkScheduleTitle(
   const station = stationDisplay.trim();
   const role = processingRole.trim();
   const work = workContent.trim().replace(/\s+/g, " ").slice(0, 40);
-  const { line, stationName } = parseMetroStationValue(station);
   const parts: string[] = [];
+  if (isOfficeGeneralStation(station)) {
+    parts.push("사무");
+    if (isOfficeAiAutomationRole(role)) {
+      parts.push("AI자동화");
+    } else if (role) {
+      parts.push(role.replace(/\s+/g, ""));
+    }
+    if (work) parts.push(work);
+    return parts.join("-");
+  }
+  const { line, stationName } = parseMetroStationValue(station);
   if (line != null) parts.push(`${line}호선`);
   const name = (stationName || station).trim();
   if (name) parts.push(name);
@@ -85,4 +135,5 @@ export function summarizeOfficeWorkRoles(entries: OfficeWorkEntry[]): string {
   return `사무(${roles.join("·")})`;
 }
 
+/** @deprecated 사무 폼에서는 OFFICE_STATION_ROLES / OFFICE_AI_AUTOMATION_ROLE 사용 */
 export const OFFICE_WORK_ROLES: readonly string[] = PROCESSING_ROLES;

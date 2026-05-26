@@ -42,6 +42,8 @@ export interface DailyReport {
     processingRole: string;
     done: string;
   }[];
+  /** 사무 작업: 오늘 실제 작업한 역사 (체크) */
+  officeWorkVisitedStations?: string[];
   /** 여러 역·일정을 묶는 그룹 id */
   visitGroupId?: string;
   /** 공종 */

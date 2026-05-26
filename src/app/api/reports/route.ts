@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
     maintenancePlannedTargets,
     maintenanceDeficienciesByStation,
     officeWorkEntries,
+    officeWorkVisitedStations,
     managementOffice,
     processingRole,
     done,
@@ -118,25 +119,45 @@ export async function POST(request: NextRequest) {
   if (isOfficeWork) {
     facility = OFFICE_WORK_FACILITY;
     if (!officeEntries.length) {
+      const hasVisited = Array.isArray(officeWorkVisitedStations)
+        ? officeWorkVisitedStations.some((s) => String(s).trim())
+        : false;
       return NextResponse.json(
         {
-          error:
-            "사무 작업은 역사·공종을 선택한 뒤, 최소 1건의 작업 내용을 입력해 주세요.",
+          error: hasVisited
+            ? "체크한 역사·공종별로 작업 내용을 최소 1건 입력해 주세요."
+            : "역 작업이 없을 때는 AI를 통한 자동화 작업 내용을 입력해 주세요.",
         },
         { status: 400 }
       );
     }
-    const stationSet = [...new Set(officeEntries.map((e) => e.station.trim()))];
-    const primaryStation = stationSet[0]!;
+    const bodyStation = String(stationName ?? "").trim();
+    const bodyStationNames = Array.isArray(stationNames)
+      ? stationNames.map((s: string) => String(s).trim()).filter(Boolean)
+      : [];
+    const primaryStation =
+      bodyStation ||
+      bodyStationNames[0] ||
+      officeEntries.find((e) => e.station.trim())?.station ||
+      "";
+    const visitedList = Array.isArray(officeWorkVisitedStations)
+      ? officeWorkVisitedStations.map((s) => String(s).trim()).filter(Boolean)
+      : [];
     const summaryDone = officeEntries
       .map((e) => `【${e.station} · ${e.processingRole}】\n${e.done.trim()}`)
       .join("\n\n");
     const existing = await getReport(memberId, date);
     const report = await upsertReport(memberId, date, {
       stationName: primaryStation,
-      stationNames: stationSet.length > 1 ? stationSet : undefined,
+      stationNames:
+        bodyStationNames.length > 1
+          ? bodyStationNames
+          : visitedList.length > 1
+            ? visitedList
+            : undefined,
       facilityArea: OFFICE_WORK_FACILITY,
       officeWorkEntries: officeEntries,
+      officeWorkVisitedStations: visitedList.length ? visitedList : undefined,
       processingRole: summarizeOfficeWorkRoles(officeEntries),
       done: summaryDone,
       plan: plan ?? "",

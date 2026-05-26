@@ -86,6 +86,9 @@ interface StationPickerProps {
   officeWorkMode?: boolean;
   /** 역사 히스토리 등: 정기점검계획서 기능실에 (유지보수 용역) 표기 */
   showMaintenanceFacilityLabels?: boolean;
+  /** 사무 작업: 오늘 실제 작업한 역 (체크) */
+  officeVisitedStations?: string[];
+  onOfficeVisitedStationsChange?: (stations: string[]) => void;
 }
 
 export function StationPicker({
@@ -113,6 +116,8 @@ export function StationPicker({
   hideMaintenanceVisitList = false,
   officeWorkMode = false,
   showMaintenanceFacilityLabels = false,
+  officeVisitedStations = [],
+  onOfficeVisitedStationsChange,
 }: StationPickerProps) {
   const effectiveMaintenanceMode = lockMaintenanceMode || maintenanceMode;
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
@@ -919,6 +924,12 @@ export function StationPicker({
               오늘 돌지 않은 역은「해제」로 목록에서 빼 주세요.
             </p>
           ) : null}
+          {officeWorkMode && selectedStations.length > 0 ? (
+            <p className="muted mb-2 text-xs">
+              작업한 역만 체크(✓)하세요. 모두 비우면 AI 자동화 기록으로
+              전환됩니다.
+            </p>
+          ) : null}
           {selectedStations.length === 0 ? (
             <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
               {maintenanceMode
@@ -940,24 +951,75 @@ export function StationPicker({
                 const lineColor =
                   line != null ? getMetroLineColor(line) : undefined;
                 const stationFacility = stationFacilityByStation[name] ?? "";
+                const officeVisited =
+                  officeWorkMode &&
+                  officeVisitedStations
+                    .map((s) => s.trim())
+                    .includes(name.trim());
+                function toggleOfficeVisited() {
+                  if (!onOfficeVisitedStationsChange) return;
+                  const trimmed = name.trim();
+                  if (officeVisited) {
+                    onOfficeVisitedStationsChange(
+                      officeVisitedStations.filter((s) => s.trim() !== trimmed)
+                    );
+                  } else {
+                    onOfficeVisitedStationsChange([
+                      ...officeVisitedStations,
+                      name,
+                    ]);
+                  }
+                }
                 return (
                   <li
                     key={`${index}-${name}`}
-                    className="rounded-lg border border-indigo-100 bg-white px-2.5 py-2 shadow-sm"
+                    className={`rounded-lg border px-2.5 py-2 shadow-sm ${
+                      officeWorkMode && officeVisited
+                        ? "border-sky-300 bg-sky-50/80"
+                        : "border-indigo-100 bg-white"
+                    }`}
                     style={selectedStationRowStyle(name)}
                   >
                     <div className="flex items-center gap-2">
+                      {officeWorkMode && onOfficeVisitedStationsChange ? (
+                        <label className="flex shrink-0 cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={officeVisited}
+                            disabled={disabled}
+                            onChange={toggleOfficeVisited}
+                          />
+                          <span
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold ${
+                              officeVisited
+                                ? "border-sky-600 bg-sky-600 text-white"
+                                : "border-slate-300 bg-white text-slate-400"
+                            }`}
+                            title={officeVisited ? "작업함" : "미작업"}
+                          >
+                            {officeVisited ? "✓" : ""}
+                          </span>
+                        </label>
+                      ) : (
+                        <span
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                          style={
+                            lineColor
+                              ? { backgroundColor: lineColor }
+                              : { backgroundColor: "#6366f1" }
+                          }
+                        >
+                          {index + 1}
+                        </span>
+                      )}
                       <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                        style={
-                          lineColor
-                            ? { backgroundColor: lineColor }
-                            : { backgroundColor: "#6366f1" }
-                        }
+                        className={`min-w-0 flex-1 text-sm font-medium ${
+                          officeWorkMode && !officeVisited
+                            ? "text-slate-500"
+                            : "text-slate-900"
+                        }`}
                       >
-                        {index + 1}
-                      </span>
-                      <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">
                         {name}
                       </span>
                       {maintenanceMode ? (

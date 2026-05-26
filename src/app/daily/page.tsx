@@ -17,8 +17,14 @@ import {
 } from "@/lib/stationFacility";
 import {
   filledOfficeWorkEntries,
+  isOfficeAiAutomationRole,
+  isOfficeGeneralStation,
   notesMapToOfficeWorkEntries,
+  OFFICE_AI_AUTOMATION_ROLE,
+  OFFICE_GENERAL_STATION,
+  officeVisitedStationsFromEntries,
   officeWorkEntriesToNotesMap,
+  officeWorkEntryKey,
   type OfficeWorkEntry,
 } from "@/lib/officeWork";
 import { MaintenanceDailyVisitForm } from "@/components/MaintenanceDailyVisitForm";
@@ -88,6 +94,9 @@ function DailyPageInner() {
   const [officeWorkByKey, setOfficeWorkByKey] = useState<Record<string, string>>(
     {}
   );
+  const [officeVisitedStations, setOfficeVisitedStations] = useState<
+    string[]
+  >([]);
   const maintenanceLocked = useMemo(() => {
     const qFacility = searchParams.get("facility")?.trim() ?? "";
     return qFacility === MANAGEMENT_OFFICE_FACILITY || maintenanceMode;
@@ -175,6 +184,13 @@ function DailyPageInner() {
             ? MANAGEMENT_OFFICE_FACILITY
             : facilityArea || undefined
         );
+
+  useEffect(() => {
+    if (!officeWorkMode) return;
+    setOfficeVisitedStations((prev) =>
+      prev.filter((s) => selectedStations.includes(s))
+    );
+  }, [selectedStations, officeWorkMode]);
 
   useEffect(() => {
     fetch("/api/members")
@@ -434,21 +450,35 @@ function DailyPageInner() {
           setFacilityArea(OFFICE_WORK_FACILITY);
           setManagementOffice("");
           setOfficeWorkByKey(officeWorkEntriesToNotesMap(entries));
+          const stationFromEntries = [
+            ...new Set(
+              entries
+                .map((e: OfficeWorkEntry) => e.station.trim())
+                .filter((s) => s && !isOfficeGeneralStation(s))
+            ),
+          ];
+          const officeStations =
+            stationFromEntries.length > 0
+              ? stationFromEntries
+              : [safeReportStation, ...additional].filter(
+                  (s) => s && !isOfficeGeneralStation(s)
+                );
+          const visited =
+            report.officeWorkVisitedStations?.length
+              ? report.officeWorkVisitedStations.filter((s: string) =>
+                  officeStations.includes(s)
+                )
+              : officeVisitedStationsFromEntries(entries, officeStations);
+          setOfficeVisitedStations(visited);
           setSelectedOfficeRoles(
             [
               ...new Set(
-                entries.map((e: OfficeWorkEntry) => e.processingRole.trim()).filter(Boolean)
+                entries
+                  .map((e: OfficeWorkEntry) => e.processingRole.trim())
+                  .filter(Boolean)
               ),
             ]
           );
-          const fromEntries = [
-            ...new Set(
-              entries.map((e: OfficeWorkEntry) => e.station.trim()).filter(Boolean)
-            ),
-          ];
-          const officeStations = fromEntries.length
-            ? fromEntries
-            : [safeReportStation, ...additional].filter(Boolean);
           if (officeStations.length) {
             setMultiStationMode(true);
             setSelectedStations(officeStations);
@@ -520,27 +550,65 @@ function DailyPageInner() {
       return;
     }
     if (officeWorkMode) {
-      const stations =
+      const listedStations =
         selectedStations.length > 0
           ? selectedStations
           : stationName.trim()
             ? [stationName.trim()]
             : [];
-      if (!stations.length) {
-        setStatus("역사를 1곳 이상 선택해 주세요.");
-        return;
+      const hasVisited = officeVisitedStations.length > 0;
+      let officeEntries: OfficeWorkEntry[];
+
+      if (hasVisited) {
+        const stationRoles = selectedOfficeRoles.filter(
+          (r) => !isOfficeAiAutomationRole(r)
+        );
+        if (!stationRoles.length) {
+          setStatus("공종을 1개 이상 선택해 주세요.");
+          return;
+        }
+        const raw = notesMapToOfficeWorkEntries(officeWorkByKey).filter(
+          (e) =>
+            !isOfficeAiAutomationRole(e.processingRole) &&
+            officeVisitedStations.includes(e.station.trim())
+        );
+        officeEntries = filledOfficeWorkEntries(raw);
+        if (!officeEntries.length) {
+          setStatus("체크한 역사·공종별로 작업 내용을 최소 1건 입력해 주세요.");
+          return;
+        }
+      } else {
+        const aiKey = officeWorkEntryKey(
+          OFFICE_GENERAL_STATION,
+          OFFICE_AI_AUTOMATION_ROLE
+        );
+        const aiDone = officeWorkByKey[aiKey]?.trim() ?? "";
+        if (!aiDone) {
+          setStatus(
+            "역 작업이 없을 때는 AI를 통한 자동화 작업 내용을 입력해 주세요."
+          );
+          return;
+        }
+        officeEntries = [
+          {
+            station: OFFICE_GENERAL_STATION,
+            processingRole: OFFICE_AI_AUTOMATION_ROLE,
+            done: aiDone,
+          },
+        ];
       }
-      if (!selectedOfficeRoles.length) {
-        setStatus("공종을 1개 이상 선택해 주세요.");
-        return;
-      }
-      const officeEntries = filledOfficeWorkEntries(
-        notesMapToOfficeWorkEntries(officeWorkByKey)
-      );
-      if (!officeEntries.length) {
-        setStatus("역·공종별로 작업 내용을 최소 1건 입력해 주세요.");
-        return;
-      }
+
+      const primaryStation = hasVisited
+        ? officeVisitedStations[0]!
+        : listedStations[0] ?? OFFICE_GENERAL_STATION;
+      const reportStationNames = hasVisited
+        ? officeVisitedStations.length > 1
+          ? officeVisitedStations
+          : undefined
+        : listedStations.length > 1
+          ? listedStations
+          : undefined;
+
       setStatus("저장 중...");
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -548,10 +616,13 @@ function DailyPageInner() {
         body: JSON.stringify({
           memberId,
           date,
-          stationName: stations[0],
-          stationNames: stations.length > 1 ? stations : undefined,
+          stationName: primaryStation,
+          stationNames: reportStationNames,
           facilityArea: OFFICE_WORK_FACILITY,
           officeWorkEntries: officeEntries,
+          officeWorkVisitedStations: hasVisited
+            ? officeVisitedStations
+            : undefined,
           plan,
           issues,
           deficiencies,
@@ -767,14 +838,15 @@ function DailyPageInner() {
                   setFacilityArea("");
                   setSelectedOfficeRoles([]);
                   setOfficeWorkByKey({});
+                  setOfficeVisitedStations([]);
                 }
               }}
             />
             <span className="text-sm">
               <strong className="text-sky-950">사무 작업</strong>
               <span className="mt-0.5 block text-xs font-normal text-sky-900/90">
-                역사를 여러 곳 고른 뒤 공종별로 작업 내용을 적습니다. 저장 시
-                해당 날짜 일정에 자동 반영됩니다.
+                역사를 고른 뒤 작업한 역만 체크(✓)하고 공종별로 적습니다. 역
+                작업이 없으면 AI 자동화로 기록합니다.
               </span>
             </span>
           </label>
@@ -792,6 +864,8 @@ function DailyPageInner() {
           lockMaintenanceMode={maintenanceLocked}
           hideMaintenanceVisitList={maintenanceLocked}
           officeWorkMode={officeWorkMode}
+          officeVisitedStations={officeVisitedStations}
+          onOfficeVisitedStationsChange={setOfficeVisitedStations}
           onMaintenanceModeChange={(enabled) => {
             if (maintenanceLocked) return;
             setMaintenanceMode(enabled);
@@ -799,6 +873,7 @@ function DailyPageInner() {
               setOfficeWorkMode(false);
               setSelectedOfficeRoles([]);
               setOfficeWorkByKey({});
+              setOfficeVisitedStations([]);
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
               setManagementOffice("");
               setStationFacilityByStation({});
@@ -837,6 +912,7 @@ function DailyPageInner() {
         {officeWorkMode ? (
           <OfficeWorkDailyForm
             stations={activeStations}
+            visitedStations={officeVisitedStations}
             selectedRoles={selectedOfficeRoles}
             onSelectedRolesChange={setSelectedOfficeRoles}
             workByKey={officeWorkByKey}

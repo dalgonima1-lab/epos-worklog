@@ -33,6 +33,7 @@ import {
 import {
   buildOfficeWorkScheduleTitle,
   filledOfficeWorkEntries,
+  isOfficeGeneralStation,
   type OfficeWorkEntry,
 } from "./officeWork";
 import {
@@ -81,6 +82,7 @@ export type ReportPayload = Pick<
   | "maintenancePlannedTargets"
   | "maintenanceDeficienciesByStation"
   | "officeWorkEntries"
+  | "officeWorkVisitedStations"
   | "managementOffice"
   | "processingRole"
   | "done"
@@ -397,7 +399,7 @@ export async function upsertReport(
     payload.stationName,
     ...(payload.additionalStationNames ?? []),
     ...(payload.officeWorkEntries ?? []).map((e) => e.station),
-  ].filter(Boolean);
+  ].filter((s) => s && !isOfficeGeneralStation(s));
   for (const s of allStations) {
     db.stationHistory = registerStationInHistory(db.stationHistory, s);
   }
@@ -428,6 +430,10 @@ export async function upsertReport(
     existing.officeWorkEntries = payload.officeWorkEntries?.length
       ? payload.officeWorkEntries
       : undefined;
+    existing.officeWorkVisitedStations =
+      payload.officeWorkVisitedStations?.length
+        ? payload.officeWorkVisitedStations
+        : undefined;
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
     );
@@ -480,6 +486,9 @@ export async function upsertReport(
         : undefined,
     officeWorkEntries: payload.officeWorkEntries?.length
       ? payload.officeWorkEntries
+      : undefined,
+    officeWorkVisitedStations: payload.officeWorkVisitedStations?.length
+      ? payload.officeWorkVisitedStations
       : undefined,
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
