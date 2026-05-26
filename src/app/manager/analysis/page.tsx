@@ -2,13 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AnalysisWeekScopeBanner } from "@/components/AnalysisWeekScopeBanner";
 import { Header } from "@/components/Header";
 import { WeeklyAnalysisReport } from "@/components/WeeklyAnalysisReport";
+import {
+  formatScopeSummary,
+  getAnalysisWeekScope,
+} from "@/lib/analysisWeekScope";
 import { getWeekRange, shiftWeek } from "@/lib/dates";
 
 export default function ManagerAnalysisPage() {
   const [teamName, setTeamName] = useState("epos \uad00\ub9ac\ud300");
-  const [anchor, setAnchor] = useState(new Date());
+  /** 기본: 지난주 분석 (비교 = 지지난주 저장 보고서) */
+  const [anchor, setAnchor] = useState(() => shiftWeek(new Date(), -1));
   const [pin, setPin] = useState("");
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState("");
@@ -25,13 +31,15 @@ export default function ManagerAnalysisPage() {
   const [autoRunning, setAutoRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [meta, setMeta] = useState<{
-    currentWeek: string;
-    previousWeek: string;
+    scopeSummary?: string;
+    targetWeek: string;
+    compareWeek: string;
     reportCount: number;
   } | null>(null);
 
-  const week = useMemo(() => getWeekRange(anchor), [anchor]);
-  const prevWeek = useMemo(() => getWeekRange(shiftWeek(anchor, -1)), [anchor]);
+  const scope = useMemo(() => getAnalysisWeekScope(anchor), [anchor]);
+  const { targetWeek: week, compareWeek } = scope;
+  const scopeText = useMemo(() => formatScopeSummary(scope), [scope]);
 
   useEffect(() => {
     fetch("/api/members")
@@ -42,7 +50,7 @@ export default function ManagerAnalysisPage() {
   useEffect(() => {
     if (!authed || !pin) return;
     fetch(
-      `/api/analysis/reference?start=${prevWeek.start}&end=${prevWeek.end}&pin=${encodeURIComponent(pin)}`
+      `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
     )
       .then((r) => r.json())
       .then((d) => {
@@ -50,15 +58,16 @@ export default function ManagerAnalysisPage() {
           setPreviousAnalysis(d.text);
           setPreviousAnalysisHint(
             d.source === "analysis"
-              ? `${prevWeek.label}에 저장된 주간 분석을 비교 기준으로 불러왔습니다.`
+              ? `비교 기준(${scopeText.compareCaption}) — 저장된 주간 분석을 불러왔습니다.`
               : d.source === "reference"
-                ? `${prevWeek.label} 참고 보고서(직접 저장)를 불러왔습니다.`
+                ? `비교 기준(${scopeText.compareCaption}) — 직접 붙여넣은 참고 보고서입니다.`
                 : ""
           );
         } else {
           setPreviousAnalysis("");
           setPreviousAnalysisHint(
-            `${prevWeek.label} 저장·참고 분석이 없습니다. PDF를 붙여넣거나, 그 주차 분석을 먼저 만든 뒤 이용하세요.`
+            `비교 기준 주(${scopeText.compareCaption})에 저장된 분석이 없습니다. ` +
+              `아래에 PDF·txt를 붙여넣거나, 그 주차 분석을 먼저 만든 뒤 이용하세요.`
           );
         }
       });
@@ -83,7 +92,15 @@ export default function ManagerAnalysisPage() {
           setAnalysisNotice("");
         }
       });
-  }, [authed, pin, week.start, week.end, prevWeek.start, prevWeek.end]);
+  }, [
+    authed,
+    pin,
+    week.start,
+    week.end,
+    compareWeek.start,
+    compareWeek.end,
+    scopeText.compareCaption,
+  ]);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -129,8 +146,8 @@ export default function ManagerAnalysisPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         pin,
-        start: prevWeek.start,
-        end: prevWeek.end,
+        start: compareWeek.start,
+        end: compareWeek.end,
         text: previousAnalysis,
       }),
     });
@@ -284,7 +301,7 @@ export default function ManagerAnalysisPage() {
       {!authed ? (
         <form onSubmit={login} className="card max-w-md space-y-3 p-5">
           <p className="muted text-sm">
-            {"Gemini AI\ub85c \uc9c0\ub09c\uc8fc \ubd84\uc11d \ubcf4\uace0\uc11c\uc640 \ube44\uad50\ud558\uc5ec "}
+            {"Gemini·Cursor가 「비교 기준 주」에 저장된 보고서와 「분석 대상 주」 일일 기록을 대조해 "}
             <strong>
               {"\uc798\ud55c \uc810, \ubd80\uc871\ud55c \uc810, \ud300\uc7a5 \ucca8\uc5b8"}
             </strong>
@@ -309,16 +326,15 @@ export default function ManagerAnalysisPage() {
         </form>
       ) : (
         <>
+          <AnalysisWeekScopeBanner scope={scope} />
+
           <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">분석·조회 대상 주 (이번 화면)</p>
-              <p className="muted">{week.label}</p>
-              <p className="muted mt-1 text-xs">
-                비교 기준 = 그 전 주(저저번주) 분석: {prevWeek.label}
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                저번주를 분석하려면 「이전 주」로 한 번, 저저번주와 비교하려면
-                「이전 주」를 두 번 눌러 주차를 맞추세요.
+              <p className="font-semibold">주차 이동</p>
+              <p className="muted text-sm">
+                「이전 주」「이번 주」로{" "}
+                <strong>분석 대상</strong>만 바뀝니다. 비교 기준은 항상 그
+                직전 주입니다.
               </p>
               <p className="mt-2 text-xs font-medium text-indigo-800">
                 <strong>토요일 09:00</strong> — 전원 월~금 제출 완료 시 전체 분석 저장
@@ -382,11 +398,13 @@ export default function ManagerAnalysisPage() {
           <div className="grid gap-4 xl:grid-cols-2">
             <section className="card space-y-3 p-4">
               <h3 className="font-semibold">
-                1. 직전 주 분석 보고서 ({prevWeek.label})
+                1. 비교 기준 보고서 · {scopeText.compareCaption}
               </h3>
               <p className="muted text-xs">
-                Gemini·Cursor가 「비교 기준」으로 씁니다. 붙여넣기/업로드하거나,
-                직전 주에 저장된 주간 분석이 있으면 자동으로 채워집니다.
+                {scopeText.targetRelative} 분석 시 참고하는{" "}
+                <strong>{scopeText.compareRelative}</strong> 저장본입니다.
+                붙여넣기/업로드하거나, 해당 주에 저장된 분석이 있으면 자동으로
+                채워집니다.
               </p>
               {previousAnalysisHint ? (
                 <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
@@ -404,7 +422,7 @@ export default function ManagerAnalysisPage() {
                   className="btn btn-secondary text-sm"
                   onClick={saveReference}
                 >
-                  {"\uc9c0\ub09c\uc8fc \ubcf4\uace0\uc11c \uc800\uc7a5"}
+                  비교 기준 보고서 저장
                 </button>
                 <label className="btn btn-secondary cursor-pointer text-sm">
                   {".txt / .md \uc5c5\ub85c\ub4dc"}
@@ -421,9 +439,7 @@ export default function ManagerAnalysisPage() {
               </div>
               <textarea
                 className="textarea min-h-[200px] font-mono text-xs"
-                placeholder={
-                  "\uc9c0\ub09c\uc8fc \uc5c5\ubb34 \ubd84\uc11d \ubc0f \uc81c\uc5b8 \ubcf4\uace0\uc11c \uc804\uccb4 \ub0b4\uc6a9\uc744 \ubd99\uc5ec\ub123\uae30..."
-                }
+                placeholder={`${scopeText.compareRelative}(${compareWeek.label}) 업무 분석·제언 보고서 전체를 붙여넣기…`}
                 value={previousAnalysis}
                 onChange={(e) => setPreviousAnalysis(e.target.value)}
               />
@@ -435,7 +451,7 @@ export default function ManagerAnalysisPage() {
               </h3>
               <div>
                 <label className="label">
-                  {"\ucca8\uc5b8\u00b7\ucd94\uac00 \uc9c0\uc2dc (\uc774\ubc88 \uc8fc \ubcf4\uace0\uc5d0 \ubc18\uc601)"}
+                  {`첨언·추가 지시 (${scopeText.targetRelative} 보고서에 반영)`}
                 </label>
                 <textarea
                   className="textarea min-h-[120px]"
@@ -476,10 +492,12 @@ export default function ManagerAnalysisPage() {
 
           {meta && (
             <p className="muted mt-3 text-sm">
-              {"\uc77c\uc77c \uae30\ub85d "}
-              {meta.reportCount}
-              {"\uac74 \uae30\uc900 \u00b7 \ube44\uad50\uc8fc "}
-              {meta.previousWeek}
+              {meta.scopeSummary ?? (
+                <>
+                  분석 대상 {meta.targetWeek} 일일 기록 {meta.reportCount}건 ·
+                  비교 기준 {meta.compareWeek}
+                </>
+              )}
             </p>
           )}
 
@@ -508,7 +526,8 @@ export default function ManagerAnalysisPage() {
               </div>
               <WeeklyAnalysisReport
                 markdown={analysis}
-                weekLabel={week.label}
+                weekLabel={scopeText.targetCaption}
+                compareWeekLabel={scopeText.compareCaption}
                 source={analysisSource}
               />
             </section>

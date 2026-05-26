@@ -10,7 +10,8 @@
     "import:weekly": "tsx scripts/import-and-analyze.ts",
     "upload:analysis": "tsx scripts/upload-cursor-analysis.ts",
     "cron:weekly": "tsx scripts/run-weekly-auto.ts",
-    "cron:weekly:sunday": "tsx scripts/run-weekly-auto.ts --sunday"
+    "cron:weekly:sunday": "tsx scripts/run-weekly-auto.ts --sunday",
+    "generate:cursor": "tsx scripts/generate-cursor-analysis.ts"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

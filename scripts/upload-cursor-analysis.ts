@@ -1,7 +1,10 @@
 /**
  * Cursor 등에서 작성한 Markdown 보고서를 앱 분석 저장소에 등록
  *
- * 사용 예:
+ * 권장: 지지난주 저장 분석을 비교 기준으로 지난주 분석을 자동 생성할 때
+ *   npm run generate:cursor
+ *
+ * 수동 업로드 예:
  *   npx tsx scripts/upload-cursor-analysis.ts 2026-05-18 2026-05-22 data/analyses/2026-05-18_2026-05-22.md
  */
 import { promises as fs } from "fs";

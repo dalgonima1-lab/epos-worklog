@@ -10,6 +10,7 @@ import { StrategicChecklistPanel } from "@/components/StrategicChecklistPanel";
 interface WeeklyAnalysisReportProps {
   markdown: string;
   weekLabel?: string;
+  compareWeekLabel?: string;
   source?: "gemini" | "cursor" | "file" | "auto" | "";
 }
 
@@ -72,10 +73,12 @@ function BulletList({
 function ReportHeader({
   report,
   weekLabel,
+  compareWeekLabel,
   source,
 }: {
   report: ParsedAnalysisReport;
   weekLabel?: string;
+  compareWeekLabel?: string;
   source?: string;
 }) {
   const period =
@@ -88,10 +91,16 @@ function ReportHeader({
     <header className="war-report-header">
       <p className="war-report-eyebrow">Executive Report</p>
       <h1 className="war-report-title">{report.title}</h1>
-      {period ? (
+      {period || weekLabel ? (
         <p className="war-report-period">
-          <span className="war-report-period-label">분석 기간</span>
-          <span className="war-report-period-value">{period}</span>
+          <span className="war-report-period-label">분석 대상</span>
+          <span className="war-report-period-value">{period ?? weekLabel}</span>
+        </p>
+      ) : null}
+      {compareWeekLabel ? (
+        <p className="war-report-period war-report-period--compare">
+          <span className="war-report-period-label">비교 기준</span>
+          <span className="war-report-period-value">{compareWeekLabel}</span>
         </p>
       ) : null}
       <MetaGrid>
@@ -174,13 +183,19 @@ function MemberEvalBlock({
 export function WeeklyAnalysisReport({
   markdown,
   weekLabel,
+  compareWeekLabel,
   source,
 }: WeeklyAnalysisReportProps) {
   const report = useMemo(() => parseAnalysisMarkdown(markdown), [markdown]);
 
   return (
     <article className="weekly-analysis-report w-full min-w-0">
-      <ReportHeader report={report} weekLabel={weekLabel} source={source} />
+      <ReportHeader
+        report={report}
+        weekLabel={weekLabel}
+        compareWeekLabel={compareWeekLabel}
+        source={source}
+      />
 
       <div className="war-sections">
         {report.sections.map((section, idx) => {

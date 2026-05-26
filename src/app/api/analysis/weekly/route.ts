@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildAnalysisPrompt } from "@/lib/analysisPrompt";
 import { generateWithGemini } from "@/lib/gemini";
 import { getDb, getMembers, getReportsInRange, verifyManagerPin } from "@/lib/db";
-import { getWeekRange, shiftWeek } from "@/lib/dates";
+import { getCompareWeekForTarget } from "@/lib/analysisWeekScope";
+import { formatScopeSummary } from "@/lib/analysisWeekScope";
+import { getWeekRange } from "@/lib/dates";
 import { buildWeeklyReportsContext } from "@/lib/reportContext";
 import {
   loadGeneratedAnalysis,
@@ -58,12 +60,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const anchor = anchorDate
-    ? new Date(anchorDate + "T12:00:00")
-    : new Date(end + "T12:00:00");
-  const prevWeek = getWeekRange(shiftWeek(anchor, -1));
-  const currentLabel = `${start} ~ ${end}`;
-  const prevLabel = prevWeek.label;
+  const compareWeek = getCompareWeekForTarget(end);
+  const targetWeek = { start, end, label: `${start} ~ ${end}` };
+  const scope = { targetWeek, compareWeek };
+  const scopeText = formatScopeSummary(scope);
+  const currentLabel = targetWeek.label;
+  const prevLabel = compareWeek.label;
   let currentReports: Awaited<ReturnType<typeof getReportsInRange>> = [];
   let previousReports: Awaited<ReturnType<typeof getReportsInRange>> = [];
 
@@ -72,7 +74,10 @@ export async function POST(request: NextRequest) {
     const members = await getMembers();
 
     currentReports = await getReportsInRange(start, end);
-    previousReports = await getReportsInRange(prevWeek.start, prevWeek.end);
+    previousReports = await getReportsInRange(
+      compareWeek.start,
+      compareWeek.end
+    );
 
     const currentWeekData = buildWeeklyReportsContext(
       db.teamName,
@@ -89,10 +94,10 @@ export async function POST(request: NextRequest) {
 
     const prevAnalysis =
       String(previousAnalysisText ?? "").trim() ||
-      (await loadReferenceForWeek(prevWeek.start, prevWeek.end)) ||
+      (await loadReferenceForWeek(compareWeek.start, compareWeek.end)) ||
       "";
 
-    const weekTitle = formatWeekTitle(anchor, db.teamName);
+    const weekTitle = formatWeekTitle(end, db.teamName);
     const prompt = buildAnalysisPrompt({
       teamName: db.teamName,
       weekTitle,
@@ -114,10 +119,11 @@ export async function POST(request: NextRequest) {
       weekKey: key,
       source: "gemini",
       meta: {
-        currentWeek: currentLabel,
-        previousWeek: prevLabel,
+        scopeSummary: scopeText.oneLiner,
+        targetWeek: currentLabel,
+        compareWeek: prevLabel,
         reportCount: currentReports.length,
-        previousReportCount: previousReports.length,
+        compareReportCount: previousReports.length,
       },
     });
   } catch (e) {
@@ -141,10 +147,11 @@ export async function POST(request: NextRequest) {
         notice: `Gemini API 오류로 새로 생성하지 못했습니다. 대신 ${sourceLabel}에서 저장해 둔 주간 분석을 표시합니다.`,
         geminiError: message,
         meta: {
-          currentWeek: currentLabel,
-          previousWeek: prevLabel,
+          scopeSummary: scopeText.oneLiner,
+          targetWeek: currentLabel,
+          compareWeek: prevLabel,
           reportCount: currentReports.length,
-          previousReportCount: previousReports.length,
+          compareReportCount: previousReports.length,
         },
       });
     }
@@ -177,7 +184,8 @@ export async function GET(request: NextRequest) {
   });
 }
 
-function formatWeekTitle(anchor: Date, teamName: string): string {
+function formatWeekTitle(endIso: string, teamName: string): string {
+  const anchor = new Date(endIso + "T12:00:00");
   const month = anchor.getMonth() + 1;
   const day = anchor.getDate();
   const weekOfMonth = Math.ceil(day / 7);

@@ -8,7 +8,12 @@ import { createRequire } from "module";
 import { upsertReport, getDb, getMembers, getReportsInRange } from "../src/lib/db";
 import { generateWithGemini } from "../src/lib/gemini";
 import { buildWeeklyReportsContext } from "../src/lib/reportContext";
-import { saveGeneratedAnalysis, weekKey } from "../src/lib/references";
+import {
+  loadPriorWeekAnalysisText,
+  saveGeneratedAnalysis,
+  weekKey,
+} from "../src/lib/references";
+import { getCompareWeekForTarget } from "../src/lib/analysisWeekScope";
 import { getWeekRange } from "../src/lib/dates";
 import { promises as fs } from "fs";
 import { isFirebaseConfigured } from "../src/lib/firebaseAdmin";
@@ -86,6 +91,9 @@ async function importReports() {
 async function generateWeeklyAnalysis() {
   const anchor = new Date("2026-05-22T12:00:00");
   const { start, end, label } = getWeekRange(anchor);
+  const compareWeek = getCompareWeekForTarget(end);
+  const compareKey = weekKey(compareWeek.start, compareWeek.end);
+  const prior = await loadPriorWeekAnalysisText(compareKey);
   const key = weekKey(start, end);
   const fallbackPath = path.join(
     process.cwd(),
@@ -98,11 +106,25 @@ async function generateWeeklyAnalysis() {
     const db = await getDb();
     const members = await getMembers();
     const currentReports = await getReportsInRange(start, end);
+    const compareReports = await getReportsInRange(
+      compareWeek.start,
+      compareWeek.end
+    );
     const currentContext = buildWeeklyReportsContext(
       db.teamName,
       label,
       members,
       currentReports
+    );
+    const compareContext = buildWeeklyReportsContext(
+      db.teamName,
+      compareWeek.label,
+      members,
+      compareReports
+    );
+
+    console.log(
+      `비교 기준: ${compareWeek.label} (보고서 ${prior.text ? prior.source : "없음"})`
     );
 
     const { buildAnalysisPrompt } = await import("../src/lib/analysisPrompt");
@@ -110,10 +132,10 @@ async function generateWeeklyAnalysis() {
       teamName: db.teamName,
       weekTitle: `EPOS 관리팀 주간 분석 (${label})`,
       currentWeekLabel: label,
-      previousWeekLabel: "(이전 주 데이터 없음)",
+      previousWeekLabel: compareWeek.label,
       currentWeekData: currentContext,
-      previousWeekData: "(없음)",
-      previousAnalysisText: "",
+      previousWeekData: compareContext,
+      previousAnalysisText: prior.text,
       managerNotes:
         "5월 3주차 주간업무보고서 엑셀 반영분. 조명제어 관제·DB·A/S 중심.",
       strategicChecklist: "",

@@ -34,8 +34,8 @@ export function buildAnalysisPrompt(params: {
 참조: 경영지원본부, 개발부, EPOS 관리팀
 
 ## 1. 종합 평가 (Executive Summary)
-- 이번 주(${currentWeekLabel}) 팀 전체 성과를 3~5문장으로 요약
-- 지난주(${previousWeekLabel}) 제언·전략 과제 대비 체질 개선 여부 평가
+- **분석 대상 주**(${currentWeekLabel}) 팀 전체 성과를 3~5문장으로 요약
+- **비교 기준 주**(${previousWeekLabel})에 저장된 분석·제언·전략 과제 대비 체질 개선 여부 평가
 - 긍정적 변화와 리스크를 균형 있게 기술
 
 ## 2. 구성원별 성과 및 보완 과제 정밀 분석
@@ -66,16 +66,16 @@ export function buildAnalysisPrompt(params: {
 
 ## 입력 데이터
 
-### [A] 이번 주(${currentWeekLabel}) 팀원 일일 업무 기록
+### [A] 분석 대상 주(${currentWeekLabel}) 팀원 일일 업무 기록
 ${currentWeekData}
 
-### [B] 지난주(${previousWeekLabel}) 팀원 일일 업무 기록 (비교용)
-${previousWeekData || "(지난주 일일 기록 없음)"}
+### [B] 비교 기준 주(${previousWeekLabel}) 팀원 일일 업무 기록 (참고)
+${previousWeekData || "(해당 주 일일 기록 없음)"}
 
-### [C] 지난주 업무 분석·제언 보고서 (비교 기준)
-${previousAnalysisText || "(지난주 분석 보고서 미제공 — 일일 기록만으로 추론)"}
+### [C] 비교 기준 주(${previousWeekLabel}) 업무 분석·제언 보고서 (전주 저장본)
+${previousAnalysisText || "(비교 기준 보고서 미제공 — [A] 일일 기록만으로 추론)"}
 
-### [D] 지난주 핵심 전략 과제 목록 (체크리스트용)
+### [D] 비교 기준 주 핵심 전략 과제 목록 (체크리스트용)
 ${strategicChecklist || "(별도 미제공 — [C] 보고서에서 추출하여 체크리스트 작성)"}
 
 ### [E] 팀장 첨언·추가 지시 초안
@@ -86,7 +86,7 @@ ${managerNotes || "(없음 — [5] 섹션은 '추가 첨언 없음'으로 간략
 ## 작성 규칙
 - 반드시 한국어, 경영 보고서 문체
 - 일일 기록에 없는 내용은 추측하지 말고 "기록상 확인되지 않음"으로 표기
-- 인명은 일일 기록·지난주 보고서에 나온 이름을 사용
+- 인명은 일일 기록·[C] 비교 기준 보고서에 나온 이름을 사용
 - 과장하지 말고 데이터 기반으로 작성
 - Markdown만 출력 (코드블록 감싸지 말 것)`;
 }

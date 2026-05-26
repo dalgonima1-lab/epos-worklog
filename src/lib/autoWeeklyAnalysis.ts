@@ -183,7 +183,7 @@ export function generateAutoWeeklyAnalysis(params: {
   if (previousWeekLabel && previousAnalysisMarkdown?.trim()) {
     lines.push(
       ``,
-      `**지난주(${previousWeekLabel}) 대비:** 지난주 분석 보고서와 비교하여 이번 주 일일 기록의 이행·미비 추이를 반영했습니다.`
+      `**비교 기준 주(${previousWeekLabel}) 대비:** 직전 주에 저장된 분석 보고서와 비교하여 분석 대상 주 일일 기록의 이행·미비 추이를 반영했습니다.`
     );
   }
 
