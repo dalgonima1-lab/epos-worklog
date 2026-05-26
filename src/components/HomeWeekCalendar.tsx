@@ -12,6 +12,7 @@ import {
 } from "@/lib/dates";
 import { StationPicker } from "@/components/StationPicker";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
+import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import {
   formatStationVisitLabel,
   isStationFacilityArea,
@@ -65,12 +66,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [formDate, setFormDate] = useState(formatDate(new Date()));
   const [formMemberId, setFormMemberId] = useState("");
-  const [formTitle, setFormTitle] = useState("");
   const [formStation, setFormStation] = useState("");
   const [formFacilityArea, setFormFacilityArea] = useState<
     StationFacilityArea | ""
   >("");
-  const [formNote, setFormNote] = useState("");
+  const [formWorkContent, setFormWorkContent] = useState("");
   const [saving, setSaving] = useState(false);
 
   const weekAnchor = useMemo(
@@ -88,6 +88,15 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     for (const mem of members) m.set(mem.id, mem.name);
     return m;
   }, [members]);
+
+  const scheduleTitlePreview = useMemo(() => {
+    if (!formStation.trim() || !formFacilityArea) return "";
+    return buildScheduleTitle(
+      formStation,
+      formFacilityArea,
+      formWorkContent
+    );
+  }, [formStation, formFacilityArea, formWorkContent]);
 
   const reportByKey = useMemo(() => {
     const m = new Map<string, DailyReport>();
@@ -144,10 +153,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   function openAdd(date: string) {
     setEditing(null);
     setFormDate(date);
-    setFormTitle("");
     setFormStation("");
     setFormFacilityArea("");
-    setFormNote("");
+    setFormWorkContent("");
     if (!formMemberId && members.length) {
       setFormMemberId(members[0].id);
     }
@@ -158,11 +166,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setEditing(entry);
     setFormDate(entry.date);
     setFormMemberId(entry.memberId);
-    setFormTitle(entry.title);
     setFormStation(entry.stationName ?? "");
     const area = entry.facilityArea?.trim() ?? "";
     setFormFacilityArea(isStationFacilityArea(area) ? area : "");
-    setFormNote(entry.note ?? "");
+    setFormWorkContent(entry.note ?? "");
     setModalOpen(true);
   }
 
@@ -185,10 +192,23 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
 
   async function saveSchedule(e: React.FormEvent) {
     e.preventDefault();
-    if (formStation.trim() && !formFacilityArea) {
-      setError("역사를 선택했으면 작업 장소(전기실·변전소·역무실)도 선택해 주세요.");
+    if (!formStation.trim()) {
+      setError("호선과 역사명을 선택해 주세요.");
       return;
     }
+    if (!formFacilityArea) {
+      setError("작업 장소(전기실·변전소·역무실)를 선택해 주세요.");
+      return;
+    }
+    if (!formWorkContent.trim()) {
+      setError("작업 내용을 입력해 주세요.");
+      return;
+    }
+    const title = buildScheduleTitle(
+      formStation,
+      formFacilityArea,
+      formWorkContent
+    );
     setSaving(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -198,10 +218,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           id: editing?.id,
           date: formDate,
           memberId: formMemberId,
-          title: formTitle,
-          stationName: formStation.trim() || undefined,
-          facilityArea: formFacilityArea || undefined,
-          note: formNote,
+          title,
+          stationName: formStation.trim(),
+          facilityArea: formFacilityArea,
+          note: formWorkContent.trim(),
         }),
       });
       const data = await res.json();
@@ -435,35 +455,42 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="label">일정 제목</label>
-                <input
-                  className="input"
-                  placeholder="예: 길음역 타일 마감"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  required
-                />
-              </div>
               <StationPicker
                 value={formStation}
                 onChange={setFormStation}
                 facilityArea={formFacilityArea}
                 onFacilityChange={setFormFacilityArea}
-                requireFacility={!!formStation.trim()}
+                requireFacility
                 disabled={saving}
                 enableRecentTabs
                 enableMetroPicker
                 enableDirectInput
               />
               <div>
-                <label className="label">메모 (선택)</label>
+                <label className="label">
+                  작업 내용 <span className="text-red-600">*</span>
+                </label>
                 <textarea
                   className="textarea min-h-[72px]"
-                  value={formNote}
-                  onChange={(e) => setFormNote(e.target.value)}
+                  placeholder="예: 관제 화면 점검, DB 매핑 작업"
+                  value={formWorkContent}
+                  required
+                  onChange={(e) => setFormWorkContent(e.target.value)}
                 />
               </div>
+              {scheduleTitlePreview ? (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2">
+                  <p className="text-xs font-medium text-indigo-900">
+                    저장될 일정 제목
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {scheduleTitlePreview}
+                  </p>
+                  <p className="muted mt-1 text-[11px]">
+                    호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다.
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button

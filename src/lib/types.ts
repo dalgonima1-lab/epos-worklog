@@ -51,6 +51,7 @@ export interface ScheduleEntry {
   stationName?: string;
   /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 */
   facilityArea?: string;
+  /** 작업 내용 (제목 자동 생성에 사용) */
   note?: string;
   createdAt: string;
   updatedAt: string;
