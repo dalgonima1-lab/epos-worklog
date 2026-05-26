@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  loadReferenceAnalysis,
+  loadPriorWeekAnalysisText,
   saveReferenceAnalysis,
   weekKey,
 } from "@/lib/references";
@@ -20,8 +20,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "PIN 오류" }, { status: 403 });
   }
 
-  const text = await loadReferenceAnalysis(weekKey(start, end));
-  return NextResponse.json({ text: text ?? "" });
+  const { text, source } = await loadPriorWeekAnalysisText(weekKey(start, end));
+  return NextResponse.json({
+    text,
+    source,
+    weekLabel: `${start} ~ ${end}`,
+  });
 }
 
 export async function POST(request: NextRequest) {

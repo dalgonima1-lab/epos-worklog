@@ -13,6 +13,7 @@ export default function ManagerAnalysisPage() {
   const [error, setError] = useState("");
 
   const [previousAnalysis, setPreviousAnalysis] = useState("");
+  const [previousAnalysisHint, setPreviousAnalysisHint] = useState("");
   const [strategicChecklist, setStrategicChecklist] = useState("");
   const [managerNotes, setManagerNotes] = useState("");
   const [analysis, setAnalysis] = useState("");
@@ -43,7 +44,21 @@ export default function ManagerAnalysisPage() {
     )
       .then((r) => r.json())
       .then((d) => {
-        if (d.text) setPreviousAnalysis(d.text);
+        if (d.text) {
+          setPreviousAnalysis(d.text);
+          setPreviousAnalysisHint(
+            d.source === "analysis"
+              ? `${prevWeek.label}에 저장된 주간 분석을 비교 기준으로 불러왔습니다.`
+              : d.source === "reference"
+                ? `${prevWeek.label} 참고 보고서(직접 저장)를 불러왔습니다.`
+                : ""
+          );
+        } else {
+          setPreviousAnalysis("");
+          setPreviousAnalysisHint(
+            `${prevWeek.label} 저장·참고 분석이 없습니다. PDF를 붙여넣거나, 그 주차 분석을 먼저 만든 뒤 이용하세요.`
+          );
+        }
       });
     fetch(
       `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
@@ -140,7 +155,8 @@ export default function ManagerAnalysisPage() {
     }
     if (!data.markdown) {
       setError(
-        "이 주차에 저장된 분석이 없습니다. Cursor로 작성·업로드 후 다시 시도하거나 Gemini를 사용하세요."
+        `${week.label} 주차에 저장된 분석이 없습니다. ` +
+          "상단에서 주차를 맞춘 뒤 다시 시도하세요. (예: 5월 3주차 = 2026-05-18 ~ 05-22)"
       );
       return;
     }
@@ -245,10 +261,14 @@ export default function ManagerAnalysisPage() {
         <>
           <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">{"\ubd84\uc11d \ub300\uc0c1 \uc8fc"}</p>
+              <p className="font-semibold">분석·조회 대상 주 (이번 화면)</p>
               <p className="muted">{week.label}</p>
               <p className="muted mt-1 text-xs">
-                {"\ube44\uad50: \uc9c0\ub09c\uc8fc "}({prevWeek.label})
+                비교 기준 = 그 전 주(저저번주) 분석: {prevWeek.label}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                저번주를 분석하려면 「이전 주」로 한 번, 저저번주와 비교하려면
+                「이전 주」를 두 번 눌러 주차를 맞추세요.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -289,13 +309,15 @@ export default function ManagerAnalysisPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="card space-y-3 p-4">
               <h3 className="font-semibold">
-                {"1. \uc9c0\ub09c\uc8fc \ubd84\uc11d \ubcf4\uace0\uc11c (\ube44\uad50 \uae30\uc900)"}
+                1. 직전 주 분석 보고서 ({prevWeek.label})
               </h3>
               <p className="muted text-xs">
-                {
-                  "PDF \ubcf4\uace0\uc11c \ub0b4\uc6a9\uc744 \ubd99\uc5ec\ub123\uac70\ub098 .txt \ud30c\uc77c\uc744 \uc5c5\ub85c\ub4dc\ud558\uc138\uc694. Gemini\uac00 \uc9c0\ub09c\uc8fc \uc81c\uc5b8\uacfc \uc774\ubc88 \uc8fc \uc77c\uc77c \uae30\ub85d\uc744 \ube44\uad50\ud569\ub2c8\ub2e4."
-                }
+                Gemini·Cursor가 「비교 기준」으로 씁니다. 붙여넣기/업로드하거나,
+                직전 주에 저장된 주간 분석이 있으면 자동으로 채워집니다.
               </p>
+              {previousAnalysisHint ? (
+                <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"

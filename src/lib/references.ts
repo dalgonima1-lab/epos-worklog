@@ -7,21 +7,41 @@ const REF_DIR = path.join(process.cwd(), "data", "references");
 const ANALYSIS_DIR = path.join(process.cwd(), "data", "analyses");
 
 export async function saveReferenceAnalysis(
-  weekKey: string,
+  key: string,
   text: string
 ): Promise<void> {
   await fs.mkdir(REF_DIR, { recursive: true });
-  await fs.writeFile(path.join(REF_DIR, `${weekKey}.txt`), text, "utf-8");
+  await fs.writeFile(path.join(REF_DIR, `${key}.txt`), text, "utf-8");
+  await saveWeeklyAnalysis(key, text, "cursor");
 }
 
+/** 팀장이 붙여넣은 지난주 참고 txt */
 export async function loadReferenceAnalysis(
-  weekKey: string
+  key: string
 ): Promise<string | null> {
   try {
-    return await fs.readFile(path.join(REF_DIR, `${weekKey}.txt`), "utf-8");
+    return await fs.readFile(path.join(REF_DIR, `${key}.txt`), "utf-8");
   } catch {
     return null;
   }
+}
+
+/**
+ * 지난주 분석 보고서 (비교용).
+ * 1) references/*.txt  2) 해당 주에 저장된 주간 분석(Firebase/파일)
+ */
+export async function loadPriorWeekAnalysisText(
+  key: string
+): Promise<{ text: string; source: "reference" | "analysis" | "" }> {
+  const pasted = await loadReferenceAnalysis(key);
+  if (pasted?.trim()) {
+    return { text: pasted.trim(), source: "reference" };
+  }
+  const generated = await loadGeneratedAnalysis(key);
+  if (generated?.markdown?.trim()) {
+    return { text: generated.markdown.trim(), source: "analysis" };
+  }
+  return { text: "", source: "" };
 }
 
 export async function saveGeneratedAnalysis(

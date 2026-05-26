@@ -186,6 +186,7 @@ async function loadReferenceForWeek(
   start: string,
   end: string
 ): Promise<string | null> {
-  const { loadReferenceAnalysis } = await import("@/lib/references");
-  return loadReferenceAnalysis(weekKey(start, end));
+  const { loadPriorWeekAnalysisText } = await import("@/lib/references");
+  const { text } = await loadPriorWeekAnalysisText(weekKey(start, end));
+  return text || null;
 }
