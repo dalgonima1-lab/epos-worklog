@@ -26,7 +26,16 @@ import {
   uniqueStationsFromTargets,
   type MaintenanceVisitTarget,
 } from "@/lib/maintenanceVisit";
+import { getKoreanHolidayName, type KoreanHoliday } from "@/lib/koreanHolidays";
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
+import {
+  ANNUAL_LEAVE_FACILITY,
+  defaultTimeOffTitle,
+  isTimeOffFacility,
+  PUBLIC_HOLIDAY_FACILITY,
+  scheduleFormKindFromFacility,
+  type ScheduleFormKind,
+} from "@/lib/scheduleKinds";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import {
   cohortMemberIdsForVisit,
@@ -106,6 +115,20 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   >([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [weekHolidays, setWeekHolidays] = useState<KoreanHoliday[]>([]);
+  const [formScheduleKind, setFormScheduleKind] =
+    useState<ScheduleFormKind>("field");
+
+  const holidaysByDate = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of weekHolidays) m.set(h.date, h.name);
+    return m;
+  }, [weekHolidays]);
+
+  const formDateHolidayName = useMemo(
+    () => getKoreanHolidayName(formDate),
+    [formDate]
+  );
 
   const writers = useMemo(() => fieldMembers(members), [members]);
 
@@ -126,6 +149,15 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   }, [members]);
 
   const scheduleTitlePreview = useMemo(() => {
+    if (formScheduleKind === "annual_leave") {
+      return ANNUAL_LEAVE_FACILITY;
+    }
+    if (formScheduleKind === "public_holiday") {
+      return defaultTimeOffTitle(
+        "public_holiday",
+        formDateHolidayName ?? formWorkContent
+      );
+    }
     const stations =
       (maintenanceMode || multiStationMode) && selectedStations.length > 0
         ? selectedStations
@@ -165,6 +197,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     multiStationMode,
     selectedStations,
     stationFacilityByStation,
+    formScheduleKind,
+    formDateHolidayName,
   ]);
 
   const reportByKey = useMemo(() => {
@@ -179,22 +213,27 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setLoading(true);
     setError("");
     try {
-      const [schedRes, repRes] = await Promise.all([
+      const [schedRes, repRes, holRes] = await Promise.all([
         fetch(
           `/api/schedules?start=${encodeURIComponent(week.start)}&end=${encodeURIComponent(week.end)}`
         ),
         fetch(
           `/api/reports?start=${encodeURIComponent(week.start)}&end=${encodeURIComponent(week.end)}`
         ),
+        fetch(
+          `/api/holidays?start=${encodeURIComponent(week.start)}&end=${encodeURIComponent(week.end)}`
+        ),
       ]);
       const schedData = await schedRes.json();
       const repData = await repRes.json();
+      const holData = await holRes.json();
       if (!schedRes.ok) {
         setError(schedData.error ?? "일정을 불러오지 못했습니다.");
         return;
       }
       setSchedules(schedData.schedules ?? []);
       setReports(repData.reports ?? []);
+      setWeekHolidays(holRes.ok ? (holData.holidays ?? []) : []);
     } catch {
       setError("네트워크 오류입니다.");
     } finally {
@@ -222,9 +261,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   function openAdd(date: string) {
     setEditing(null);
     setFormDate(date);
+    const holidayName = getKoreanHolidayName(date);
+    setFormScheduleKind(holidayName ? "public_holiday" : "field");
     setFormStation("");
     setFormFacilityArea("");
-    setFormWorkContent("");
+    setFormWorkContent(holidayName ?? "");
     setMaintenanceMode(false);
     setManagementOffice("");
     setMultiStationMode(false);
@@ -267,6 +308,33 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setEditing(entry);
     setFormDate(entry.date);
     setFormMemberId(entry.memberId);
+    if (isTimeOffFacility(entry.facilityArea)) {
+      setFormScheduleKind(scheduleFormKindFromFacility(entry.facilityArea));
+      setFormWorkContent(entry.note ?? entry.title ?? "");
+      setMaintenanceMode(false);
+      setManagementOffice("");
+      setFormStation("");
+      setFormFacilityArea("");
+      setSelectedStations([]);
+      setMultiStationMode(false);
+      setStationFacilityByStation({});
+      setMaintenanceSelections([]);
+      if (entry.visitGroupId) {
+        const cohort = cohortMemberIdsForVisit(
+          schedules,
+          entry.date,
+          entry.visitGroupId
+        );
+        const ids = cohort.length > 0 ? cohort : [entry.memberId];
+        setSelectedMemberIds(ids);
+        setFormMemberId(ids[0] ?? entry.memberId);
+      } else {
+        setSelectedMemberIds([entry.memberId]);
+      }
+      setModalOpen(true);
+      return;
+    }
+    setFormScheduleKind("field");
     const isMaintenance = entry.facilityArea === MANAGEMENT_OFFICE_FACILITY;
     setMaintenanceMode(isMaintenance);
     setManagementOffice(entry.managementOffice ?? "");
@@ -349,6 +417,65 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
 
   async function saveSchedule(e: React.FormEvent) {
     e.preventDefault();
+    const memberIds = resolveMemberIdsForSave();
+    if (!memberIds.length) {
+      setError("담당자를 1명 이상 선택해 주세요.");
+      return;
+    }
+    const replaceVisitGroupId = editing?.visitGroupId?.trim() || undefined;
+
+    if (
+      formScheduleKind === "annual_leave" ||
+      formScheduleKind === "public_holiday"
+    ) {
+      const facility =
+        formScheduleKind === "annual_leave"
+          ? ANNUAL_LEAVE_FACILITY
+          : PUBLIC_HOLIDAY_FACILITY;
+      const holidayName = getKoreanHolidayName(formDate);
+      const title = defaultTimeOffTitle(
+        formScheduleKind,
+        holidayName ?? formWorkContent
+      );
+      if (!title.trim()) {
+        setError("일정 제목을 입력해 주세요.");
+        return;
+      }
+      setSaving(true);
+      try {
+        const res = await fetch("/api/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: formDate,
+            memberIds,
+            replaceVisitGroupId,
+            id:
+              !replaceVisitGroupId && memberIds.length === 1
+                ? editing?.id
+                : undefined,
+            title,
+            facilityArea: facility,
+            note: formWorkContent.trim() || undefined,
+            timeOff: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "저장 실패");
+          return;
+        }
+        setModalOpen(false);
+        setError("");
+        await loadWeek();
+      } catch {
+        setError("저장 중 오류가 발생했습니다.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const stations =
       (maintenanceMode || multiStationMode) && selectedStations.length > 0
         ? selectedStations
@@ -388,12 +515,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setError("작업 내용을 입력해 주세요.");
       return;
     }
-    const memberIds = resolveMemberIdsForSave();
-    if (!memberIds.length) {
-      setError("담당자를 1명 이상 선택해 주세요.");
-      return;
-    }
-    const replaceVisitGroupId = editing?.visitGroupId?.trim() || undefined;
 
     if (maintenanceMode && managementOffice) {
       const visitStations = uniqueStationsFromTargets(maintenanceSelections);
@@ -534,23 +655,35 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             {days.map((date) => {
               const daySchedules = schedules.filter((s) => s.date === date);
               const isToday = date === formatDate(new Date());
+              const holidayName = holidaysByDate.get(date);
               return (
                 <div
                   key={date}
                   className={`flex min-h-[10rem] flex-col rounded-xl border p-2.5 sm:p-3 ${
-                    isToday
-                      ? "border-indigo-300 bg-indigo-50/50 ring-1 ring-indigo-200"
-                      : "border-slate-200 bg-slate-50/60"
+                    holidayName
+                      ? "border-rose-300 bg-rose-50/50 ring-1 ring-rose-200"
+                      : isToday
+                        ? "border-indigo-300 bg-indigo-50/50 ring-1 ring-indigo-200"
+                        : "border-slate-200 bg-slate-50/60"
                   }`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-1">
                     <div>
-                      <p className="text-xs font-bold text-indigo-600">
+                      <p
+                        className={`text-xs font-bold ${
+                          holidayName ? "text-rose-700" : "text-indigo-600"
+                        }`}
+                      >
                         {weekdayLabel(date)}
                       </p>
                       <p className="text-sm font-semibold text-slate-900">
                         {date.slice(5).replace("-", "/")}
                       </p>
+                      {holidayName ? (
+                        <p className="mt-0.5 text-[10px] font-semibold text-rose-800">
+                          공휴일 · {holidayName}
+                        </p>
+                      ) : null}
                     </div>
                     <button
                       type="button"
@@ -568,6 +701,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                       </p>
                     ) : (
                       daySchedules.map((s) => {
+                        const timeOff = isTimeOffFacility(s.facilityArea);
                         const report = reportByKey.get(
                           `${s.memberId}:${s.date}`
                         );
@@ -577,7 +711,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                           report,
                           schedules,
                           reports,
-                          memberNameById
+                          memberNameById,
+                          s
                         );
                         const cohortIds =
                           s.visitGroupId && s.date
@@ -607,12 +742,20 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                         return (
                           <div
                             key={s.id}
-                            className="rounded-lg border border-white bg-white p-2 shadow-sm ring-1 ring-slate-100"
+                            className={`rounded-lg border p-2 shadow-sm ring-1 ${
+                              timeOff
+                                ? "border-rose-100 bg-rose-50/90 ring-rose-100"
+                                : "border-white bg-white ring-slate-100"
+                            }`}
                           >
                             <button
                               type="button"
                               className="w-full text-left"
-                              onClick={() =>
+                              onClick={() => {
+                                if (timeOff) {
+                                  openEdit(s);
+                                  return;
+                                }
                                 goDaily(
                                   s.date,
                                   s.memberId,
@@ -625,8 +768,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                                     facility: t.facility as StationFacilityArea,
                                     fromPlan: t.fromPlan !== false,
                                   }))
-                                )
-                              }
+                                );
+                              }}
                             >
                               <p className="line-clamp-2 text-xs font-bold text-slate-900">
                                 {s.title}
@@ -634,8 +777,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                               <p className="mt-0.5 text-[11px] text-slate-600">
                                 {memberNameById.get(s.memberId) ?? s.memberId}
                               </p>
-                              {s.stationName &&
-                              !isSecurityTestPlaceholder(s.stationName) ? (
+                              {timeOff ? (
+                                <p className="mt-0.5 text-[11px] font-medium text-rose-800">
+                                  {s.facilityArea}
+                                  {s.note?.trim() ? ` · ${s.note.trim()}` : ""}
+                                </p>
+                              ) : s.stationName &&
+                                !isSecurityTestPlaceholder(s.stationName) ? (
                                 <p className="mt-0.5 text-[11px] text-blue-700">
                                   {formatStationVisitLabel(
                                     s.stationName,
@@ -650,18 +798,22 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                               ) : null}
                               <span
                                 className={`mt-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  hasRecord
-                                    ? coveredByPeer
-                                      ? "bg-violet-100 text-violet-900"
-                                      : "bg-emerald-100 text-emerald-800"
-                                    : "bg-slate-100 text-slate-600"
+                                  timeOff
+                                    ? "bg-rose-100 text-rose-900"
+                                    : hasRecord
+                                      ? coveredByPeer
+                                        ? "bg-violet-100 text-violet-900"
+                                        : "bg-emerald-100 text-emerald-800"
+                                      : "bg-slate-100 text-slate-600"
                                 }`}
                               >
-                                {hasRecord
-                                  ? coveredByPeer
-                                    ? "동행 기록"
-                                    : "기록 있음"
-                                  : "기록 작성"}
+                                {timeOff
+                                  ? "휴무"
+                                  : hasRecord
+                                    ? coveredByPeer
+                                      ? "동행 기록"
+                                      : "기록 있음"
+                                    : "기록 작성"}
                               </span>
                             </button>
                             <div className="mt-1.5 flex gap-1 border-t border-slate-100 pt-1.5">
@@ -730,7 +882,14 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   type="date"
                   className="input"
                   value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setFormDate(next);
+                    if (formScheduleKind === "public_holiday") {
+                      const name = getKoreanHolidayName(next);
+                      if (name) setFormWorkContent(name);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -771,6 +930,57 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   </p>
                 ) : null}
               </div>
+              <div>
+                <label className="label">일정 유형</label>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["field", "현장·사무"],
+                      ["annual_leave", "연차"],
+                      ["public_holiday", "공휴일"],
+                    ] as const
+                  ).map(([kind, label]) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      disabled={saving}
+                      className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${
+                        formScheduleKind === kind
+                          ? kind === "field"
+                            ? "border-indigo-600 bg-indigo-600 text-white"
+                            : "border-rose-600 bg-rose-600 text-white"
+                          : "border-slate-200 bg-white text-slate-700"
+                      }`}
+                      onClick={() => {
+                        setFormScheduleKind(kind);
+                        if (kind === "annual_leave") {
+                          setFormWorkContent("");
+                          setMaintenanceMode(false);
+                        } else if (kind === "public_holiday") {
+                          const name = getKoreanHolidayName(formDate);
+                          setFormWorkContent(name ?? "");
+                        } else {
+                          setFormWorkContent("");
+                        }
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {formScheduleKind === "public_holiday" && formDateHolidayName ? (
+                  <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
+                    <strong>{formDate}</strong>은 법정 공휴일(
+                    {formDateHolidayName})입니다.
+                  </p>
+                ) : null}
+                {formScheduleKind === "annual_leave" ? (
+                  <p className="muted mt-2 text-xs">
+                    연차는 일일 기록 없이 휴무 일정으로만 등록됩니다.
+                  </p>
+                ) : null}
+              </div>
+              {formScheduleKind === "field" ? (
               <StationPicker
                 value={formStation}
                 onChange={setFormStation}
@@ -813,6 +1023,28 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 managementOffice={managementOffice}
                 onManagementOfficeChange={setManagementOffice}
               />
+              ) : (
+              <div>
+                <label className="label">
+                  {formScheduleKind === "public_holiday"
+                    ? "메모 (선택)"
+                    : "메모 (선택)"}
+                </label>
+                <textarea
+                  className="textarea min-h-[56px]"
+                  placeholder={
+                    formScheduleKind === "public_holiday"
+                      ? formDateHolidayName
+                        ? `기본 제목: ${formDateHolidayName}`
+                        : "예: 회사 지정 휴무"
+                      : "예: 오전 반차"
+                  }
+                  value={formWorkContent}
+                  onChange={(e) => setFormWorkContent(e.target.value)}
+                />
+              </div>
+              )}
+              {formScheduleKind === "field" ? (
               <div>
                 <label className="label">
                   작업 내용 <span className="text-red-600">*</span>
@@ -829,6 +1061,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   onChange={(e) => setFormWorkContent(e.target.value)}
                 />
               </div>
+              ) : null}
               {scheduleTitlePreview ? (
                 <div className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2">
                   <p className="text-xs font-medium text-indigo-900">
@@ -838,13 +1071,17 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     {scheduleTitlePreview}
                   </p>
                   <p className="muted mt-1 text-[11px]">
-                    {maintenanceMode
+                    {formScheduleKind !== "field"
                       ? selectedMemberIds.length > 1
-                        ? `동행 ${selectedMemberIds.length}명에게 관리소 산하 일정 1건씩 저장합니다.`
-                        : "유지보수 용역은 관리소 산하 일정 1건으로 저장합니다."
-                      : selectedMemberIds.length > 1
-                        ? `동행 ${selectedMemberIds.length}명 × 역사별 일정이 생성됩니다.`
-                        : "호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다."}
+                        ? `선택한 ${selectedMemberIds.length}명에게 휴무 일정이 등록됩니다.`
+                        : "휴무 일정으로 등록되며 일일 기록은 필요 없습니다."
+                      : maintenanceMode
+                        ? selectedMemberIds.length > 1
+                          ? `동행 ${selectedMemberIds.length}명에게 관리소 산하 일정 1건씩 저장합니다.`
+                          : "유지보수 용역은 관리소 산하 일정 1건으로 저장합니다."
+                        : selectedMemberIds.length > 1
+                          ? `동행 ${selectedMemberIds.length}명 × 역사별 일정이 생성됩니다.`
+                          : "호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다."}
                   </p>
                 </div>
               ) : null}
@@ -862,6 +1099,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 className="btn btn-secondary"
                 disabled={saving || !formDate || selectedMemberIds.length === 0}
                 onClick={() => {
+                  if (formScheduleKind !== "field") {
+                    setError("현장·사무 일정만 일일 기록으로 바로 갈 수 있습니다.");
+                    return;
+                  }
                   if (
                     !maintenanceMode &&
                     formStation.trim() &&

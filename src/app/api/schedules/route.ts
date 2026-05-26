@@ -6,6 +6,14 @@ import {
   upsertSchedule,
 } from "@/lib/db";
 import type { ScheduleEntry } from "@/lib/types";
+import {
+  ANNUAL_LEAVE_FACILITY,
+  defaultTimeOffTitle,
+  isTimeOffFacility,
+  PUBLIC_HOLIDAY_FACILITY,
+  scheduleFormKindFromFacility,
+} from "@/lib/scheduleKinds";
+import { getKoreanHolidayName } from "@/lib/koreanHolidays";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import { formatFirestoreUserError } from "@/lib/firebaseAdmin";
 
@@ -59,6 +67,47 @@ export async function POST(request: NextRequest) {
     const date = String(body.date ?? "").trim();
     if (replaceVisitGroupId && date) {
       await deleteSchedulesByVisitGroup(date, replaceVisitGroupId);
+    }
+
+    const facilityArea = String(body.facilityArea ?? "").trim();
+    const timeOff =
+      Boolean(body.timeOff) ||
+      isTimeOffFacility(facilityArea) ||
+      facilityArea === ANNUAL_LEAVE_FACILITY ||
+      facilityArea === PUBLIC_HOLIDAY_FACILITY;
+
+    if (timeOff) {
+      const kind = scheduleFormKindFromFacility(facilityArea);
+      const holidayName = getKoreanHolidayName(date);
+      const title =
+        String(body.title ?? "").trim() ||
+        defaultTimeOffTitle(kind, holidayName ?? body.note);
+      if (!title) {
+        return NextResponse.json(
+          { error: "일정 제목을 입력해 주세요." },
+          { status: 400 }
+        );
+      }
+      const area =
+        kind === "annual_leave"
+          ? ANNUAL_LEAVE_FACILITY
+          : PUBLIC_HOLIDAY_FACILITY;
+      const schedules: ScheduleEntry[] = [];
+      for (const memberId of memberIds) {
+        const schedule = await upsertSchedule({
+          id: memberIds.length === 1 ? body.id : undefined,
+          date: body.date ?? "",
+          memberId,
+          title,
+          facilityArea: area,
+          note: body.note,
+        });
+        schedules.push(schedule);
+      }
+      return NextResponse.json({
+        schedule: schedules[0],
+        schedules,
+      });
     }
 
     const maintenanceBulk = Boolean(body.maintenanceBulk);

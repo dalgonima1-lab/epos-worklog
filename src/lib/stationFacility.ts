@@ -108,6 +108,9 @@ export function formatStationVisitLabel(
   const station = stationName.trim();
   const area = facilityArea?.trim();
   if (!station) return area ?? "";
+  if (area === "연차" || area === "공휴일") {
+    return area;
+  }
   if (area === OFFICE_WORK_FACILITY) {
     return `${station} · 사무`;
   }

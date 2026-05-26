@@ -1,3 +1,4 @@
+import { isTimeOffFacility } from "@/lib/scheduleKinds";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
 
@@ -84,8 +85,10 @@ export function isScheduleDayComplete(
   report: DailyReport | undefined,
   schedules: ScheduleEntry[],
   reports: DailyReport[],
-  memberNameById: Map<string, string>
+  memberNameById: Map<string, string>,
+  schedule?: ScheduleEntry
 ): boolean {
+  if (schedule && isTimeOffFacility(schedule.facilityArea)) return true;
   if (report && reportHasMeaningfulContent(report)) return true;
   return findCohortCoverage(memberId, date, schedules, reports, memberNameById) !=
     null;
