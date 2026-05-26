@@ -17,8 +17,16 @@ import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
 import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
-import { decodeMaintenanceStationNames } from "@/lib/maintenanceSchedule";
+import { maintenanceSelectionsFromStationDisplays } from "@/lib/maintenancePlan";
+import {
+  decodeMaintenanceStationNames,
+  decodeMaintenanceVisitTargets,
+} from "@/lib/maintenanceSchedule";
 import { getStationDisplayNamesForOffice } from "@/lib/eposStationOffices";
+import {
+  uniqueStationsFromTargets,
+  type MaintenanceVisitTarget,
+} from "@/lib/maintenanceVisit";
 import { calcWorkMinutes } from "@/lib/workTime";
 
 const ROLE_OTHER = "\uae30\ud0c0";
@@ -50,6 +58,9 @@ function DailyPageInner() {
   const [stationFacilityByStation, setStationFacilityByStation] = useState<
     Record<string, StationFacilityArea | "">
   >({});
+  const [maintenanceSelections, setMaintenanceSelections] = useState<
+    MaintenanceVisitTarget[]
+  >([]);
   const [facilityArea, setFacilityArea] = useState<
     StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
   >(() => {
@@ -74,16 +85,28 @@ function DailyPageInner() {
   const [loading, setLoading] = useState(false);
 
   const activeStations = useMemo(() => {
+    if (maintenanceMode && maintenanceSelections.length > 0) {
+      return uniqueStationsFromTargets(maintenanceSelections);
+    }
     if (multiStationMode && selectedStations.length > 0) {
       return selectedStations;
     }
     return stationName.trim() ? [stationName.trim()] : [];
-  }, [multiStationMode, selectedStations, stationName]);
+  }, [
+    maintenanceMode,
+    maintenanceSelections,
+    multiStationMode,
+    selectedStations,
+    stationName,
+  ]);
 
   const perStationFacilities =
     multiStationMode && activeStations.length >= 2 && !maintenanceMode;
 
   const activeFacilityAreas = useMemo(() => {
+    if (maintenanceMode && maintenanceSelections.length > 0) {
+      return [...new Set(maintenanceSelections.map((t) => t.facility))];
+    }
     if (maintenanceMode) return [MANAGEMENT_OFFICE_FACILITY];
     if (perStationFacilities) {
       return activeStations
@@ -100,7 +123,7 @@ function DailyPageInner() {
   ]);
 
   const allFacilitiesChosen =
-    maintenanceMode ||
+    (maintenanceMode && maintenanceSelections.length > 0) ||
     (perStationFacilities
       ? activeStations.every((s) => stationFacilityByStation[s]?.trim())
       : Boolean(facilityArea));
@@ -173,6 +196,7 @@ function DailyPageInner() {
     const qFacility = searchParams.get("facility")?.trim() ?? "";
     const qOffice = searchParams.get("office")?.trim() ?? "";
     const qStations = searchParams.get("stations")?.trim() ?? "";
+    const qTargets = searchParams.get("targets")?.trim() ?? "";
     if (qDate) setDate(qDate);
     if (qMember) setMemberId(qMember);
     if (qStation) setStationName(qStation);
@@ -181,17 +205,25 @@ function DailyPageInner() {
       setManagementOffice(qOffice);
       setMaintenanceMode(true);
       setProcessingRole("유지보수 용역");
-      const fromUrl = decodeMaintenanceStationNames(qStations);
-      const planned =
-        fromUrl.length > 0
-          ? fromUrl
-          : qOffice
-            ? getStationDisplayNamesForOffice(qOffice)
-            : [];
-      if (planned.length > 0) {
-        setSelectedStations(planned);
+      const fromTargets = decodeMaintenanceVisitTargets(qTargets);
+      if (fromTargets.length > 0) {
+        setMaintenanceSelections(fromTargets);
+        const names = uniqueStationsFromTargets(fromTargets);
+        setSelectedStations(names);
         setMultiStationMode(true);
-        if (!qStation && planned[0]) setStationName(planned[0]);
+        if (!qStation && names[0]) setStationName(names[0]);
+      } else {
+        const fromUrl = decodeMaintenanceStationNames(qStations);
+        const planned = qOffice
+          ? maintenanceSelectionsFromStationDisplays(qOffice, fromUrl)
+          : [];
+        if (planned.length > 0) {
+          setMaintenanceSelections(planned);
+          const names = uniqueStationsFromTargets(planned);
+          setSelectedStations(names);
+          setMultiStationMode(true);
+          if (!qStation && names[0]) setStationName(names[0]);
+        }
       }
     } else if (isStationFacilityArea(qFacility)) {
       setFacilityArea(qFacility);
@@ -254,7 +286,25 @@ function DailyPageInner() {
           setProcessingRole("");
           setCustomRole("");
         }
-        if (additional.length > 0) {
+        if (report?.maintenanceVisitTargets?.length) {
+          const targets = (
+            report.maintenanceVisitTargets as {
+              station: string;
+              facility: string;
+              fromPlan?: boolean;
+            }[]
+          ).map(
+            (t): MaintenanceVisitTarget => ({
+              station: t.station,
+              facility: t.facility as StationFacilityArea,
+              fromPlan: t.fromPlan !== false,
+            })
+          );
+          setMaintenanceSelections(targets);
+          const names = uniqueStationsFromTargets(targets);
+          setMultiStationMode(true);
+          setSelectedStations(names);
+        } else if (additional.length > 0) {
           const cohort = [
             safeReportStation,
             ...additional.filter(Boolean),
@@ -340,26 +390,30 @@ function DailyPageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const stations =
-      (maintenanceMode || multiStationMode) && selectedStations.length > 0
-        ? selectedStations
-        : stationName.trim()
-          ? [stationName.trim()]
-          : [];
-    if (!stations.length) {
-      setStatus(
-        maintenanceMode
-          ? "방문한 역사가 없습니다. 해제한 역이 많다면 최소 1개 역은 남겨 주세요."
-          : "역사명을 선택하거나 입력해 주세요."
-      );
+    if (maintenanceMode && !maintenanceSelections.length) {
+      setStatus("실제 방문한 점검 대상(역·기능실)을 1건 이상 남겨 주세요.");
       return;
     }
-    const facilityAreas = stations.map((st) =>
-      stations.length >= 2 && !maintenanceMode
-        ? stationFacilityByStation[st]?.trim() ?? ""
-        : facilityArea.trim()
-    );
-    if (facilityAreas.some((f) => !f)) {
+    const stations =
+      maintenanceMode && maintenanceSelections.length > 0
+        ? uniqueStationsFromTargets(maintenanceSelections)
+        : multiStationMode && selectedStations.length > 0
+          ? selectedStations
+          : stationName.trim()
+            ? [stationName.trim()]
+            : [];
+    if (!stations.length) {
+      setStatus("역사명을 선택하거나 입력해 주세요.");
+      return;
+    }
+    const facilityAreas = maintenanceMode
+      ? [...new Set(maintenanceSelections.map((t) => t.facility))]
+      : stations.map((st) =>
+          stations.length >= 2 && !maintenanceMode
+            ? stationFacilityByStation[st]?.trim() ?? ""
+            : facilityArea.trim()
+        );
+    if (!maintenanceMode && facilityAreas.some((f) => !f)) {
       setStatus(
         stations.length >= 2
           ? "각 역사마다 작업 장소를 선택해 주세요."
@@ -393,13 +447,17 @@ function DailyPageInner() {
         date,
         stationName: stations[0],
         stationNames: stations.length > 1 ? stations : undefined,
-        facilityArea: facilityAreas[0],
+        facilityArea: maintenanceMode
+          ? MANAGEMENT_OFFICE_FACILITY
+          : facilityAreas[0],
         additionalFacilityAreas:
-          stations.length > 1 ? facilityAreas.slice(1) : undefined,
-        managementOffice:
-          facilityAreas[0] === MANAGEMENT_OFFICE_FACILITY
-            ? managementOffice
+          !maintenanceMode && stations.length > 1
+            ? facilityAreas.slice(1)
             : undefined,
+        maintenanceVisitTargets: maintenanceMode
+          ? maintenanceSelections
+          : undefined,
+        managementOffice: maintenanceMode ? managementOffice : undefined,
         processingRole: effectiveRole,
         done,
         plan,
@@ -485,6 +543,7 @@ function DailyPageInner() {
               setStationFacilityByStation({});
               setMultiStationMode(false);
               setSelectedStations([]);
+              setMaintenanceSelections([]);
               setProcessingRole("유지보수 용역");
               setCustomRole("");
             } else {
@@ -492,6 +551,7 @@ function DailyPageInner() {
               setFacilityArea("");
               setStationFacilityByStation({});
               setSelectedStations([]);
+              setMaintenanceSelections([]);
               setMultiStationMode(false);
             }
           }}
@@ -503,6 +563,8 @@ function DailyPageInner() {
           onSelectedStationsChange={setSelectedStations}
           stationFacilityByStation={stationFacilityByStation}
           onStationFacilityByStationChange={setStationFacilityByStation}
+          maintenanceSelections={maintenanceSelections}
+          onMaintenanceSelectionsChange={setMaintenanceSelections}
         />
 
         <div>
@@ -512,9 +574,11 @@ function DailyPageInner() {
           </label>
           {!allFacilitiesChosen ? (
             <p className="muted text-xs">
-              {perStationFacilities
-                ? "각 역사의 작업 장소를 모두 선택하면 공종 목록이 표시됩니다."
-                : "작업 장소를 먼저 선택하면 공종 목록이 표시됩니다."}
+              {maintenanceMode
+                ? "점검 대상(역·기능실)을 1건 이상 선택하면 공종이 활성화됩니다."
+                : perStationFacilities
+                  ? "각 역사의 작업 장소를 모두 선택하면 공종 목록이 표시됩니다."
+                  : "작업 장소를 먼저 선택하면 공종 목록이 표시됩니다."}
             </p>
           ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
             <p className="muted mb-1 text-xs">

@@ -3,6 +3,7 @@ import {
   getEposProductFacilities,
   getEposProductForDisplayName,
 } from "@/lib/eposProductStations";
+import type { MaintenanceVisitTarget } from "@/lib/maintenanceVisit";
 import { parseMetroStationValue } from "@/lib/metroStations";
 
 /** 일정 제목용: `수서관리소` */
@@ -46,10 +47,32 @@ export function buildMaintenanceScheduleTitle(
   return `${officeLabel} 산하 ${segments.join(", ")} - ${work}`;
 }
 
+/** 역·기능실 단위 선택 기준 제목 */
+export function buildMaintenanceScheduleTitleFromTargets(
+  officeId: string,
+  targets: MaintenanceVisitTarget[],
+  workContent: string
+): string {
+  const officeLabel = getMaintenanceOfficeScheduleLabel(officeId);
+  const segments = targets.map((t) => {
+    const { stationName } = parseMetroStationValue(t.station);
+    const name = (stationName || t.station).replace(/^\d+호선\s+/, "").trim();
+    return `${name} ${t.facility}`;
+  });
+  const work = workContent.trim() || "정기점검";
+  if (!segments.length) return `${officeLabel} 산하 - ${work}`;
+  return `${officeLabel} 산하 ${segments.join(", ")} - ${work}`;
+}
+
 /** URL·API용 역 목록 직렬화 */
 export function encodeMaintenanceStationNames(names: string[]): string {
   return names.map((n) => encodeURIComponent(n.trim())).join("|");
 }
+
+export {
+  decodeMaintenanceVisitTargets,
+  encodeMaintenanceVisitTargets,
+} from "@/lib/maintenanceVisit";
 
 export function decodeMaintenanceStationNames(raw: string): string[] {
   if (!raw.trim()) return [];

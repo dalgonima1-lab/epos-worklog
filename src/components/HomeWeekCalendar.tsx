@@ -13,9 +13,18 @@ import {
 import { StationPicker } from "@/components/StationPicker";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import {
-  buildMaintenanceScheduleTitle,
+  buildMaintenanceSelectionsForOffice,
+  maintenanceSelectionsFromStationDisplays,
+} from "@/lib/maintenancePlan";
+import {
+  buildMaintenanceScheduleTitleFromTargets,
   encodeMaintenanceStationNames,
+  encodeMaintenanceVisitTargets,
 } from "@/lib/maintenanceSchedule";
+import {
+  uniqueStationsFromTargets,
+  type MaintenanceVisitTarget,
+} from "@/lib/maintenanceVisit";
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import { getStationDisplayNamesForOffice } from "@/lib/eposStationOffices";
 import { createVisitGroupId } from "@/lib/visitGroup";
@@ -85,6 +94,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [stationFacilityByStation, setStationFacilityByStation] = useState<
     Record<string, StationFacilityArea | "">
   >({});
+  const [maintenanceSelections, setMaintenanceSelections] = useState<
+    MaintenanceVisitTarget[]
+  >([]);
   const [saving, setSaving] = useState(false);
 
   const weekAnchor = useMemo(
@@ -118,9 +130,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
         : formFacilityArea;
 
     if (maintenanceMode && managementOffice) {
-      return buildMaintenanceScheduleTitle(
+      return buildMaintenanceScheduleTitleFromTargets(
         managementOffice,
-        stations,
+        maintenanceSelections,
         formWorkContent
       );
     }
@@ -139,6 +151,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     formWorkContent,
     maintenanceMode,
     managementOffice,
+    maintenanceSelections,
     multiStationMode,
     selectedStations,
     stationFacilityByStation,
@@ -207,6 +220,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setMultiStationMode(false);
     setSelectedStations([]);
     setStationFacilityByStation({});
+    setMaintenanceSelections([]);
     if (!formMemberId && members.length) {
       setFormMemberId(members[0].id);
     }
@@ -229,6 +243,20 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setMultiStationMode(planned.length > 0);
       setFormStation(planned[0] ?? "");
       setFormFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+      setMaintenanceSelections(
+        entry.maintenanceVisitTargets?.length
+          ? entry.maintenanceVisitTargets.map((t) => ({
+              station: t.station,
+              facility: t.facility as StationFacilityArea,
+              fromPlan: t.fromPlan !== false,
+            }))
+          : planned.length
+            ? maintenanceSelectionsFromStationDisplays(
+                entry.managementOffice,
+                planned
+              )
+            : buildMaintenanceSelectionsForOffice(entry.managementOffice)
+      );
     } else {
       setFormStation(entry.stationName ?? "");
       const area = entry.facilityArea?.trim() ?? "";
@@ -247,7 +275,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     stationName?: string,
     facilityArea?: string,
     managementOfficeId?: string,
-    maintenanceStations?: string[]
+    maintenanceStations?: string[],
+    maintenanceTargets?: MaintenanceVisitTarget[]
   ) {
     const q = new URLSearchParams({ date, memberId });
     if (stationName?.trim()) {
@@ -259,7 +288,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     }
     if (area === MANAGEMENT_OFFICE_FACILITY && managementOfficeId?.trim()) {
       q.set("office", managementOfficeId.trim());
-      if (maintenanceStations?.length) {
+      if (maintenanceTargets?.length) {
+        q.set("targets", encodeMaintenanceVisitTargets(maintenanceTargets));
+      } else if (maintenanceStations?.length) {
         q.set("stations", encodeMaintenanceStationNames(maintenanceStations));
       }
     }
@@ -274,12 +305,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
         : formStation.trim()
           ? [formStation.trim()]
           : [];
-    if (!stations.length) {
-      setError(
-        maintenanceMode
-          ? "전기관리소를 선택하면 소속 역사가 자동으로 채워집니다."
-          : "호선과 역사명을 선택해 주세요."
-      );
+    if (maintenanceMode) {
+      if (!maintenanceSelections.length) {
+        setError("점검 대상(역·기능실)을 1건 이상 선택해 주세요.");
+        return;
+      }
+    } else if (!stations.length) {
+      setError("호선과 역사명을 선택해 주세요.");
       return;
     }
     if (maintenanceMode && !managementOffice) {
@@ -308,9 +340,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     }
 
     if (maintenanceMode && managementOffice) {
-      const title = buildMaintenanceScheduleTitle(
+      const visitStations = uniqueStationsFromTargets(maintenanceSelections);
+      const title = buildMaintenanceScheduleTitleFromTargets(
         managementOffice,
-        stations,
+        maintenanceSelections,
         formWorkContent
       );
       setSaving(true);
@@ -324,8 +357,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             memberId: formMemberId,
             maintenanceBulk: true,
             title,
-            stationName: stations[0],
-            maintenanceStationNames: stations,
+            stationName: visitStations[0],
+            maintenanceStationNames: visitStations,
+            maintenanceVisitTargets: maintenanceSelections,
             facilityArea: MANAGEMENT_OFFICE_FACILITY,
             managementOffice,
             note: formWorkContent.trim(),
@@ -491,7 +525,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                                   s.stationName,
                                   s.facilityArea,
                                   s.managementOffice,
-                                  s.maintenanceStationNames
+                                  s.maintenanceStationNames,
+                                  s.maintenanceVisitTargets?.map((t) => ({
+                                    station: t.station,
+                                    facility: t.facility as StationFacilityArea,
+                                    fromPlan: t.fromPlan !== false,
+                                  }))
                                 )
                               }
                             >
@@ -620,6 +659,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 onSelectedStationsChange={setSelectedStations}
                 stationFacilityByStation={stationFacilityByStation}
                 onStationFacilityByStationChange={setStationFacilityByStation}
+                maintenanceSelections={maintenanceSelections}
+                onMaintenanceSelectionsChange={setMaintenanceSelections}
                 maintenanceMode={maintenanceMode}
                 onMaintenanceModeChange={(enabled) => {
                   setMaintenanceMode(enabled);
@@ -629,6 +670,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     setMultiStationMode(false);
                     setSelectedStations([]);
                     setStationFacilityByStation({});
+                    setMaintenanceSelections([]);
                     if (!formWorkContent.trim()) {
                       setFormWorkContent("정기점검");
                     }
@@ -638,6 +680,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     setMultiStationMode(false);
                     setSelectedStations([]);
                     setStationFacilityByStation({});
+                    setMaintenanceSelections([]);
                   }
                 }}
                 managementOffice={managementOffice}
@@ -699,8 +742,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     return;
                   }
                   const dailyStations =
-                    maintenanceMode && selectedStations.length > 0
-                      ? selectedStations
+                    maintenanceMode && maintenanceSelections.length > 0
+                      ? uniqueStationsFromTargets(maintenanceSelections)
                       : undefined;
                   setModalOpen(false);
                   goDaily(
@@ -711,7 +754,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                       ? MANAGEMENT_OFFICE_FACILITY
                       : formFacilityArea,
                     managementOffice,
-                    dailyStations
+                    dailyStations,
+                    maintenanceMode ? maintenanceSelections : undefined
                   );
                 }}
               >

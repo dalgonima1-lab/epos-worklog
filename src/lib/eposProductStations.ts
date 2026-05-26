@@ -1,5 +1,9 @@
 import productData from "@/data/epos-product-stations.json";
 import {
+  getMaintenancePlanFacilities,
+  isStationInMaintenancePlan,
+} from "@/lib/maintenancePlan";
+import {
   normalizeStationName,
   parseMetroStationValue,
   stationMatchKeys,
@@ -58,6 +62,43 @@ export function hasEposProductAtStation(
   stationName: string
 ): boolean {
   return getEposProductFacilities(line, stationName).length > 0;
+}
+
+/** 유지보수 모드: 정기점검계획(선명) 또는 기능실 현황(서브) */
+export function hasEposProductAtStationForMaintenance(
+  line: number,
+  stationName: string,
+  managementOffice?: string
+): boolean {
+  if (managementOffice?.trim()) {
+    if (isStationInMaintenancePlan(managementOffice, line, stationName)) {
+      return true;
+    }
+  }
+  return hasEposProductAtStation(line, stationName);
+}
+
+export function isMaintenancePlanPrimaryStation(
+  line: number,
+  stationName: string,
+  managementOffice?: string
+): boolean {
+  if (!managementOffice?.trim()) return hasEposProductAtStation(line, stationName);
+  return isStationInMaintenancePlan(managementOffice, line, stationName);
+}
+
+/** 기능실 현황(서브)에만 있는 기능실 */
+export function getFacilitySheetOnlyFacilities(
+  line: number,
+  stationName: string,
+  managementOffice?: string
+): StationFacilityArea[] {
+  const sheet = getEposProductFacilities(line, stationName);
+  if (!managementOffice?.trim()) return sheet;
+  const plan = new Set(
+    getMaintenancePlanFacilities(managementOffice, line, stationName)
+  );
+  return sheet.filter((f) => !plan.has(f));
 }
 
 /** 저장된 역 표기(`2호선 강남역`)로 제품 설치 여부·기능실 조회 */

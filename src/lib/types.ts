@@ -26,6 +26,8 @@ export interface DailyReport {
   additionalStationNames?: string[];
   /** additionalStationNames와 같은 순서의 작업 장소 */
   additionalFacilityAreas?: string[];
+  /** 유지보수 방문 (역·기능실, 일일기록에서 해제 가능) */
+  maintenanceVisitTargets?: { station: string; facility: string; fromPlan?: boolean }[];
   /** 여러 역·일정을 묶는 그룹 id */
   visitGroupId?: string;
   /** 공종 */
@@ -63,6 +65,8 @@ export interface ScheduleEntry {
   managementOffice?: string;
   /** 유지보수 일정에 포함된 역사 전체 (일일기록에서 해제 가능) */
   maintenanceStationNames?: string[];
+  /** 유지보수 점검 대상 (역·기능실) */
+  maintenanceVisitTargets?: { station: string; facility: string; fromPlan?: boolean }[];
   /** 작업 내용 (제목 자동 생성에 사용) */
   note?: string;
   /** 여러 역·일정을 묶는 그룹 id */

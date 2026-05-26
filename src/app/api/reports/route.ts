@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     visitGroupId,
     facilityArea,
     additionalFacilityAreas,
+    maintenanceVisitTargets,
     managementOffice,
     processingRole,
     done,
@@ -100,14 +101,19 @@ export async function POST(request: NextRequest) {
   }
 
   const role = String(processingRole).trim();
+  const visitTargets = Array.isArray(maintenanceVisitTargets)
+    ? maintenanceVisitTargets
+    : [];
   const extraFacilities = Array.isArray(additionalFacilityAreas)
     ? additionalFacilityAreas.map((a: string) => String(a).trim())
     : [];
   const allFacilities =
-    namesList.length > 1
-      ? [facility, ...extraFacilities.slice(0, namesList.length - 1)]
-      : [facility];
-  if (namesList.length > 1) {
+    visitTargets.length > 0
+      ? visitTargets.map((t: { facility: string }) => String(t.facility).trim())
+      : namesList.length > 1
+        ? [facility, ...extraFacilities.slice(0, namesList.length - 1)]
+        : [facility];
+  if (visitTargets.length === 0 && namesList.length > 1) {
     for (let i = 0; i < namesList.length; i++) {
       const f = allFacilities[i] ?? "";
       if (!f || !isWorkFacilityArea(f)) {
@@ -119,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
   }
   if (
-    namesList.length > 1
+    visitTargets.length > 0 || namesList.length > 1
       ? !isProcessingRoleAllowedForFacilities(role, allFacilities)
       : !isProcessingRoleAllowedForFacility(role, facility)
   ) {
@@ -150,6 +156,9 @@ export async function POST(request: NextRequest) {
       namesList.length > 1
         ? allFacilities.slice(1)
         : undefined,
+    maintenanceVisitTargets: Array.isArray(maintenanceVisitTargets)
+      ? maintenanceVisitTargets
+      : undefined,
     managementOffice: String(managementOffice ?? "").trim() || undefined,
     processingRole: role,
     done: done ?? "",

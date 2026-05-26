@@ -185,6 +185,28 @@ const officesById = new Map();
 /** @type {Map<string, { line: number, stationName: string, officeId: string, officeShortLabel: string }>} */
 const stationOfficeByKey = new Map();
 
+/** @type {Array<{ officeId: string, line: number, stationName: string, facility: string }>} */
+const maintenancePlan = [];
+
+function normalizeMaintenanceFacility(raw) {
+  const t = String(raw ?? "").trim();
+  if (FACILITY_ORDER.includes(t)) return t;
+  if (/역무/.test(t)) return "역무실";
+  return null;
+}
+
+function addMaintenancePlanEntry(officeShort, lineNum, stationName, facility) {
+  const officeId = registerOffice(officeShort, lineNum);
+  maintenancePlan.push({
+    officeId,
+    line: lineNum,
+    stationName,
+    facility,
+  });
+  addStationRecord(lineNum, stationName, [facility], false);
+  linkStationOffice(lineNum, stationName, officeShort);
+}
+
 function parseOfficeHeader(cell) {
   const text = String(cell ?? "").trim();
   if (!text) return null;
@@ -441,6 +463,9 @@ function ingestMaintenancePlanSheet(rows) {
     const stationM = cell.match(STATION_ROW_RE);
     if (!stationM || !currentOfficeShort || !currentLine) continue;
 
+    const facility = normalizeMaintenanceFacility(stationM[2]);
+    if (!facility) continue;
+
     let stationRaw = stationM[1].trim();
     stationRaw = stationRaw.replace(/역$/, "") + "역";
 
@@ -449,7 +474,12 @@ function ingestMaintenancePlanSheet(rows) {
     const canonical = normStation(match?.name ?? stationRaw);
     if (!lineNum || !isValidStation(canonical)) continue;
 
-    linkStationOffice(lineNum, canonical, currentOfficeShort);
+    addMaintenancePlanEntry(
+      currentOfficeShort,
+      lineNum,
+      canonical,
+      facility
+    );
     linked++;
   }
 
@@ -544,7 +574,16 @@ const out = {
   source: inputs,
   generatedAt: new Date().toISOString().slice(0, 10),
   note:
-    "서울교통공사 기능실·관리소 현황(2025) + 유지보수 정기점검계획서. 조명제어·조명제어연계는 역무실로 매핑.",
+    "정기점검계획서(1차)·기능실 관리소 현황 2025(2차). 조명제어·조명제어연계는 역무실로 매핑.",
+  maintenancePlan: maintenancePlan.sort((a, b) => {
+    if (a.officeId !== b.officeId) {
+      return a.officeId.localeCompare(b.officeId, "ko");
+    }
+    if (a.line !== b.line) return a.line - b.line;
+    const bySt = a.stationName.localeCompare(b.stationName, "ko");
+    if (bySt !== 0) return bySt;
+    return FACILITY_ORDER.indexOf(a.facility) - FACILITY_ORDER.indexOf(b.facility);
+  }),
   stations,
   offices,
   stationOffices,
@@ -560,5 +599,7 @@ console.log(
   "offices",
   offices.length,
   "stationOffices",
-  stationOffices.length
+  stationOffices.length,
+  "maintenancePlan",
+  maintenancePlan.length
 );

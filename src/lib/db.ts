@@ -68,6 +68,7 @@ export type ReportPayload = Pick<
   | "stationName"
   | "facilityArea"
   | "additionalFacilityAreas"
+  | "maintenanceVisitTargets"
   | "managementOffice"
   | "processingRole"
   | "done"
@@ -396,6 +397,9 @@ export async function upsertReport(
       payload.additionalFacilityAreas?.length
         ? payload.additionalFacilityAreas.map((a) => normalizeFacilityArea(a))
         : undefined;
+    existing.maintenanceVisitTargets = payload.maintenanceVisitTargets?.length
+      ? payload.maintenanceVisitTargets
+      : undefined;
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
     );
@@ -425,6 +429,9 @@ export async function upsertReport(
     facilityArea: normalizeFacilityArea(payload.facilityArea),
     additionalFacilityAreas: payload.additionalFacilityAreas?.length
       ? payload.additionalFacilityAreas.map((a) => normalizeFacilityArea(a))
+      : undefined,
+    maintenanceVisitTargets: payload.maintenanceVisitTargets?.length
+      ? payload.maintenanceVisitTargets
       : undefined,
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
@@ -562,6 +569,7 @@ export async function upsertSchedule(payload: {
   note?: string;
   visitGroupId?: string;
   maintenanceStationNames?: string[];
+  maintenanceVisitTargets?: ScheduleEntry["maintenanceVisitTargets"];
 }): Promise<ScheduleEntry> {
   const db = await ensureDb();
   const now = new Date().toISOString();
@@ -588,6 +596,9 @@ export async function upsertSchedule(payload: {
       maintenanceStationNames: payload.maintenanceStationNames?.length
         ? payload.maintenanceStationNames
         : undefined,
+      maintenanceVisitTargets: payload.maintenanceVisitTargets?.length
+        ? payload.maintenanceVisitTargets
+        : undefined,
       updatedAt: now,
     };
     db.schedules[idx] = entry;
@@ -604,6 +615,9 @@ export async function upsertSchedule(payload: {
       visitGroupId: payload.visitGroupId?.trim() || undefined,
       maintenanceStationNames: payload.maintenanceStationNames?.length
         ? payload.maintenanceStationNames
+        : undefined,
+      maintenanceVisitTargets: payload.maintenanceVisitTargets?.length
+        ? payload.maintenanceVisitTargets
         : undefined,
       createdAt: now,
       updatedAt: now,

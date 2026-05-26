@@ -7,7 +7,6 @@ import {
   formatStationNameWithOffice,
   getStationDisplayNamesForOffice,
   getOfficeMetroLine,
-  getStationsForOffice,
   resolveManagementOffice,
 } from "@/lib/eposStationOffices";
 import {
@@ -19,12 +18,25 @@ import {
   parseMetroStationValue,
   type MetroLineInfo,
 } from "@/lib/metroStations";
+import { MaintenanceVisitList } from "@/components/MaintenanceVisitList";
+import {
+  buildMaintenanceSelectionsForOffice,
+  getMaintenancePlanFacilities,
+} from "@/lib/maintenancePlan";
 import {
   formatEposFacilitiesLabel,
   getEposProductFacilities,
   getEposProductForDisplayName,
   hasEposProductAtStation,
+  hasEposProductAtStationForMaintenance,
+  isMaintenancePlanPrimaryStation,
 } from "@/lib/eposProductStations";
+import {
+  maintenanceTargetKey,
+  formatMaintenanceVisitSummary,
+  uniqueStationsFromTargets,
+  type MaintenanceVisitTarget,
+} from "@/lib/maintenanceVisit";
 import {
   formatStationVisitLabel,
   MANAGEMENT_OFFICE_FACILITY,
@@ -60,6 +72,9 @@ interface StationPickerProps {
   onStationFacilityByStationChange?: (
     map: Record<string, StationFacilityArea | "">
   ) => void;
+  /** 유지보수: 역·기능실 단위 선택 */
+  maintenanceSelections?: MaintenanceVisitTarget[];
+  onMaintenanceSelectionsChange?: (targets: MaintenanceVisitTarget[]) => void;
 }
 
 export function StationPicker({
@@ -81,6 +96,8 @@ export function StationPicker({
   onSelectedStationsChange,
   stationFacilityByStation = {},
   onStationFacilityByStationChange,
+  maintenanceSelections = [],
+  onMaintenanceSelectionsChange,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
@@ -126,31 +143,46 @@ export function StationPicker({
     return getMetroStationsForLine(selectedLine);
   }, [selectedLine]);
 
-  const officeStationKeys = useMemo(() => {
-    if (!maintenanceMode || !managementOffice) return null;
-    return getStationsForOffice(managementOffice);
-  }, [maintenanceMode, managementOffice]);
-
   const filteredStations = useMemo(() => {
     if (selectedLine === "") return [];
     const q = stationQuery.trim();
     let list = q
       ? filterMetroStations(selectedLine, q)
       : allLineStations;
-    if (officeStationKeys) {
-      list = list.filter((s) =>
-        officeStationKeys.has(
-          `${selectedLine}|${normalizeStationName(s.name)}`
-        )
-      );
-    }
+    const lineNum = typeof selectedLine === "number" ? selectedLine : null;
     return [...list].sort((a, b) => {
-      const ha = hasEposProductAtStation(selectedLine, a.name);
-      const hb = hasEposProductAtStation(selectedLine, b.name);
+      if (lineNum == null) return a.name.localeCompare(b.name, "ko");
+      const aPrimary = isMaintenancePlanPrimaryStation(
+        lineNum,
+        a.name,
+        maintenanceMode ? managementOffice : undefined
+      );
+      const bPrimary = isMaintenancePlanPrimaryStation(
+        lineNum,
+        b.name,
+        maintenanceMode ? managementOffice : undefined
+      );
+      if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+      const ha = hasEposProductAtStationForMaintenance(
+        lineNum,
+        a.name,
+        maintenanceMode ? managementOffice : undefined
+      );
+      const hb = hasEposProductAtStationForMaintenance(
+        lineNum,
+        b.name,
+        maintenanceMode ? managementOffice : undefined
+      );
       if (ha !== hb) return ha ? -1 : 1;
       return a.name.localeCompare(b.name, "ko");
     });
-  }, [selectedLine, stationQuery, allLineStations, officeStationKeys]);
+  }, [
+    selectedLine,
+    stationQuery,
+    allLineStations,
+    maintenanceMode,
+    managementOffice,
+  ]);
 
   function handleMaintenanceToggle(enabled: boolean) {
     onMaintenanceModeChange?.(enabled);
@@ -174,6 +206,7 @@ export function StationPicker({
       setSelectedStation("");
       setStationQuery("");
       onSelectedStationsChange?.([]);
+      onMaintenanceSelectionsChange?.([]);
       if (value.trim()) onChange("");
       return;
     }
@@ -190,7 +223,17 @@ export function StationPicker({
       setStationListOpen(true);
     }
 
-    if (displays.length > 0) {
+    const defaults = buildMaintenanceSelectionsForOffice(officeId);
+    onMaintenanceSelectionsChange?.(defaults);
+    const stationNames = uniqueStationsFromTargets(defaults);
+    if (stationNames.length > 0) {
+      onMultiStationModeChange?.(true);
+      onSelectedStationsChange?.(stationNames);
+      onChange(stationNames[0]!);
+      for (const name of stationNames) {
+        void registerStation(name);
+      }
+    } else if (displays.length > 0) {
       onMultiStationModeChange?.(true);
       onSelectedStationsChange?.(displays);
       onChange(displays[0]!);
@@ -237,6 +280,42 @@ export function StationPicker({
 
   function applyMetroSelection(line: number, stationName: string) {
     const formatted = formatMetroStationValue(line, stationName);
+    if (maintenanceMode && managementOffice && onMaintenanceSelectionsChange) {
+      const planFacilities = getMaintenancePlanFacilities(
+        managementOffice,
+        line,
+        stationName
+      );
+      const planSet = new Set(planFacilities);
+      const allFacilities = getEposProductFacilities(line, stationName);
+      const keys = new Set(
+        maintenanceSelections.map((t) =>
+          maintenanceTargetKey(t.station, t.facility)
+        )
+      );
+      const toAdd: MaintenanceVisitTarget[] = [];
+      for (const facility of allFacilities) {
+        const k = maintenanceTargetKey(formatted, facility);
+        if (!keys.has(k)) {
+          toAdd.push({
+            station: formatted,
+            facility,
+            fromPlan: planSet.has(facility),
+          });
+        }
+      }
+      if (toAdd.length) {
+        const next = [...maintenanceSelections, ...toAdd];
+        onMaintenanceSelectionsChange(next);
+        onSelectedStationsChange?.(uniqueStationsFromTargets(next));
+        if (!value.trim()) onChange(formatted);
+      }
+      setSelectedStation("");
+      setStationQuery("");
+      setStationListOpen(false);
+      void registerStation(formatted);
+      return;
+    }
     if (multiStationMode && onSelectedStationsChange) {
       addStationToMultiList(line, stationName);
       return;
@@ -552,10 +631,29 @@ export function StationPicker({
                           ? ` · 검색 결과 ${filteredStations.length}개`
                           : ` · 전체 ${allLineStations.length}개`}
                         <span className="block mt-1">
-                          <strong className="text-slate-700">진한 글씨</strong>
-                          = EPOS 설치 역 ·{" "}
-                          <span className="text-slate-400">흐린 글씨</span>
-                          = 미설치
+                          {maintenanceMode && managementOffice ? (
+                            <>
+                              <strong className="text-slate-800">
+                                진한 글씨
+                              </strong>
+                              = 정기점검계획 ·{" "}
+                              <span className="text-slate-400">
+                                흐린 글씨
+                              </span>
+                              = 기능실 현황(서브)만
+                            </>
+                          ) : (
+                            <>
+                              <strong className="text-slate-700">
+                                진한 글씨
+                              </strong>
+                              = EPOS 설치 역 ·{" "}
+                              <span className="text-slate-400">
+                                흐린 글씨
+                              </span>
+                              = 미설치
+                            </>
+                          )}
                         </span>
                       </p>
                       <div
@@ -572,15 +670,51 @@ export function StationPicker({
                           filteredStations.map((s) => {
                             const lineNum =
                               typeof selectedLine === "number" ? selectedLine : null;
+                            const inPlan =
+                              lineNum != null &&
+                              isMaintenancePlanPrimaryStation(
+                                lineNum,
+                                s.name,
+                                maintenanceMode ? managementOffice : undefined
+                              );
                             const hasProduct =
                               lineNum != null &&
-                              hasEposProductAtStation(lineNum, s.name);
+                              hasEposProductAtStationForMaintenance(
+                                lineNum,
+                                s.name,
+                                maintenanceMode ? managementOffice : undefined
+                              );
                             const facilities =
                               lineNum != null
                                 ? getEposProductFacilities(lineNum, s.name)
                                 : [];
-                            const facilityLabel =
-                              formatEposFacilitiesLabel(facilities);
+                            const planFacilities =
+                              lineNum != null && managementOffice
+                                ? getMaintenancePlanFacilities(
+                                    managementOffice,
+                                    lineNum,
+                                    s.name
+                                  )
+                                : [];
+                            const facilityLabel = maintenanceMode
+                              ? planFacilities.length
+                                ? formatEposFacilitiesLabel(planFacilities)
+                                : formatEposFacilitiesLabel(facilities)
+                              : formatEposFacilitiesLabel(facilities);
+                            const inMaintenanceList =
+                              maintenanceMode &&
+                              maintenanceSelections.some((t) => {
+                                const p = parseMetroStationValue(t.station);
+                                return (
+                                  p.line === lineNum &&
+                                  normalizeStationName(p.stationName ?? "") ===
+                                    normalizeStationName(s.name)
+                                );
+                              });
+                            const faint =
+                              maintenanceMode && managementOffice
+                                ? !inPlan && hasProduct && !inMaintenanceList
+                                : !hasProduct;
 
                             return (
                               <button
@@ -590,7 +724,7 @@ export function StationPicker({
                                 aria-selected={selectedStation === s.name}
                                 className={`metro-station-option ${
                                   selectedStation === s.name ? "active" : ""
-                                }${hasProduct ? "" : " metro-station-option--no-product"}${
+                                }${faint ? " metro-station-option--no-product" : ""}${
                                   lineColor ? " metro-station-option--lined" : ""
                                 }`}
                                 style={
@@ -707,10 +841,40 @@ export function StationPicker({
         </div>
       )}
 
-      {(multiStationMode || maintenanceMode) && onSelectedStationsChange ? (
+      {maintenanceMode && onMaintenanceSelectionsChange ? (
+        <div className="mt-4">
+          <label className="label text-sm font-medium text-amber-950">
+            방문 대상 (역·기능실){" "}
+            {maintenanceSelections.length > 0 || managementOffice ? (
+              <span className="font-normal text-slate-600">
+                (
+                {formatMaintenanceVisitSummary(
+                  maintenanceSelections,
+                  Boolean(managementOffice)
+                ) || "0역 · 0기능실"}
+                )
+              </span>
+            ) : null}
+          </label>
+          <MaintenanceVisitList
+            managementOffice={managementOffice}
+            selections={maintenanceSelections}
+            onChange={(next) => {
+              onMaintenanceSelectionsChange(next);
+              onSelectedStationsChange?.(uniqueStationsFromTargets(next));
+              if (next.length && !value.trim()) onChange(next[0]!.station);
+            }}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
+
+      {(multiStationMode || maintenanceMode) &&
+      onSelectedStationsChange &&
+      !maintenanceMode ? (
         <div className="mt-4">
           <label className="label text-sm font-medium text-indigo-950">
-            {maintenanceMode ? "방문 대상 역사" : "선택한 역사"}{" "}
+            {"선택한 역사"}{" "}
             {selectedStations.length > 0 ? (
               <span className="font-normal text-slate-600">
                 ({selectedStations.length}역)

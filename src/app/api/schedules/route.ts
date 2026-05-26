@@ -49,9 +49,10 @@ export async function POST(request: NextRequest) {
         facilityArea: body.facilityArea,
         managementOffice: body.managementOffice,
         note: body.note,
-        maintenanceStationNames: Array.isArray(maintenanceStationNames)
+          maintenanceStationNames: Array.isArray(maintenanceStationNames)
           ? maintenanceStationNames
           : undefined,
+        maintenanceVisitTargets: body.maintenanceVisitTargets,
       });
       return NextResponse.json({ schedule });
     }

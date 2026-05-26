@@ -4,7 +4,459 @@
     "f:/01. EPOS/서울교통공사 기능실 관리소 현황-2025.xlsx"
   ],
   "generatedAt": "2026-05-26",
-  "note": "서울교통공사 기능실·관리소 현황(2025) + 유지보수 정기점검계획서. 조명제어·조명제어연계는 역무실로 매핑.",
+  "note": "정기점검계획서(1차)·기능실 관리소 현황 2025(2차). 조명제어·조명제어연계는 역무실로 매핑.",
+  "maintenancePlan": [
+    {
+      "officeId": "개화산",
+      "line": 5,
+      "stationName": "개화산역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "개화산",
+      "line": 5,
+      "stationName": "마곡역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "개화산",
+      "line": 5,
+      "stationName": "목동역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "건대입구",
+      "line": 7,
+      "stationName": "상봉역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "고덕",
+      "line": 5,
+      "stationName": "강동역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "답십리",
+      "line": 5,
+      "stationName": "광나루역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "답십리",
+      "line": 5,
+      "stationName": "마장역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "답십리",
+      "line": 5,
+      "stationName": "왕십리역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "답십리",
+      "line": 5,
+      "stationName": "천호역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "대림",
+      "line": 2,
+      "stationName": "낙성대역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "대림",
+      "line": 2,
+      "stationName": "봉천역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "상왕십리역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "상왕십리역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "신당역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "아현역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "충정로역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문1",
+      "line": 2,
+      "stationName": "한양대역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "길음역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "길음역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "동역사역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "미아사거리역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "성신여대입구역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "성신여대입구역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동대문2",
+      "line": 4,
+      "stationName": "회현역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "남태령역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "남태령역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "서울역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "숙대입구역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "숙대입구역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "이촌역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "동작",
+      "line": 4,
+      "stationName": "이촌역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "모란",
+      "line": 8,
+      "stationName": "남위례역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "수서",
+      "line": 3,
+      "stationName": "대청역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "수서",
+      "line": 3,
+      "stationName": "대치역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "수서",
+      "line": 3,
+      "stationName": "도곡역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "수서",
+      "line": 3,
+      "stationName": "일원역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "수서",
+      "line": 3,
+      "stationName": "학여울역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "서울역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "시청역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "신설동역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "제기동역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "제기동역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "종각역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "종로5가역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신답",
+      "line": 1,
+      "stationName": "종로5가역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "신정",
+      "line": 2,
+      "stationName": "문래역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신정",
+      "line": 2,
+      "stationName": "문래역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "신정",
+      "line": 2,
+      "stationName": "신정네거리역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신정",
+      "line": 2,
+      "stationName": "양천구청역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신정",
+      "line": 2,
+      "stationName": "합정역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신정",
+      "line": 5,
+      "stationName": "신정역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "신정",
+      "line": 5,
+      "stationName": "신정역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "고속터미널역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "금호역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "동대입구역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "안국역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "압구정역",
+      "facility": "변전소"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "잠원역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "옥수",
+      "line": 3,
+      "stationName": "충무로역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "종합운동장",
+      "line": 2,
+      "stationName": "서초역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "종합운동장",
+      "line": 2,
+      "stationName": "잠실역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "종합운동장",
+      "line": 2,
+      "stationName": "잠실역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "종합운동장",
+      "line": 2,
+      "stationName": "잠실역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "경복궁역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "구파발역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "녹번역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "독립문역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "무악재역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "지축역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "지축역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "지축",
+      "line": 3,
+      "stationName": "홍제역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "창동",
+      "line": 4,
+      "stationName": "당고개역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "창동",
+      "line": 4,
+      "stationName": "미아역",
+      "facility": "전기실"
+    },
+    {
+      "officeId": "창동",
+      "line": 4,
+      "stationName": "미아역",
+      "facility": "역무실"
+    },
+    {
+      "officeId": "창동",
+      "line": 4,
+      "stationName": "쌍문역",
+      "facility": "역무실"
+    }
+  ],
   "stations": [
     {
       "line": 1,
@@ -100,7 +552,8 @@
       "stationName": "낙성대역",
       "facilities": [
         "전기실",
-        "변전소"
+        "변전소",
+        "역무실"
       ]
     },
     {
@@ -131,7 +584,8 @@
       "line": 2,
       "stationName": "봉천역",
       "facilities": [
-        "전기실"
+        "전기실",
+        "역무실"
       ]
     },
     {
@@ -272,7 +726,8 @@
       "line": 2,
       "stationName": "한양대역",
       "facilities": [
-        "전기실"
+        "전기실",
+        "역무실"
       ]
     },
     {
@@ -369,6 +824,13 @@
     },
     {
       "line": 3,
+      "stationName": "동대입구역",
+      "facilities": [
+        "전기실"
+      ]
+    },
+    {
+      "line": 3,
       "stationName": "매봉역",
       "facilities": [
         "변전소"
@@ -405,6 +867,13 @@
     },
     {
       "line": 3,
+      "stationName": "안국역",
+      "facilities": [
+        "전기실"
+      ]
+    },
+    {
+      "line": 3,
       "stationName": "압구정역",
       "facilities": [
         "변전소"
@@ -428,10 +897,31 @@
     },
     {
       "line": 3,
+      "stationName": "일원역",
+      "facilities": [
+        "전기실"
+      ]
+    },
+    {
+      "line": 3,
+      "stationName": "잠원역",
+      "facilities": [
+        "전기실"
+      ]
+    },
+    {
+      "line": 3,
       "stationName": "지축역",
       "facilities": [
         "전기실",
         "변전소"
+      ]
+    },
+    {
+      "line": 3,
+      "stationName": "충무로역",
+      "facilities": [
+        "역무실"
       ]
     },
     {
@@ -452,7 +942,16 @@
       "line": 4,
       "stationName": "길음역",
       "facilities": [
-        "전기실"
+        "전기실",
+        "역무실"
+      ]
+    },
+    {
+      "line": 4,
+      "stationName": "남태령역",
+      "facilities": [
+        "전기실",
+        "변전소"
       ]
     },
     {
@@ -460,6 +959,13 @@
       "stationName": "당고개역",
       "facilities": [
         "전기실",
+        "변전소"
+      ]
+    },
+    {
+      "line": 4,
+      "stationName": "동역사역",
+      "facilities": [
         "변전소"
       ]
     },
@@ -490,6 +996,13 @@
       "stationName": "삼각지역",
       "facilities": [
         "변전소"
+      ]
+    },
+    {
+      "line": 4,
+      "stationName": "서울역",
+      "facilities": [
+        "전기실"
       ]
     },
     {
@@ -613,6 +1126,13 @@
     },
     {
       "line": 5,
+      "stationName": "왕십리역",
+      "facilities": [
+        "전기실"
+      ]
+    },
+    {
+      "line": 5,
       "stationName": "천호역",
       "facilities": [
         "전기실"
@@ -703,8 +1223,8 @@
     {
       "id": "군자",
       "shortLabel": "군자",
-      "label": "군자(5) 전기관리소",
-      "line": 5
+      "label": "군자(2) 전기관리소",
+      "line": 2
     },
     {
       "id": "답십리",
