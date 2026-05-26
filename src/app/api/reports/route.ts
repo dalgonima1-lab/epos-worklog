@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
     facilityArea,
     additionalFacilityAreas,
     maintenanceVisitTargets,
+    maintenancePlannedTargets,
+    maintenanceDeficienciesByStation,
     managementOffice,
     processingRole,
     done,
@@ -96,20 +98,31 @@ export async function POST(request: NextRequest) {
   const namesList = Array.isArray(stationNames)
     ? stationNames.map((s: string) => String(s).trim()).filter(Boolean)
     : [];
-  const primaryStation =
-    namesList[0] ?? String(stationName ?? "").trim();
-
-  if (!primaryStation) {
-    return NextResponse.json(
-      { error: "역사명을 선택하거나 입력해 주세요." },
-      { status: 400 }
-    );
-  }
 
   const facility = String(facilityArea).trim();
   if (!facility || !isWorkFacilityArea(facility)) {
     return NextResponse.json(
       { error: "작업 장소를 선택해 주세요." },
+      { status: 400 }
+    );
+  }
+
+  const visitTargets = Array.isArray(maintenanceVisitTargets)
+    ? maintenanceVisitTargets
+    : [];
+  const isMaintenance = facility === MANAGEMENT_OFFICE_FACILITY;
+  const visitedStationNames = visitTargets
+    .map((t: { station?: string }) => String(t.station ?? "").trim())
+    .filter(Boolean);
+  const uniqueVisited = [...new Set(visitedStationNames)];
+  const primaryStation =
+    (isMaintenance && uniqueVisited[0]) ||
+    namesList[0] ||
+    String(stationName ?? "").trim();
+
+  if (!primaryStation) {
+    return NextResponse.json(
+      { error: "역사명을 선택하거나 입력해 주세요." },
       { status: 400 }
     );
   }
@@ -132,9 +145,6 @@ export async function POST(request: NextRequest) {
   }
 
   const role = String(processingRole).trim();
-  const visitTargets = Array.isArray(maintenanceVisitTargets)
-    ? maintenanceVisitTargets
-    : [];
   const extraFacilities = Array.isArray(additionalFacilityAreas)
     ? additionalFacilityAreas.map((a: string) => String(a).trim())
     : [];
@@ -189,8 +199,14 @@ export async function POST(request: NextRequest) {
       namesList.length > 1
         ? allFacilities.slice(1)
         : undefined,
-    maintenanceVisitTargets: Array.isArray(maintenanceVisitTargets)
-      ? maintenanceVisitTargets
+    maintenanceVisitTargets: visitTargets.length ? visitTargets : undefined,
+    maintenancePlannedTargets: Array.isArray(maintenancePlannedTargets)
+      ? maintenancePlannedTargets
+      : undefined,
+    maintenanceDeficienciesByStation: Array.isArray(
+      maintenanceDeficienciesByStation
+    )
+      ? maintenanceDeficienciesByStation
       : undefined,
     managementOffice: String(managementOffice ?? "").trim() || undefined,
     processingRole: role,
@@ -198,8 +214,12 @@ export async function POST(request: NextRequest) {
     plan: plan ?? "",
     issues: issues ?? "",
     deficiencies: deficiencies ?? "",
-    beforePhotoAt: beforePhotoAt ?? existing?.beforePhotoAt,
-    afterPhotoAt: afterPhotoAt ?? existing?.afterPhotoAt,
+    beforePhotoAt: isMaintenance
+      ? undefined
+      : (beforePhotoAt ?? existing?.beforePhotoAt),
+    afterPhotoAt: isMaintenance
+      ? undefined
+      : (afterPhotoAt ?? existing?.afterPhotoAt),
   });
 
   return NextResponse.json({ report });

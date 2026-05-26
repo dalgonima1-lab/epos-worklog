@@ -332,7 +332,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       q.set("station", stationName.trim());
     }
     const area = facilityArea?.trim() ?? "";
-    if (isStationFacilityArea(area)) {
+    if (area === MANAGEMENT_OFFICE_FACILITY) {
+      q.set("facility", MANAGEMENT_OFFICE_FACILITY);
+    } else if (isStationFacilityArea(area)) {
       q.set("facility", area);
     }
     if (area === MANAGEMENT_OFFICE_FACILITY && managementOfficeId?.trim()) {

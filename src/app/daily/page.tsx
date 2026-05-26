@@ -13,6 +13,7 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
+import { MaintenanceDailyVisitForm } from "@/components/MaintenanceDailyVisitForm";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
 import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "@/lib/constants";
@@ -61,6 +62,12 @@ function DailyPageInner() {
   const [maintenanceSelections, setMaintenanceSelections] = useState<
     MaintenanceVisitTarget[]
   >([]);
+  const [maintenancePlannedTargets, setMaintenancePlannedTargets] = useState<
+    MaintenanceVisitTarget[]
+  >([]);
+  const [deficienciesByStation, setDeficienciesByStation] = useState<
+    Record<string, string>
+  >({});
   const [facilityArea, setFacilityArea] = useState<
     StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
   >(() => {
@@ -69,6 +76,10 @@ function DailyPageInner() {
     return isStationFacilityArea(q) ? q : "";
   });
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const maintenanceLocked = useMemo(() => {
+    const qFacility = searchParams.get("facility")?.trim() ?? "";
+    return qFacility === MANAGEMENT_OFFICE_FACILITY || maintenanceMode;
+  }, [searchParams, maintenanceMode]);
   const [managementOffice, setManagementOffice] = useState("");
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
@@ -194,10 +205,38 @@ function DailyPageInner() {
     processingRole,
   ]);
 
+  function applyMaintenanceFromSchedule(
+    qOffice: string,
+    qTargets: string,
+    qStations: string,
+    qStation: string
+  ) {
+    setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+    setManagementOffice(qOffice);
+    setMaintenanceMode(true);
+    setProcessingRole("유지보수 용역");
+    const fromTargets = decodeMaintenanceVisitTargets(qTargets);
+    const fromUrl = decodeMaintenanceStationNames(qStations);
+    const planned =
+      fromTargets.length > 0
+        ? fromTargets
+        : qOffice
+          ? maintenanceSelectionsFromStationDisplays(qOffice, fromUrl)
+          : [];
+    if (planned.length > 0) {
+      setMaintenancePlannedTargets(planned);
+      setMaintenanceSelections(planned);
+      const names = uniqueStationsFromTargets(planned);
+      setSelectedStations(names);
+      setMultiStationMode(true);
+      if (!qStation && names[0]) setStationName(names[0]);
+    }
+  }
+
   useEffect(() => {
     const qDate = searchParams.get("date");
     const qMember = searchParams.get("memberId");
-    const qStation = searchParams.get("station");
+    const qStation = searchParams.get("station")?.trim() ?? "";
     const qFacility = searchParams.get("facility")?.trim() ?? "";
     const qOffice = searchParams.get("office")?.trim() ?? "";
     const qStations = searchParams.get("stations")?.trim() ?? "";
@@ -206,30 +245,7 @@ function DailyPageInner() {
     if (qMember) setMemberId(qMember);
     if (qStation) setStationName(qStation);
     if (qFacility === MANAGEMENT_OFFICE_FACILITY) {
-      setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
-      setManagementOffice(qOffice);
-      setMaintenanceMode(true);
-      setProcessingRole("유지보수 용역");
-      const fromTargets = decodeMaintenanceVisitTargets(qTargets);
-      if (fromTargets.length > 0) {
-        setMaintenanceSelections(fromTargets);
-        const names = uniqueStationsFromTargets(fromTargets);
-        setSelectedStations(names);
-        setMultiStationMode(true);
-        if (!qStation && names[0]) setStationName(names[0]);
-      } else {
-        const fromUrl = decodeMaintenanceStationNames(qStations);
-        const planned = qOffice
-          ? maintenanceSelectionsFromStationDisplays(qOffice, fromUrl)
-          : [];
-        if (planned.length > 0) {
-          setMaintenanceSelections(planned);
-          const names = uniqueStationsFromTargets(planned);
-          setSelectedStations(names);
-          setMultiStationMode(true);
-          if (!qStation && names[0]) setStationName(names[0]);
-        }
-      }
+      applyMaintenanceFromSchedule(qOffice, qTargets, qStations, qStation);
     } else if (isStationFacilityArea(qFacility)) {
       setFacilityArea(qFacility);
     }
@@ -295,6 +311,8 @@ function DailyPageInner() {
           setProcessingRole("");
           setCustomRole("");
         }
+        const scheduleIsMaintenance =
+          facilityFromSchedule === MANAGEMENT_OFFICE_FACILITY;
         if (report?.maintenanceVisitTargets?.length) {
           const targets = (
             report.maintenanceVisitTargets as {
@@ -309,10 +327,41 @@ function DailyPageInner() {
               fromPlan: t.fromPlan !== false,
             })
           );
+          const plannedRaw = report.maintenancePlannedTargets as
+            | { station: string; facility: string; fromPlan?: boolean }[]
+            | undefined;
+          const planned =
+            plannedRaw?.length
+              ? plannedRaw.map(
+                  (t): MaintenanceVisitTarget => ({
+                    station: t.station,
+                    facility: t.facility as StationFacilityArea,
+                    fromPlan: t.fromPlan !== false,
+                  })
+                )
+              : targets;
+          setMaintenancePlannedTargets(planned);
           setMaintenanceSelections(targets);
           const names = uniqueStationsFromTargets(targets);
           setMultiStationMode(true);
           setSelectedStations(names);
+          const defMap: Record<string, string> = {};
+          for (const row of report.maintenanceDeficienciesByStation ?? []) {
+            if (row.station?.trim()) {
+              defMap[row.station.trim()] = row.text ?? "";
+            }
+          }
+          setDeficienciesByStation(defMap);
+        } else if (scheduleIsMaintenance) {
+          const qOffice = searchParams.get("office")?.trim() ?? "";
+          const qTargets = searchParams.get("targets")?.trim() ?? "";
+          const qStations = searchParams.get("stations")?.trim() ?? "";
+          applyMaintenanceFromSchedule(
+            qOffice,
+            qTargets,
+            qStations,
+            stationFromSchedule
+          );
         } else if (additional.length > 0) {
           const cohort = [
             safeReportStation,
@@ -344,10 +393,18 @@ function DailyPageInner() {
         }
         setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
-        if (area === MANAGEMENT_OFFICE_FACILITY) {
+        if (
+          area === MANAGEMENT_OFFICE_FACILITY ||
+          scheduleIsMaintenance
+        ) {
           setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
-          setManagementOffice(report?.managementOffice?.trim() ?? "");
+          setManagementOffice(
+            report?.managementOffice?.trim() ??
+              searchParams.get("office")?.trim() ??
+              ""
+          );
           setMaintenanceMode(true);
+          setProcessingRole("유지보수 용역");
         } else if (isStationFacilityArea(area)) {
           setFacilityArea(area);
           setManagementOffice("");
@@ -453,6 +510,19 @@ function DailyPageInner() {
       );
       return;
     }
+    const maintenanceDeficiencyRows = maintenanceMode
+      ? Object.entries(deficienciesByStation)
+          .filter(([, text]) => text.trim())
+          .map(([station, text]) => ({ station, text: text.trim() }))
+      : undefined;
+    const mergedDeficiencies = maintenanceMode
+      ? maintenanceDeficiencyRows?.length
+        ? maintenanceDeficiencyRows
+            .map(({ station, text }) => `【${station}】\n${text}`)
+            .join("\n\n")
+        : ""
+      : deficiencies;
+
     setStatus("\uc800\uc7a5 \uc911...");
     const res = await fetch("/api/reports", {
       method: "POST",
@@ -472,14 +542,20 @@ function DailyPageInner() {
         maintenanceVisitTargets: maintenanceMode
           ? maintenanceSelections
           : undefined,
+        maintenancePlannedTargets: maintenanceMode
+          ? maintenancePlannedTargets.length
+            ? maintenancePlannedTargets
+            : maintenanceSelections
+          : undefined,
+        maintenanceDeficienciesByStation: maintenanceDeficiencyRows,
         managementOffice: maintenanceMode ? managementOffice : undefined,
         processingRole: effectiveRole,
         done,
         plan,
         issues,
-        deficiencies,
-        beforePhotoAt,
-        afterPhotoAt,
+        deficiencies: mergedDeficiencies,
+        beforePhotoAt: maintenanceMode ? undefined : beforePhotoAt,
+        afterPhotoAt: maintenanceMode ? undefined : afterPhotoAt,
         visitGroupId,
       }),
     });
@@ -566,10 +642,14 @@ function DailyPageInner() {
           onChange={setStationName}
           facilityArea={facilityArea}
           onFacilityChange={setFacilityArea}
-          requireFacility
+          requireFacility={!maintenanceLocked}
           disabled={loading}
+          enableMetroPicker={!maintenanceLocked}
           maintenanceMode={maintenanceMode}
+          lockMaintenanceMode={maintenanceLocked}
+          hideMaintenanceVisitList={maintenanceLocked}
           onMaintenanceModeChange={(enabled) => {
+            if (maintenanceLocked) return;
             setMaintenanceMode(enabled);
             if (enabled) {
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
@@ -578,6 +658,8 @@ function DailyPageInner() {
               setMultiStationMode(false);
               setSelectedStations([]);
               setMaintenanceSelections([]);
+              setMaintenancePlannedTargets([]);
+              setDeficienciesByStation({});
               setProcessingRole("유지보수 용역");
               setCustomRole("");
             } else {
@@ -586,6 +668,8 @@ function DailyPageInner() {
               setStationFacilityByStation({});
               setSelectedStations([]);
               setMaintenanceSelections([]);
+              setMaintenancePlannedTargets([]);
+              setDeficienciesByStation({});
               setMultiStationMode(false);
             }
           }}
@@ -600,6 +684,22 @@ function DailyPageInner() {
           maintenanceSelections={maintenanceSelections}
           onMaintenanceSelectionsChange={setMaintenanceSelections}
         />
+
+        {maintenanceLocked && managementOffice ? (
+          <MaintenanceDailyVisitForm
+            managementOffice={managementOffice}
+            plannedTargets={
+              maintenancePlannedTargets.length
+                ? maintenancePlannedTargets
+                : maintenanceSelections
+            }
+            visitedTargets={maintenanceSelections}
+            onVisitedChange={setMaintenanceSelections}
+            deficienciesByStation={deficienciesByStation}
+            onDeficienciesChange={setDeficienciesByStation}
+            disabled={loading || formLockedByCohort}
+          />
+        ) : null}
 
         <div>
           <label className="label" htmlFor="role">
@@ -663,6 +763,7 @@ function DailyPageInner() {
           )}
         </div>
 
+        {!maintenanceMode ? (
         <section>
           <h2 className="mb-3 text-sm font-bold">
             {"\uc791\uc5c5 \uc804\u00b7\ud6c4 \uc0ac\uc9c4"}
@@ -708,6 +809,7 @@ function DailyPageInner() {
             />
           </div>
         </section>
+        ) : null}
 
         <div>
           <label className="label" htmlFor="done">
@@ -749,6 +851,7 @@ function DailyPageInner() {
           />
         </div>
 
+        {!maintenanceMode ? (
         <div>
           <label className="label" htmlFor="deficiencies">
             {"\ubbf8\ube44\uc0ac\ud56d"}
@@ -769,6 +872,7 @@ function DailyPageInner() {
             }
           </p>
         </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
           <button

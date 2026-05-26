@@ -85,6 +85,45 @@ export function countMaintenanceVisitTargets(
 }
 
 /** 예: `5역 · 12기능실 (관리소 포함)` */
+export function isStationVisited(
+  station: string,
+  selections: MaintenanceVisitTarget[]
+): boolean {
+  const s = station.trim();
+  return selections.some((t) => t.station.trim() === s);
+}
+
+export function targetsForStation(
+  station: string,
+  targets: MaintenanceVisitTarget[]
+): MaintenanceVisitTarget[] {
+  const s = station.trim();
+  return targets.filter((t) => t.station.trim() === s);
+}
+
+export function removeStationFromTargets(
+  station: string,
+  selections: MaintenanceVisitTarget[]
+): MaintenanceVisitTarget[] {
+  const s = station.trim();
+  return selections.filter((t) => t.station.trim() !== s);
+}
+
+export function mergeUniqueTargets(
+  a: MaintenanceVisitTarget[],
+  b: MaintenanceVisitTarget[]
+): MaintenanceVisitTarget[] {
+  const seen = new Set<string>();
+  const out: MaintenanceVisitTarget[] = [];
+  for (const t of [...a, ...b]) {
+    const k = maintenanceTargetKey(t.station, t.facility);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+  }
+  return out;
+}
+
 export function formatMaintenanceVisitSummary(
   targets: MaintenanceVisitTarget[],
   includeManagementOffice = false

@@ -28,6 +28,14 @@ export interface DailyReport {
   additionalFacilityAreas?: string[];
   /** 유지보수 방문 (역·기능실, 일일기록에서 해제 가능) */
   maintenanceVisitTargets?: { station: string; facility: string; fromPlan?: boolean }[];
+  /** 유지보수 일정 기준 전체 점검 대상 (방문/미방문 구분용) */
+  maintenancePlannedTargets?: {
+    station: string;
+    facility: string;
+    fromPlan?: boolean;
+  }[];
+  /** 유지보수 역별 미비사항 */
+  maintenanceDeficienciesByStation?: { station: string; text: string }[];
   /** 여러 역·일정을 묶는 그룹 id */
   visitGroupId?: string;
   /** 공종 */

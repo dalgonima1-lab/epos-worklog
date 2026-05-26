@@ -75,6 +75,10 @@ interface StationPickerProps {
   /** 유지보수: 역·기능실 단위 선택 */
   maintenanceSelections?: MaintenanceVisitTarget[];
   onMaintenanceSelectionsChange?: (targets: MaintenanceVisitTarget[]) => void;
+  /** 일일기록: 유지보수 일정에서 진입 시 해제 불가 */
+  lockMaintenanceMode?: boolean;
+  /** 일일기록: 역·기능실 UI를 페이지 전용 폼으로 대체 */
+  hideMaintenanceVisitList?: boolean;
 }
 
 export function StationPicker({
@@ -98,7 +102,10 @@ export function StationPicker({
   onStationFacilityByStationChange,
   maintenanceSelections = [],
   onMaintenanceSelectionsChange,
+  lockMaintenanceMode = false,
+  hideMaintenanceVisitList = false,
 }: StationPickerProps) {
+  const effectiveMaintenanceMode = lockMaintenanceMode || maintenanceMode;
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
 
@@ -150,7 +157,7 @@ export function StationPicker({
       ? filterMetroStations(selectedLine, q)
       : allLineStations;
     const lineNum = typeof selectedLine === "number" ? selectedLine : null;
-    if (maintenanceMode && managementOffice && lineNum != null) {
+    if (effectiveMaintenanceMode && managementOffice && lineNum != null) {
       list = list.filter((s) =>
         isStationInMaintenancePlan(managementOffice, lineNum, s.name)
       );
@@ -160,23 +167,23 @@ export function StationPicker({
       const aPrimary = isMaintenancePlanPrimaryStation(
         lineNum,
         a.name,
-        maintenanceMode ? managementOffice : undefined
+        effectiveMaintenanceMode ? managementOffice : undefined
       );
       const bPrimary = isMaintenancePlanPrimaryStation(
         lineNum,
         b.name,
-        maintenanceMode ? managementOffice : undefined
+        effectiveMaintenanceMode ? managementOffice : undefined
       );
       if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
       const ha = hasEposProductAtStationForMaintenance(
         lineNum,
         a.name,
-        maintenanceMode ? managementOffice : undefined
+        effectiveMaintenanceMode ? managementOffice : undefined
       );
       const hb = hasEposProductAtStationForMaintenance(
         lineNum,
         b.name,
-        maintenanceMode ? managementOffice : undefined
+        effectiveMaintenanceMode ? managementOffice : undefined
       );
       if (ha !== hb) return ha ? -1 : 1;
       return a.name.localeCompare(b.name, "ko");
@@ -185,7 +192,7 @@ export function StationPicker({
     selectedLine,
     stationQuery,
     allLineStations,
-    maintenanceMode,
+    effectiveMaintenanceMode,
     managementOffice,
   ]);
 
@@ -277,7 +284,11 @@ export function StationPicker({
 
   function applyMetroSelection(line: number, stationName: string) {
     const formatted = formatMetroStationValue(line, stationName);
-    if (maintenanceMode && managementOffice && onMaintenanceSelectionsChange) {
+    if (
+      effectiveMaintenanceMode &&
+      managementOffice &&
+      onMaintenanceSelectionsChange
+    ) {
       const planFacilities = getMaintenancePlanFacilities(
         managementOffice,
         line,
@@ -441,7 +452,7 @@ export function StationPicker({
         </label>
       ) : null}
 
-      {onMaintenanceModeChange ? (
+      {onMaintenanceModeChange && !lockMaintenanceMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -460,12 +471,12 @@ export function StationPicker({
         </label>
       ) : null}
 
-      {maintenanceMode && onManagementOfficeChange ? (
+      {effectiveMaintenanceMode && onManagementOfficeChange ? (
         <div className="mb-4">
           <ManagementOfficePicker
             value={managementOffice}
             onChange={handleManagementOfficePick}
-            disabled={disabled}
+            disabled={disabled || (lockMaintenanceMode && Boolean(managementOffice))}
           />
           {managementOffice && selectedStations.length > 0 ? (
             <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
@@ -476,11 +487,20 @@ export function StationPicker({
         </div>
       ) : null}
 
+      {lockMaintenanceMode ? (
+        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          <strong>유지보수 용역</strong> 일정에서 연결된 기록입니다. 아래에서
+          방문·미방문 역과 역별 미비사항을 입력하세요.
+        </p>
+      ) : null}
+
+      {!lockMaintenanceMode ? (
+        <>
       <label className="label">
         역사명 <span className="text-red-600">*</span>
       </label>
       <p className="muted mb-3 text-xs">
-        {maintenanceMode ? (
+        {effectiveMaintenanceMode ? (
           <>
             <strong>1단계 호선</strong> → <strong>2단계 역사명</strong>
             {managementOffice
@@ -819,8 +839,12 @@ export function StationPicker({
           )}
         </div>
       )}
+        </>
+      ) : null}
 
-      {maintenanceMode && onMaintenanceSelectionsChange ? (
+      {effectiveMaintenanceMode &&
+      onMaintenanceSelectionsChange &&
+      !hideMaintenanceVisitList ? (
         <div className="mt-4">
           <label className="label text-sm font-medium text-amber-950">
             방문 대상 (역·기능실){" "}

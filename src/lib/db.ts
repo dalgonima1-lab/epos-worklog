@@ -30,7 +30,10 @@ import {
   isSecurityTestPlaceholder,
   sanitizeDatabaseTestArtifacts,
 } from "./sanitizeTestData";
-import { isWorkFacilityArea } from "./stationFacility";
+import {
+  isWorkFacilityArea,
+  MANAGEMENT_OFFICE_FACILITY,
+} from "./stationFacility";
 
 export const DATA_SANITIZE_VERSION = 1;
 
@@ -69,6 +72,8 @@ export type ReportPayload = Pick<
   | "facilityArea"
   | "additionalFacilityAreas"
   | "maintenanceVisitTargets"
+  | "maintenancePlannedTargets"
+  | "maintenanceDeficienciesByStation"
   | "managementOffice"
   | "processingRole"
   | "done"
@@ -372,10 +377,11 @@ export async function upsertReport(
     (r) => r.memberId === memberId && r.date === date
   );
   const now = new Date().toISOString();
-  const workMinutes = calcWorkMinutes(
-    payload.beforePhotoAt,
-    payload.afterPhotoAt
-  );
+  const isMaintenanceReport =
+    normalizeFacilityArea(payload.facilityArea) === MANAGEMENT_OFFICE_FACILITY;
+  const workMinutes = isMaintenanceReport
+    ? undefined
+    : calcWorkMinutes(payload.beforePhotoAt, payload.afterPhotoAt);
 
   const allStations = [
     payload.stationName,
@@ -400,6 +406,14 @@ export async function upsertReport(
     existing.maintenanceVisitTargets = payload.maintenanceVisitTargets?.length
       ? payload.maintenanceVisitTargets
       : undefined;
+    existing.maintenancePlannedTargets = payload.maintenancePlannedTargets
+      ?.length
+      ? payload.maintenancePlannedTargets
+      : undefined;
+    existing.maintenanceDeficienciesByStation =
+      payload.maintenanceDeficienciesByStation?.length
+        ? payload.maintenanceDeficienciesByStation
+        : undefined;
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
     );
@@ -408,9 +422,19 @@ export async function upsertReport(
     existing.plan = payload.plan;
     existing.issues = payload.issues;
     existing.deficiencies = payload.deficiencies;
-    if (payload.beforePhotoAt) existing.beforePhotoAt = payload.beforePhotoAt;
-    if (payload.afterPhotoAt) existing.afterPhotoAt = payload.afterPhotoAt;
-    existing.workMinutes = workMinutes ?? undefined;
+    if (isMaintenanceReport) {
+      existing.beforePhotoAt = undefined;
+      existing.afterPhotoAt = undefined;
+      existing.beforePhotoDataUrl = undefined;
+      existing.afterPhotoDataUrl = undefined;
+      existing.hasBeforePhoto = false;
+      existing.hasAfterPhoto = false;
+      existing.workMinutes = undefined;
+    } else {
+      if (payload.beforePhotoAt) existing.beforePhotoAt = payload.beforePhotoAt;
+      if (payload.afterPhotoAt) existing.afterPhotoAt = payload.afterPhotoAt;
+      existing.workMinutes = workMinutes ?? undefined;
+    }
     existing.updatedAt = now;
     await syncPhotoFlags(existing);
     await saveDb(db);
@@ -433,6 +457,13 @@ export async function upsertReport(
     maintenanceVisitTargets: payload.maintenanceVisitTargets?.length
       ? payload.maintenanceVisitTargets
       : undefined,
+    maintenancePlannedTargets: payload.maintenancePlannedTargets?.length
+      ? payload.maintenancePlannedTargets
+      : undefined,
+    maintenanceDeficienciesByStation:
+      payload.maintenanceDeficienciesByStation?.length
+        ? payload.maintenanceDeficienciesByStation
+        : undefined,
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
     done: payload.done,
