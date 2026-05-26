@@ -30,6 +30,15 @@ export function getMetroLines(): MetroLineInfo[] {
   }));
 }
 
+const LINE_COLOR_MAP = new Map(
+  LINES.map((l) => [l.line, l.color] as const)
+);
+
+/** 서울교통공사 호선 공식 색 (테두리·강조용) */
+export function getMetroLineColor(line: number): string {
+  return LINE_COLOR_MAP.get(line) ?? "#64748b";
+}
+
 export function getMetroStationsForLine(line: number): MetroStationInfo[] {
   const row = LINES.find((l) => l.line === line);
   return row?.stations ?? [];

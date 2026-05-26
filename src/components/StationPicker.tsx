@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   formatMetroStationValue,
+  getMetroLineColor,
   parseMetroStationValue,
   type MetroLineInfo,
   type MetroStationInfo,
@@ -154,7 +161,28 @@ export function StationPicker({
   );
 
   const lineInfo = lines.find((l) => l.line === selectedLine);
+  const lineColor =
+    selectedLine !== "" ? (lineInfo?.color ?? getMetroLineColor(selectedLine)) : "";
+  const metroLineStyle = lineColor
+    ? ({ "--metro-line-color": lineColor } as CSSProperties)
+    : undefined;
+
+  const valueParsed = parseMetroStationValue(value);
+  const valueLineColor =
+    valueParsed.line != null ? getMetroLineColor(valueParsed.line) : "";
+
   const isKnownRecent = value && recentStations.some((s) => s === value);
+
+  function recentTabBorderStyle(name: string): CSSProperties | undefined {
+    const { line } = parseMetroStationValue(name);
+    if (line == null) return undefined;
+    const c = getMetroLineColor(line);
+    return {
+      borderColor: c,
+      borderWidth: 2,
+      boxShadow: value === name ? `0 0 0 1px ${c}` : undefined,
+    };
+  }
 
   return (
     <div className="station-picker">
@@ -167,9 +195,20 @@ export function StationPicker({
       </p>
 
       {enableMetroPicker && !useDirectInput && (
-        <div className="metro-picker-steps">
-          <div className="metro-step">
-            <span className="metro-step-num" aria-hidden>
+        <div
+          className={`metro-picker-steps${lineColor ? " metro-picker-steps--lined" : ""}`}
+          style={metroLineStyle}
+        >
+          <div className={`metro-step${lineColor ? " metro-step--lined" : ""}`}>
+            <span
+              className={`metro-step-num${lineColor ? " metro-step-num--lined" : ""}`}
+              style={
+                lineColor
+                  ? { borderColor: lineColor, color: lineColor }
+                  : undefined
+              }
+              aria-hidden
+            >
               1
             </span>
             <div className="metro-step-body">
@@ -178,7 +217,8 @@ export function StationPicker({
               </label>
               <select
                 id="metro-line"
-                className="input mt-1"
+                className={`input mt-1${lineColor ? " metro-input--lined" : ""}`}
+                style={lineColor ? { borderColor: lineColor } : undefined}
                 value={selectedLine === "" ? "" : String(selectedLine)}
                 disabled={disabled}
                 onChange={(e) => handleLineChange(e.target.value)}
@@ -193,7 +233,10 @@ export function StationPicker({
               {lineInfo ? (
                 <span
                   className="metro-line-chip mt-2"
-                  style={{ backgroundColor: lineInfo.color }}
+                  style={{
+                    backgroundColor: lineInfo.color,
+                    borderColor: lineInfo.color,
+                  }}
                 >
                   {lineInfo.label}
                 </span>
@@ -201,8 +244,16 @@ export function StationPicker({
             </div>
           </div>
 
-          <div className="metro-step">
-            <span className="metro-step-num" aria-hidden>
+          <div className={`metro-step${lineColor ? " metro-step--lined" : ""}`}>
+            <span
+              className={`metro-step-num${lineColor ? " metro-step-num--lined" : ""}`}
+              style={
+                lineColor
+                  ? { borderColor: lineColor, color: lineColor }
+                  : undefined
+              }
+              aria-hidden
+            >
               2
             </span>
             <div className="metro-step-body">
@@ -216,7 +267,8 @@ export function StationPicker({
                   <input
                     id="metro-station-search"
                     type="search"
-                    className="input mt-1"
+                    className={`input mt-1${lineColor ? " metro-input--lined" : ""}`}
+                    style={lineColor ? { borderColor: lineColor } : undefined}
                     placeholder={`${lineInfo?.label ?? ""} 역 이름 검색 (예: 강남, 길음)`}
                     value={stationQuery}
                     disabled={disabled}
@@ -224,7 +276,8 @@ export function StationPicker({
                     onChange={(e) => setStationQuery(e.target.value)}
                   />
                   <div
-                    className="metro-station-list mt-2"
+                    className={`metro-station-list mt-2${lineColor ? " metro-station-list--lined" : ""}`}
+                    style={lineColor ? { borderColor: lineColor } : undefined}
                     role="listbox"
                     aria-label="역 목록"
                   >
@@ -244,7 +297,20 @@ export function StationPicker({
                           aria-selected={selectedStation === s.name}
                           className={`metro-station-option ${
                             selectedStation === s.name ? "active" : ""
-                          }`}
+                          }${lineColor ? " metro-station-option--lined" : ""}`}
+                          style={
+                            lineColor
+                              ? {
+                                  borderLeftColor: lineColor,
+                                  ...(selectedStation === s.name
+                                    ? {
+                                        borderColor: lineColor,
+                                        boxShadow: `inset 3px 0 0 ${lineColor}`,
+                                      }
+                                    : {}),
+                                }
+                              : undefined
+                          }
                           disabled={disabled}
                           onClick={() => handleStationPick(s.name)}
                         >
@@ -348,6 +414,7 @@ export function StationPicker({
                 role="tab"
                 aria-selected={value === name}
                 className={`station-tab ${value === name ? "active" : ""}`}
+                style={recentTabBorderStyle(name)}
                 disabled={disabled}
                 onClick={() => {
                   onChange(name);
@@ -362,7 +429,16 @@ export function StationPicker({
       )}
 
       {value.trim() ? (
-        <p className="muted mt-3 text-xs">
+        <p
+          className={`muted mt-3 text-xs metro-selection-summary${
+            valueLineColor ? " metro-selection-summary--lined" : ""
+          }`}
+          style={
+            valueLineColor
+              ? { borderColor: valueLineColor, ["--metro-line-color" as string]: valueLineColor }
+              : undefined
+          }
+        >
           선택됨: <strong>{value}</strong>
           {isKnownRecent ? " · 최근 목록에 있음" : ""}
         </p>

@@ -1128,6 +1128,15 @@ a {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metro-picker-steps--lined {
+  border: 2px solid var(--metro-line-color, #94a3b8);
+  background: color-mix(in srgb, var(--metro-line-color, #94a3b8) 6%, white);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--metro-line-color) 18%, transparent);
 }
 
 .metro-step {
@@ -1135,6 +1144,11 @@ a {
   grid-template-columns: 1.75rem 1fr;
   gap: 0.75rem;
   align-items: start;
+}
+
+.metro-step--lined {
+  padding-left: 0.25rem;
+  border-left: 3px solid var(--metro-line-color, #94a3b8);
 }
 
 .metro-step-num {
@@ -1148,6 +1162,25 @@ a {
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
+  border: 2px solid transparent;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.metro-step-num--lined {
+  background: #fff;
+  font-weight: 800;
+}
+
+.metro-input--lined {
+  border-width: 2px !important;
+}
+
+.metro-input--lined:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--metro-line-color) 28%, transparent);
 }
 
 .metro-step-body {
@@ -1158,6 +1191,7 @@ a {
   display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
+  border: 2px solid transparent;
   font-size: 0.6875rem;
   font-weight: 700;
   color: #fff;
@@ -1169,6 +1203,11 @@ a {
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   background: #fff;
+  transition: border-color 0.15s ease;
+}
+
+.metro-station-list--lined {
+  border-width: 2px;
 }
 
 .metro-station-option {
@@ -1181,9 +1220,17 @@ a {
   text-align: left;
   border: none;
   border-bottom: 1px solid #f1f5f9;
+  border-left: 3px solid transparent;
   background: transparent;
   cursor: pointer;
   font-size: 0.875rem;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.metro-station-option--lined:hover {
+  background: color-mix(in srgb, var(--metro-line-color, #6366f1) 8%, white);
 }
 
 .metro-station-option:last-child {
@@ -1197,6 +1244,20 @@ a {
 .metro-station-option.active {
   background: #eef2ff;
   color: #3730a3;
+}
+
+.metro-station-option--lined.active {
+  background: color-mix(in srgb, var(--metro-line-color, #6366f1) 12%, white);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.metro-selection-summary--lined {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--metro-line-color, #94a3b8);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--metro-line-color) 8%, white);
 }
 
 .metro-station-area {
