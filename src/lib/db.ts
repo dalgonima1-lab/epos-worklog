@@ -75,6 +75,7 @@ export type ReportPayload = Pick<
   | "deficiencies"
   | "beforePhotoAt"
   | "afterPhotoAt"
+  | "visitGroupId"
 >;
 
 function migrateDb(db: Database): Database {
@@ -321,18 +322,50 @@ function normalizeManagementOffice(raw?: string): string | undefined {
   return t || undefined;
 }
 
+export type VisitGroupPayload = {
+  visitGroupId?: string;
+  additionalStationNames?: string[];
+  stationNames?: string[];
+};
+
+function reportInvolvesStation(r: DailyReport, stationQuery: string): boolean {
+  if (stationsMatch(r.stationName ?? "", stationQuery)) return true;
+  for (const add of r.additionalStationNames ?? []) {
+    if (stationsMatch(add, stationQuery)) return true;
+  }
+  return false;
+}
+
 export async function upsertReport(
   memberId: string,
   date: string,
-  payload: ReportPayload
+  payload: ReportPayload & VisitGroupPayload
 ): Promise<DailyReport> {
   const db = await ensureDb();
-  if (payload.stationName) {
-    payload = {
-      ...payload,
-      stationName: normalizeReportStationName(payload.stationName),
-    };
+
+  let stationName = payload.stationName?.trim() ?? "";
+  let additionalStationNames = payload.additionalStationNames ?? [];
+  let visitGroupId = payload.visitGroupId;
+
+  if (payload.stationNames?.length) {
+    const names = payload.stationNames.map((s) => s.trim()).filter(Boolean);
+    if (names.length) {
+      stationName = names[0]!;
+      additionalStationNames = names.slice(1);
+      if (names.length > 1 && !visitGroupId) {
+        visitGroupId = `vg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      }
+    }
   }
+
+  if (stationName) {
+    stationName = normalizeReportStationName(stationName);
+  }
+  additionalStationNames = additionalStationNames
+    .map((s) => normalizeReportStationName(s))
+    .filter(Boolean);
+
+  payload = { ...payload, stationName, additionalStationNames, visitGroupId };
   const existing = db.reports.find(
     (r) => r.memberId === memberId && r.date === date
   );
@@ -342,15 +375,21 @@ export async function upsertReport(
     payload.afterPhotoAt
   );
 
-  if (payload.stationName) {
-    db.stationHistory = registerStationInHistory(
-      db.stationHistory,
-      payload.stationName
-    );
+  const allStations = [
+    payload.stationName,
+    ...(payload.additionalStationNames ?? []),
+  ].filter(Boolean);
+  for (const s of allStations) {
+    db.stationHistory = registerStationInHistory(db.stationHistory, s);
   }
 
   if (existing) {
     existing.stationName = payload.stationName;
+    existing.additionalStationNames =
+      payload.additionalStationNames?.length
+        ? payload.additionalStationNames
+        : undefined;
+    existing.visitGroupId = payload.visitGroupId;
     existing.facilityArea = normalizeFacilityArea(payload.facilityArea);
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
@@ -374,6 +413,10 @@ export async function upsertReport(
     memberId,
     date,
     stationName: payload.stationName,
+    additionalStationNames: payload.additionalStationNames?.length
+      ? payload.additionalStationNames
+      : undefined,
+    visitGroupId: payload.visitGroupId,
     facilityArea: normalizeFacilityArea(payload.facilityArea),
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
@@ -423,10 +466,7 @@ export async function getReportsByStationName(
   const db = await ensureDb();
   if (!stationQuery.trim()) return [];
 
-  const list = db.reports.filter((r) => {
-    const name = r.stationName || "";
-    return name.trim().length > 0 && stationsMatch(name, stationQuery);
-  });
+  const list = db.reports.filter((r) => reportInvolvesStation(r, stationQuery));
   list.sort((a, b) => {
     const byDate = b.date.localeCompare(a.date);
     if (byDate !== 0) return byDate;
@@ -512,6 +552,7 @@ export async function upsertSchedule(payload: {
   facilityArea?: string;
   managementOffice?: string;
   note?: string;
+  visitGroupId?: string;
 }): Promise<ScheduleEntry> {
   const db = await ensureDb();
   const now = new Date().toISOString();
@@ -534,6 +575,7 @@ export async function upsertSchedule(payload: {
       facilityArea: payload.facilityArea?.trim() || undefined,
       managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
+      visitGroupId: payload.visitGroupId?.trim() || undefined,
       updatedAt: now,
     };
     db.schedules[idx] = entry;
@@ -547,6 +589,7 @@ export async function upsertSchedule(payload: {
       facilityArea: payload.facilityArea?.trim() || undefined,
       managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
+      visitGroupId: payload.visitGroupId?.trim() || undefined,
       createdAt: now,
       updatedAt: now,
     };

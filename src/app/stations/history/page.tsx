@@ -12,6 +12,10 @@ import type { DailyReport, Member } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
 import { formatStationVisitLabel } from "@/lib/stationFacility";
 import { formatWorkDuration } from "@/lib/workTime";
+import {
+  allStationNamesForReport,
+  formatCohortLabel,
+} from "@/lib/visitGroup";
 
 export default function StationHistoryPage() {
   const [teamName, setTeamName] = useState("EPOS 관리팀");
@@ -192,6 +196,9 @@ export default function StationHistoryPage() {
                 const afterSrc = r.hasAfterPhoto
                   ? `${photoApiUrl(r.memberId, r.date, "after")}${r.afterPhotoAt ? `&t=${encodeURIComponent(r.afterPhotoAt)}` : ""}`
                   : null;
+                const cohortNames = allStationNamesForReport(r);
+                const cohortLabel =
+                  cohortNames.length > 1 ? formatCohortLabel(cohortNames) : "";
 
                 return (
                   <li key={r.id}>
@@ -211,6 +218,11 @@ export default function StationHistoryPage() {
                               ({relativeCalendarDayLabel(r.date)})
                             </span>
                           </p>
+                          {cohortLabel ? (
+                            <p className="mt-1 text-xs font-medium text-indigo-800">
+                              ({cohortLabel})
+                            </p>
+                          ) : null}
                           <p className="mt-1 text-sm text-blue-900">
                             <strong>{name}</strong>
                             {r.facilityArea ? (

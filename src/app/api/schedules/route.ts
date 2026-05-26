@@ -4,6 +4,8 @@ import {
   getSchedulesInRange,
   upsertSchedule,
 } from "@/lib/db";
+import type { ScheduleEntry } from "@/lib/types";
+import { createVisitGroupId } from "@/lib/visitGroup";
 import { formatFirestoreUserError } from "@/lib/firebaseAdmin";
 
 function formatApiError(e: unknown): string {
@@ -32,6 +34,32 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const stationNames = body.stationNames as string[] | undefined;
+    const groupId =
+      (body.visitGroupId as string | undefined) ?? createVisitGroupId();
+    const titles = body.titles as string[] | undefined;
+    if (Array.isArray(stationNames) && stationNames.length > 0) {
+      const schedules: ScheduleEntry[] = [];
+      let idx = 0;
+      for (const name of stationNames) {
+        const trimmed = String(name).trim();
+        if (!trimmed) continue;
+        const schedule = await upsertSchedule({
+          id: body.id,
+          date: body.date ?? "",
+          memberId: body.memberId ?? "",
+          title: titles?.[idx] ?? body.title ?? trimmed,
+          stationName: trimmed,
+          facilityArea: body.facilityArea,
+          managementOffice: body.managementOffice,
+          note: body.note,
+          visitGroupId: groupId,
+        });
+        schedules.push(schedule);
+        idx += 1;
+      }
+      return NextResponse.json({ schedules, visitGroupId: groupId });
+    }
     const schedule = await upsertSchedule({
       id: body.id,
       date: body.date,

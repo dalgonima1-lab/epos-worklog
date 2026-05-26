@@ -16,6 +16,18 @@ const METRO_PATH = path.join(__dirname, "../src/data/seoul-metro-1-9.json");
 const DEFAULT_FILE =
   "f:/01. EPOS/서울교통공사 기능실 관리소 현황-2025.xlsx";
 
+const DEFAULT_MAINTENANCE_FILE =
+  "f:/01. EPOS/00. 25년도 EPOS/0001. 전력감시 용역(유지보수)/00_착수계/02_정기점검계획/정기점검계획서.xlsx";
+
+/** 정기점검계획서 관리소명 → 기존 id */
+const OFFICE_ID_ALIASES = {
+  종합운동: "종합운동장",
+};
+
+const OFFICE_WITH_LINE_RE = /^(.+?)\((\d+)\)\s*전기관리소\s*$/;
+const STATION_ROW_RE =
+  /^(.+?)\s+(전기실|변전소|역무실|차량기지|기지(?:\s*전기실)?)\s*$/;
+
 const FACILITY_ORDER = ["전기실", "변전소", "역무실"];
 
 const metroData = JSON.parse(fs.readFileSync(METRO_PATH, "utf8"));
@@ -183,11 +195,28 @@ function parseOfficeHeader(cell) {
   return m?.[1] ?? null;
 }
 
-function registerOffice(shortLabel) {
-  const id = shortLabel.replace(/\s+/g, "");
-  const label = `${shortLabel} 전기관리소`;
-  if (!officesById.has(id)) {
-    officesById.set(id, { id, shortLabel, label });
+function officeIdFromShort(shortLabel) {
+  const raw = shortLabel.replace(/\s+/g, "");
+  return OFFICE_ID_ALIASES[raw] ?? raw;
+}
+
+function registerOffice(shortLabel, lineNum) {
+  const id = officeIdFromShort(shortLabel);
+  const label =
+    lineNum != null
+      ? `${shortLabel}(${lineNum}) 전기관리소`
+      : `${shortLabel} 전기관리소`;
+  const existing = officesById.get(id);
+  if (!existing) {
+    officesById.set(id, {
+      id,
+      shortLabel: id,
+      label,
+      ...(lineNum != null ? { line: lineNum } : {}),
+    });
+  } else if (lineNum != null) {
+    existing.line = lineNum;
+    existing.label = label;
   }
   return id;
 }
@@ -326,9 +355,66 @@ function ingestLegacySheet(rows) {
   return added;
 }
 
+/** 유지보수 정기점검계획서 (점검대상 열) */
+function ingestMaintenancePlanSheet(rows) {
+  let currentOfficeShort = null;
+  let currentLine = null;
+  let linked = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const cell = String(rows[i][1] ?? "").trim();
+    if (!cell || cell === "점검대상" || cell === "역사명") continue;
+
+    const officeM = cell.match(OFFICE_WITH_LINE_RE);
+    if (officeM) {
+      currentOfficeShort = officeM[1].trim();
+      currentLine = Number(officeM[2]);
+      registerOffice(currentOfficeShort, currentLine);
+      continue;
+    }
+
+    const stationM = cell.match(STATION_ROW_RE);
+    if (!stationM || !currentOfficeShort || !currentLine) continue;
+
+    let stationRaw = stationM[1].trim();
+    stationRaw = stationRaw.replace(/역$/, "") + "역";
+
+    const match = findMetroMatch(stationRaw, currentLine);
+    const lineNum = match?.line ?? currentLine;
+    const canonical = normStation(match?.name ?? stationRaw);
+    if (!lineNum || !isValidStation(canonical)) continue;
+
+    linkStationOffice(lineNum, canonical, currentOfficeShort);
+    linked++;
+  }
+
+  return linked;
+}
+
+function ingestMaintenanceWorkbook(filePath) {
+  if (!fs.existsSync(filePath)) {
+    console.warn("skip maintenance (not found):", filePath);
+    return 0;
+  }
+  console.log("read maintenance:", filePath);
+  const wb = XLSX.readFile(filePath, { cellDates: false });
+  const sn = wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {
+    header: 1,
+    defval: "",
+  });
+  const n = ingestMaintenancePlanSheet(rows);
+  console.log(" ", sn, "(정기점검)", "→", n, "station-office links");
+  return n;
+}
+
 function ingestWorkbook(filePath) {
   if (!fs.existsSync(filePath)) {
     console.warn("skip (not found):", filePath);
+    return;
+  }
+  if (/정기점검/.test(filePath)) {
+    ingestMaintenanceWorkbook(filePath);
     return;
   }
   console.log("read:", filePath);
@@ -355,9 +441,17 @@ function ingestWorkbook(filePath) {
 
 const inputs = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : [DEFAULT_FILE];
+  : [DEFAULT_FILE, DEFAULT_MAINTENANCE_FILE];
 
 for (const fp of inputs) ingestWorkbook(fp);
+
+if (
+  !process.argv.slice(2).some((p) => /정기점검/.test(p)) &&
+  fs.existsSync(DEFAULT_MAINTENANCE_FILE) &&
+  !inputs.includes(DEFAULT_MAINTENANCE_FILE)
+) {
+  ingestMaintenanceWorkbook(DEFAULT_MAINTENANCE_FILE);
+}
 
 const stations = [...byKey.values()]
   .map(({ line, stationName, facilities }) => ({
@@ -382,7 +476,7 @@ const out = {
   source: inputs,
   generatedAt: new Date().toISOString().slice(0, 10),
   note:
-    "서울교통공사 기능실·관리소 현황(2025). 조명제어·조명제어연계는 역무실로 매핑.",
+    "서울교통공사 기능실·관리소 현황(2025) + 유지보수 정기점검계획서. 조명제어·조명제어연계는 역무실로 매핑.",
   stations,
   offices,
   stationOffices,

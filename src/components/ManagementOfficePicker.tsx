@@ -1,19 +1,21 @@
 "use client";
 
-import { getManagementOffices } from "@/lib/eposStationOffices";
+import {
+  getManagementOffices,
+  getOfficeMetroLine,
+} from "@/lib/eposStationOffices";
+import { getMetroLineColor } from "@/lib/metroStations";
 
 interface ManagementOfficePickerProps {
   value: string;
   onChange: (officeId: string) => void;
   disabled?: boolean;
-  accentColor?: string;
 }
 
 export function ManagementOfficePicker({
   value,
   onChange,
   disabled,
-  accentColor,
 }: ManagementOfficePickerProps) {
   const offices = getManagementOffices();
 
@@ -23,7 +25,8 @@ export function ManagementOfficePicker({
         전기관리소 (작업 장소) <span className="text-red-600">*</span>
       </p>
       <p className="muted mb-2 text-xs">
-        유지보수 용역 시 관리소 단위로 방문합니다. 담당 관리소를 선택하세요.
+        유지보수 용역 시 관리소를 선택하면 해당 호선·소속 역사가 자동으로
+        선택됩니다. 버튼 색은 담당 호선입니다.
       </p>
       <div
         className="management-office-grid"
@@ -32,32 +35,40 @@ export function ManagementOfficePicker({
       >
         {offices.map((office) => {
           const active = value === office.id || value === office.shortLabel;
+          const line = getOfficeMetroLine(office);
+          const lineColor = line != null ? getMetroLineColor(line) : "";
           return (
             <button
               key={office.id}
               type="button"
               role="option"
               aria-selected={active}
-              className={`management-office-btn${active ? " active" : ""}${
-                accentColor ? " management-office-btn--lined" : ""
+              className={`management-office-btn management-office-btn--lined${
+                active ? " active" : ""
               }`}
               style={
-                accentColor
+                lineColor
                   ? active
                     ? {
-                        borderColor: accentColor,
-                        backgroundColor: accentColor,
+                        borderColor: lineColor,
+                        backgroundColor: lineColor,
                         color: "#fff",
                       }
-                    : { borderColor: accentColor, color: accentColor }
+                    : { borderColor: lineColor, color: lineColor }
                   : undefined
               }
               disabled={disabled}
-              onClick={() =>
-                onChange(active ? "" : office.id)
-              }
+              onClick={() => onChange(active ? "" : office.id)}
             >
               <span className="font-semibold">{office.label}</span>
+              {line != null ? (
+                <span
+                  className="mt-0.5 block text-[10px] font-normal opacity-90"
+                  style={active ? { color: "#fff" } : undefined}
+                >
+                  {line}호선
+                </span>
+              ) : null}
             </button>
           );
         })}

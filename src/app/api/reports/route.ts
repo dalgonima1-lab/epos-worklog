@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
+import { createVisitGroupId } from "@/lib/visitGroup";
 import {
   isProcessingRoleAllowedForFacility,
   isWorkFacilityArea,
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
     memberId,
     date,
     stationName,
+    stationNames,
+    visitGroupId,
     facilityArea,
     managementOffice,
     processingRole,
@@ -56,7 +59,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!stationName?.trim()) {
+  const namesList = Array.isArray(stationNames)
+    ? stationNames.map((s: string) => String(s).trim()).filter(Boolean)
+    : [];
+  const primaryStation =
+    namesList[0] ?? String(stationName ?? "").trim();
+
+  if (!primaryStation) {
     return NextResponse.json(
       { error: "역사명을 선택하거나 입력해 주세요." },
       { status: 400 }
@@ -100,8 +109,15 @@ export async function POST(request: NextRequest) {
 
   const existing = await getReport(memberId, date);
 
+  const groupId =
+    namesList.length > 1
+      ? (visitGroupId as string | undefined) ?? createVisitGroupId()
+      : (visitGroupId as string | undefined);
+
   const report = await upsertReport(memberId, date, {
-    stationName: String(stationName).trim(),
+    stationName: primaryStation,
+    stationNames: namesList.length > 1 ? namesList : undefined,
+    visitGroupId: groupId,
     facilityArea: facility,
     managementOffice: String(managementOffice ?? "").trim() || undefined,
     processingRole: role,

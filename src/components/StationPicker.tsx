@@ -11,7 +11,10 @@ import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
   formatStationNameWithOffice,
+  getStationDisplayNamesForOffice,
+  getOfficeMetroLine,
   getStationsForOffice,
+  resolveManagementOffice,
 } from "@/lib/eposStationOffices";
 import {
   filterMetroStations,
@@ -32,6 +35,7 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
+import { shortStationLabel } from "@/lib/visitGroup";
 
 const RECENT_STATION_LIMIT = 5;
 
@@ -55,6 +59,11 @@ interface StationPickerProps {
   onMaintenanceModeChange?: (enabled: boolean) => void;
   managementOffice?: string;
   onManagementOfficeChange?: (officeId: string) => void;
+  /** 여러 역 한번에 선택 */
+  multiStationMode?: boolean;
+  onMultiStationModeChange?: (enabled: boolean) => void;
+  selectedStations?: string[];
+  onSelectedStationsChange?: (stations: string[]) => void;
 }
 
 function recentTabMatches(name: string, query: string): boolean {
@@ -78,6 +87,10 @@ export function StationPicker({
   onMaintenanceModeChange,
   managementOffice = "",
   onManagementOfficeChange,
+  multiStationMode = false,
+  onMultiStationModeChange,
+  selectedStations = [],
+  onSelectedStationsChange,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
@@ -178,12 +191,39 @@ export function StationPicker({
 
   function handleManagementOfficePick(officeId: string) {
     onManagementOfficeChange?.(officeId);
-    if (officeId) {
-      onFacilityChange?.(MANAGEMENT_OFFICE_FACILITY as StationFacilityArea);
+    if (!officeId) {
+      setSelectedLine("");
+      setSelectedStation("");
+      setStationQuery("");
+      onSelectedStationsChange?.([]);
+      if (value.trim()) onChange("");
+      return;
     }
-    setSelectedStation("");
-    setStationQuery("");
-    if (value.trim()) onChange("");
+
+    onFacilityChange?.(MANAGEMENT_OFFICE_FACILITY as StationFacilityArea);
+
+    const office = resolveManagementOffice(officeId);
+    const line = office ? getOfficeMetroLine(office) : null;
+    const displays = getStationDisplayNamesForOffice(officeId);
+
+    if (line != null) {
+      setSelectedLine(line);
+      setUseDirectInput(false);
+      setStationListOpen(true);
+    }
+
+    if (displays.length > 0) {
+      onMultiStationModeChange?.(true);
+      onSelectedStationsChange?.(displays);
+      onChange(displays[0]!);
+      for (const name of displays) {
+        void registerStation(name);
+      }
+    } else {
+      setSelectedStation("");
+      setStationQuery("");
+      if (value.trim()) onChange("");
+    }
   }
 
   const productFacilitiesForSelection = useMemo(() => {
@@ -206,8 +246,35 @@ export function StationPicker({
 
   function applyMetroSelection(line: number, stationName: string) {
     const formatted = formatMetroStationValue(line, stationName);
+    if (multiStationMode && onSelectedStationsChange) {
+      setSelectedStation(stationName);
+      setStationQuery("");
+      setStationListOpen(false);
+      return;
+    }
     setStationValue(formatted);
     void registerStation(formatted);
+  }
+
+  function addCurrentToMultiList() {
+    if (!onSelectedStationsChange || selectedLine === "" || !selectedStation) {
+      return;
+    }
+    const formatted = formatMetroStationValue(selectedLine, selectedStation);
+    if (selectedStations.some((s) => s === formatted)) return;
+    const next = [...selectedStations, formatted];
+    onSelectedStationsChange(next);
+    if (!value.trim()) onChange(formatted);
+    void registerStation(formatted);
+    setSelectedStation("");
+    setStationQuery("");
+  }
+
+  function removeFromMultiList(name: string) {
+    if (!onSelectedStationsChange) return;
+    const next = selectedStations.filter((s) => s !== name);
+    onSelectedStationsChange(next);
+    if (value === name) onChange(next[0] ?? "");
   }
 
   function handleLineChange(lineStr: string) {
@@ -288,6 +355,54 @@ export function StationPicker({
 
   return (
     <div className="station-picker">
+      {onMultiStationModeChange ? (
+        <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/90 px-3 py-2.5">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={multiStationMode}
+            disabled={disabled}
+            onChange={(e) => {
+              onMultiStationModeChange(e.target.checked);
+              if (!e.target.checked) {
+                onSelectedStationsChange?.([]);
+              }
+            }}
+          />
+          <span className="text-sm">
+            <strong className="text-indigo-950">여러 역 한번에</strong>
+            <span className="mt-0.5 block text-xs font-normal text-indigo-900/90">
+              같은 공종·작업으로 묶어 등록합니다. 역을 고른 뒤 목록에 추가하세요.
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      {multiStationMode && selectedStations.length > 0 ? (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {selectedStations.map((name) => (
+            <span
+              key={name}
+              className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-950"
+            >
+              {shortStationLabel(name)}
+              <button
+                type="button"
+                className="text-indigo-600 hover:text-red-600"
+                disabled={disabled}
+                aria-label={`${name} 제거`}
+                onClick={() => removeFromMultiList(name)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <span className="self-center text-xs text-slate-600">
+            {selectedStations.length}역 선택됨
+          </span>
+        </div>
+      ) : null}
+
       {onMaintenanceModeChange ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2.5">
           <input
@@ -313,8 +428,13 @@ export function StationPicker({
             value={managementOffice}
             onChange={handleManagementOfficePick}
             disabled={disabled}
-            accentColor={lineColor || valueLineColor || undefined}
           />
+          {managementOffice && selectedStations.length > 0 ? (
+            <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
+              <strong>{selectedStations.length}개 역</strong>이 이 관리소 소속으로
+              자동 선택되었습니다. 필요하면 아래에서 역을 추가·제거할 수 있습니다.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -543,6 +663,24 @@ export function StationPicker({
                           })
                         )}
                       </div>
+                      {multiStationMode &&
+                      onSelectedStationsChange &&
+                      selectedStation &&
+                      selectedLine !== "" ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary mt-2 w-full text-sm"
+                          disabled={disabled}
+                          onClick={addCurrentToMultiList}
+                        >
+                          「
+                          {formatStationNameWithOffice(
+                            selectedLine as number,
+                            selectedStation
+                          )}
+                          」 목록에 추가
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </>

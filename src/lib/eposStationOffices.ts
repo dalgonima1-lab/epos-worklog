@@ -1,10 +1,15 @@
 import productData from "@/data/epos-product-stations.json";
-import { normalizeStationName } from "@/lib/metroStations";
+import {
+  formatMetroStationValue,
+  normalizeStationName,
+} from "@/lib/metroStations";
 
 export interface ManagementOffice {
   id: string;
   shortLabel: string;
   label: string;
+  /** 정기점검계획서 괄호 안 호선 (예: 신답(1)) */
+  line?: number;
 }
 
 export interface StationOfficeLink {
@@ -29,6 +34,18 @@ for (const row of STATION_OFFICES) {
 
 export function getManagementOffices(): ManagementOffice[] {
   return OFFICES;
+}
+
+export function getOfficeMetroLine(office: ManagementOffice): number | null {
+  if (office.line != null && office.line >= 1 && office.line <= 9) {
+    return office.line;
+  }
+  const m = office.label.match(/\((\d+)\)/);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 9) return n;
+  }
+  return null;
 }
 
 export function getStationOfficeShortLabel(
@@ -69,6 +86,25 @@ export function getStationsForOffice(officeIdOrShort: string): Set<string> {
     }
   }
   return keys;
+}
+
+/** 관리소 소속 역사 전체 (2호선 강남역 형식) */
+export function getStationDisplayNamesForOffice(
+  officeIdOrShort: string
+): string[] {
+  const office =
+    officeById.get(officeIdOrShort) ?? officeByShort.get(officeIdOrShort);
+  if (!office) return [];
+
+  const names: string[] = [];
+  for (const row of STATION_OFFICES) {
+    if (row.officeId !== office.id && row.officeShortLabel !== office.shortLabel) {
+      continue;
+    }
+    const display = formatMetroStationValue(row.line, row.stationName);
+    if (display) names.push(display);
+  }
+  return names.sort((a, b) => a.localeCompare(b, "ko"));
 }
 
 export function resolveManagementOffice(

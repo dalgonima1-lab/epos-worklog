@@ -41,6 +41,8 @@ function DailyPageInner() {
   const [stationName, setStationName] = useState(
     () => searchParams.get("station")?.trim() ?? ""
   );
+  const [multiStationMode, setMultiStationMode] = useState(false);
+  const [selectedStations, setSelectedStations] = useState<string[]>([]);
   const [facilityArea, setFacilityArea] = useState<
     StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
   >(() => {
@@ -65,7 +67,11 @@ function DailyPageInner() {
   const [loading, setLoading] = useState(false);
 
   const effectiveRole =
-    processingRole === ROLE_OTHER ? customRole.trim() : processingRole;
+    facilityArea === MANAGEMENT_OFFICE_FACILITY
+      ? "유지보수 용역"
+      : processingRole === ROLE_OTHER
+        ? customRole.trim()
+        : processingRole;
 
   const rolesForFacility = getProcessingRolesForFacility(
     facilityArea === MANAGEMENT_OFFICE_FACILITY
@@ -166,6 +172,17 @@ function DailyPageInner() {
         const safeReportStation = isSecurityTestPlaceholder(fromReport)
           ? ""
           : fromReport;
+        const additional = report?.additionalStationNames ?? [];
+        if (additional.length > 0) {
+          setMultiStationMode(true);
+          setSelectedStations([
+            safeReportStation,
+            ...additional.filter(Boolean),
+          ].filter(Boolean));
+        } else {
+          setMultiStationMode(false);
+          setSelectedStations([]);
+        }
         setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
         if (area === MANAGEMENT_OFFICE_FACILITY) {
@@ -223,8 +240,14 @@ function DailyPageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!stationName.trim()) {
-      setStatus("\uc5ed\uc0ac\uba85\uc744 \uc120\ud0dd\ud558\uac70\ub098 \uc785\ub825\ud574 \uc8fc\uc138\uc694.");
+    const stations =
+      multiStationMode && selectedStations.length > 0
+        ? selectedStations
+        : stationName.trim()
+          ? [stationName.trim()]
+          : [];
+    if (!stations.length) {
+      setStatus("역사명을 선택하거나 입력해 주세요.");
       return;
     }
     if (!facilityArea) {
@@ -251,7 +274,8 @@ function DailyPageInner() {
       body: JSON.stringify({
         memberId,
         date,
-        stationName: stationName.trim(),
+        stationName: stations[0],
+        stationNames: stations.length > 1 ? stations : undefined,
         facilityArea,
         managementOffice:
           facilityArea === MANAGEMENT_OFFICE_FACILITY
@@ -339,6 +363,8 @@ function DailyPageInner() {
             if (enabled) {
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
               setManagementOffice("");
+              setProcessingRole("유지보수 용역");
+              setCustomRole("");
             } else {
               setManagementOffice("");
               setFacilityArea("");
@@ -346,6 +372,10 @@ function DailyPageInner() {
           }}
           managementOffice={managementOffice}
           onManagementOfficeChange={setManagementOffice}
+          multiStationMode={multiStationMode}
+          onMultiStationModeChange={setMultiStationMode}
+          selectedStations={selectedStations}
+          onSelectedStationsChange={setSelectedStations}
         />
 
         <div>
@@ -359,7 +389,7 @@ function DailyPageInner() {
             </p>
           ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
             <p className="muted mb-1 text-xs">
-              관리소(유지보수): 유지보수 용역만 선택 가능합니다.
+              관리소(유지보수): 공종은「유지보수 용역」으로 자동 설정됩니다.
             </p>
           ) : (
             <p className="muted mb-1 text-xs">
@@ -371,9 +401,17 @@ function DailyPageInner() {
           <select
             id="role"
             className="select"
-            value={processingRole}
+            value={
+              facilityArea === MANAGEMENT_OFFICE_FACILITY
+                ? "유지보수 용역"
+                : processingRole
+            }
             onChange={(e) => setProcessingRole(e.target.value)}
-            disabled={loading || !facilityArea}
+            disabled={
+              loading ||
+              !facilityArea ||
+              facilityArea === MANAGEMENT_OFFICE_FACILITY
+            }
           >
             <option value="">{"\uc120\ud0dd\ud558\uc138\uc694"}</option>
             {rolesForFacility.map((r) => (
