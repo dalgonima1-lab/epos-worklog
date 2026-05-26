@@ -120,7 +120,12 @@ export default function StationHistoryPage() {
           <code className="text-xs">길음역</code>도 같은 역으로 인식).
         </p>
         <div className="mt-4">
-          <StationPicker value={station} onChange={setStation} disabled={loading} />
+          <StationPicker
+            value={station}
+            onChange={setStation}
+            disabled={loading}
+            showMaintenanceFacilityLabels
+          />
         </div>
         <button
           type="button"

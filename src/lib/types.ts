@@ -36,6 +36,12 @@ export interface DailyReport {
   }[];
   /** 유지보수 역별 미비사항 */
   maintenanceDeficienciesByStation?: { station: string; text: string }[];
+  /** 사무 작업: 역·공종별 수행 내용 */
+  officeWorkEntries?: {
+    station: string;
+    processingRole: string;
+    done: string;
+  }[];
   /** 여러 역·일정을 묶는 그룹 id */
   visitGroupId?: string;
   /** 공종 */

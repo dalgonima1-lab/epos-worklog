@@ -4,9 +4,15 @@ import {
   getReport,
   getReportsInRange,
   getSchedulesInRange,
+  syncSchedulesFromOfficeWork,
   upsertReport,
   visitGroupIdFromSchedules,
 } from "@/lib/db";
+import {
+  filledOfficeWorkEntries,
+  summarizeOfficeWorkRoles,
+  type OfficeWorkEntry,
+} from "@/lib/officeWork";
 import {
   findCohortCoverage,
   reportHasMeaningfulContent,
@@ -17,6 +23,7 @@ import {
   isProcessingRoleAllowedForFacility,
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
+  OFFICE_WORK_FACILITY,
 } from "@/lib/stationFacility";
 
 export async function GET(request: NextRequest) {
@@ -78,6 +85,7 @@ export async function POST(request: NextRequest) {
     maintenanceVisitTargets,
     maintenancePlannedTargets,
     maintenanceDeficienciesByStation,
+    officeWorkEntries,
     managementOffice,
     processingRole,
     done,
@@ -99,7 +107,52 @@ export async function POST(request: NextRequest) {
     ? stationNames.map((s: string) => String(s).trim()).filter(Boolean)
     : [];
 
-  const facility = String(facilityArea).trim();
+  let facility = String(facilityArea).trim();
+  const rawOfficeEntries = Array.isArray(officeWorkEntries)
+    ? (officeWorkEntries as OfficeWorkEntry[])
+    : [];
+  const officeEntries = filledOfficeWorkEntries(rawOfficeEntries);
+  const isOfficeWork =
+    facility === OFFICE_WORK_FACILITY || officeEntries.length > 0;
+
+  if (isOfficeWork) {
+    facility = OFFICE_WORK_FACILITY;
+    if (!officeEntries.length) {
+      return NextResponse.json(
+        {
+          error:
+            "사무 작업은 역사·공종을 선택한 뒤, 최소 1건의 작업 내용을 입력해 주세요.",
+        },
+        { status: 400 }
+      );
+    }
+    const stationSet = [...new Set(officeEntries.map((e) => e.station.trim()))];
+    const primaryStation = stationSet[0]!;
+    const summaryDone = officeEntries
+      .map((e) => `【${e.station} · ${e.processingRole}】\n${e.done.trim()}`)
+      .join("\n\n");
+    const existing = await getReport(memberId, date);
+    const report = await upsertReport(memberId, date, {
+      stationName: primaryStation,
+      stationNames: stationSet.length > 1 ? stationSet : undefined,
+      facilityArea: OFFICE_WORK_FACILITY,
+      officeWorkEntries: officeEntries,
+      processingRole: summarizeOfficeWorkRoles(officeEntries),
+      done: summaryDone,
+      plan: plan ?? "",
+      issues: issues ?? "",
+      deficiencies: deficiencies ?? "",
+      beforePhotoAt: beforePhotoAt ?? existing?.beforePhotoAt,
+      afterPhotoAt: afterPhotoAt ?? existing?.afterPhotoAt,
+    });
+    const schedules = await syncSchedulesFromOfficeWork(
+      memberId,
+      date,
+      officeEntries
+    );
+    return NextResponse.json({ report, schedules });
+  }
+
   if (!facility || !isWorkFacilityArea(facility)) {
     return NextResponse.json(
       { error: "작업 장소를 선택해 주세요." },

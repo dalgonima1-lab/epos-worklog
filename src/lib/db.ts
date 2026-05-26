@@ -31,8 +31,14 @@ import {
   sanitizeDatabaseTestArtifacts,
 } from "./sanitizeTestData";
 import {
+  buildOfficeWorkScheduleTitle,
+  filledOfficeWorkEntries,
+  type OfficeWorkEntry,
+} from "./officeWork";
+import {
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
+  OFFICE_WORK_FACILITY,
 } from "./stationFacility";
 
 export const DATA_SANITIZE_VERSION = 1;
@@ -74,6 +80,7 @@ export type ReportPayload = Pick<
   | "maintenanceVisitTargets"
   | "maintenancePlannedTargets"
   | "maintenanceDeficienciesByStation"
+  | "officeWorkEntries"
   | "managementOffice"
   | "processingRole"
   | "done"
@@ -379,13 +386,17 @@ export async function upsertReport(
   const now = new Date().toISOString();
   const isMaintenanceReport =
     normalizeFacilityArea(payload.facilityArea) === MANAGEMENT_OFFICE_FACILITY;
-  const workMinutes = isMaintenanceReport
-    ? undefined
-    : calcWorkMinutes(payload.beforePhotoAt, payload.afterPhotoAt);
+  const isOfficeWorkReport =
+    normalizeFacilityArea(payload.facilityArea) === OFFICE_WORK_FACILITY;
+  const workMinutes =
+    isMaintenanceReport || isOfficeWorkReport
+      ? undefined
+      : calcWorkMinutes(payload.beforePhotoAt, payload.afterPhotoAt);
 
   const allStations = [
     payload.stationName,
     ...(payload.additionalStationNames ?? []),
+    ...(payload.officeWorkEntries ?? []).map((e) => e.station),
   ].filter(Boolean);
   for (const s of allStations) {
     db.stationHistory = registerStationInHistory(db.stationHistory, s);
@@ -414,6 +425,9 @@ export async function upsertReport(
       payload.maintenanceDeficienciesByStation?.length
         ? payload.maintenanceDeficienciesByStation
         : undefined;
+    existing.officeWorkEntries = payload.officeWorkEntries?.length
+      ? payload.officeWorkEntries
+      : undefined;
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
     );
@@ -464,6 +478,9 @@ export async function upsertReport(
       payload.maintenanceDeficienciesByStation?.length
         ? payload.maintenanceDeficienciesByStation
         : undefined,
+    officeWorkEntries: payload.officeWorkEntries?.length
+      ? payload.officeWorkEntries
+      : undefined,
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
     done: payload.done,
@@ -658,6 +675,55 @@ export async function upsertSchedule(payload: {
 
   await saveDb(db);
   return entry;
+}
+
+export async function deleteSchedulesForMemberDateFacility(
+  memberId: string,
+  date: string,
+  facilityArea: string
+): Promise<number> {
+  const db = await ensureDb();
+  const area = facilityArea.trim();
+  const before = db.schedules.length;
+  db.schedules = db.schedules.filter(
+    (s) =>
+      !(
+        s.memberId === memberId &&
+        s.date === date &&
+        s.facilityArea?.trim() === area
+      )
+  );
+  const removed = before - db.schedules.length;
+  if (removed > 0) await saveDb(db);
+  return removed;
+}
+
+/** 사무 작업 일일기록 → 해당 날짜 일정 자동 반영 */
+export async function syncSchedulesFromOfficeWork(
+  memberId: string,
+  date: string,
+  entries: OfficeWorkEntry[]
+): Promise<ScheduleEntry[]> {
+  await deleteSchedulesForMemberDateFacility(
+    memberId,
+    date,
+    OFFICE_WORK_FACILITY
+  );
+  const filled = filledOfficeWorkEntries(entries);
+  const created: ScheduleEntry[] = [];
+  for (const e of filled) {
+    const note = e.done.trim();
+    const schedule = await upsertSchedule({
+      date,
+      memberId,
+      title: buildOfficeWorkScheduleTitle(e.station, e.processingRole, note),
+      stationName: e.station,
+      facilityArea: OFFICE_WORK_FACILITY,
+      note,
+    });
+    created.push(schedule);
+  }
+  return created;
 }
 
 export async function deleteSchedule(id: string): Promise<void> {

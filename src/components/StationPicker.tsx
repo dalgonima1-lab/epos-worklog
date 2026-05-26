@@ -20,8 +20,11 @@ import {
 import { MaintenanceVisitList } from "@/components/MaintenanceVisitList";
 import {
   buildMaintenanceSelectionsForOffice,
+  formatFacilitiesLabelWithMaintenanceAnnotations,
   getMaintenancePlanFacilities,
+  getMaintenancePlanFacilitiesForStation,
   isStationInMaintenancePlan,
+  mergeFacilitiesForStationDisplay,
 } from "@/lib/maintenancePlan";
 import {
   formatEposFacilitiesLabel,
@@ -79,6 +82,10 @@ interface StationPickerProps {
   lockMaintenanceMode?: boolean;
   /** 일일기록: 역·기능실 UI를 페이지 전용 폼으로 대체 */
   hideMaintenanceVisitList?: boolean;
+  /** 사무 작업: 역 다중 선택, 작업 장소·유지보수 UI 숨김 */
+  officeWorkMode?: boolean;
+  /** 역사 히스토리 등: 정기점검계획서 기능실에 (유지보수 용역) 표기 */
+  showMaintenanceFacilityLabels?: boolean;
 }
 
 export function StationPicker({
@@ -104,6 +111,8 @@ export function StationPicker({
   onMaintenanceSelectionsChange,
   lockMaintenanceMode = false,
   hideMaintenanceVisitList = false,
+  officeWorkMode = false,
+  showMaintenanceFacilityLabels = false,
 }: StationPickerProps) {
   const effectiveMaintenanceMode = lockMaintenanceMode || maintenanceMode;
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
@@ -318,7 +327,7 @@ export function StationPicker({
       void registerStation(formatted);
       return;
     }
-    if (multiStationMode && onSelectedStationsChange) {
+    if ((multiStationMode || officeWorkMode) && onSelectedStationsChange) {
       addStationToMultiList(line, stationName);
       return;
     }
@@ -340,6 +349,7 @@ export function StationPicker({
   const perStationFacilityPick =
     multiStationMode &&
     !maintenanceMode &&
+    !officeWorkMode &&
     selectedStations.length >= 2 &&
     Boolean(onStationFacilityByStationChange);
 
@@ -428,7 +438,14 @@ export function StationPicker({
 
   return (
     <div className="station-picker">
-      {onMultiStationModeChange && !maintenanceMode ? (
+      {officeWorkMode ? (
+        <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950">
+          <strong>사무 작업</strong>: 호선·역사를 누르면 아래 목록에 추가됩니다. 공종과
+          작업 내용은 아래에서 입력합니다.
+        </p>
+      ) : null}
+
+      {onMultiStationModeChange && !maintenanceMode && !officeWorkMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -452,7 +469,7 @@ export function StationPicker({
         </label>
       ) : null}
 
-      {onMaintenanceModeChange && !lockMaintenanceMode ? (
+      {onMaintenanceModeChange && !lockMaintenanceMode && !officeWorkMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -706,10 +723,23 @@ export function StationPicker({
                                     lineNum,
                                     s.name
                                   )
-                                : [];
+                                : lineNum != null && showMaintenanceFacilityLabels
+                                  ? getMaintenancePlanFacilitiesForStation(
+                                      lineNum,
+                                      s.name
+                                    )
+                                  : [];
                             const facilityLabel = maintenanceMode
                               ? formatEposFacilitiesLabel(planFacilities)
-                              : formatEposFacilitiesLabel(facilities);
+                              : showMaintenanceFacilityLabels && lineNum != null
+                                ? formatFacilitiesLabelWithMaintenanceAnnotations(
+                                    mergeFacilitiesForStationDisplay(
+                                      facilities,
+                                      planFacilities
+                                    ),
+                                    planFacilities
+                                  )
+                                : formatEposFacilitiesLabel(facilities);
                             const faint =
                               maintenanceMode && managementOffice
                                 ? false
@@ -872,7 +902,7 @@ export function StationPicker({
         </div>
       ) : null}
 
-      {(multiStationMode || maintenanceMode) &&
+      {(multiStationMode || maintenanceMode || officeWorkMode) &&
       onSelectedStationsChange &&
       !maintenanceMode ? (
         <div className="mt-4">
@@ -893,7 +923,9 @@ export function StationPicker({
             <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
               {maintenanceMode
                 ? "전기관리소를 선택하면 소속 역사가 여기에 표시됩니다."
-                : "호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다."}
+                : officeWorkMode
+                  ? "호선을 고른 뒤 역사명을 누르면 여기에 추가됩니다."
+                  : "호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다."}
               {perStationFacilityPick ? (
                 <>
                   <br />
@@ -971,6 +1003,7 @@ export function StationPicker({
       {value.trim() &&
       onFacilityChange &&
       !maintenanceMode &&
+      !officeWorkMode &&
       !perStationFacilityPick ? (
         <div className="mt-4">
           <StationFacilityPicker

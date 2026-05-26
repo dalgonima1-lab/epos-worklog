@@ -105,6 +105,52 @@ export function getMaintenancePlanFacilities(
   return [...set];
 }
 
+/** 관리소 무관 — 정기점검계획서에 등록된 역·기능실 */
+export function getMaintenancePlanFacilitiesForStation(
+  line: number,
+  stationName: string
+): StationFacilityArea[] {
+  const norm = normalizeStationName(stationName);
+  const set = new Set<StationFacilityArea>();
+  for (const e of PLAN) {
+    if (e.line === line && normalizeStationName(e.stationName) === norm) {
+      set.add(e.facility);
+    }
+  }
+  return STATION_FACILITY_ORDER.filter((f) => set.has(f));
+}
+
+const STATION_FACILITY_ORDER: StationFacilityArea[] = [
+  "전기실",
+  "변전소",
+  "역무실",
+];
+
+export function mergeFacilitiesForStationDisplay(
+  productFacilities: StationFacilityArea[],
+  planFacilities: StationFacilityArea[]
+): StationFacilityArea[] {
+  const out: StationFacilityArea[] = [];
+  for (const f of STATION_FACILITY_ORDER) {
+    if (productFacilities.includes(f) || planFacilities.includes(f)) {
+      out.push(f);
+    }
+  }
+  return out;
+}
+
+/** 기능실 목록 — 정기점검 대상은 괄호에 유지보수 용역 표기 */
+export function formatFacilitiesLabelWithMaintenanceAnnotations(
+  facilities: StationFacilityArea[],
+  maintenanceFacilities: StationFacilityArea[]
+): string {
+  if (!facilities.length) return "";
+  const maint = new Set(maintenanceFacilities);
+  return facilities
+    .map((f) => (maint.has(f) ? `${f} (유지보수 용역)` : f))
+    .join(" · ");
+}
+
 export function getMaintenancePlanStationCount(
   officeIdOrShort: string
 ): number {

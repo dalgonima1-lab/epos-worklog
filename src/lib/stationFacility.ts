@@ -7,11 +7,15 @@ export const STATION_FACILITY_AREAS = ["전기실", "변전소", "역무실"] as
 /** 유지보수 용역 시 관리소 단위 작업 장소 */
 export const MANAGEMENT_OFFICE_FACILITY = "관리소" as const;
 
+/** 사무실 내 역사·공종별 작업 */
+export const OFFICE_WORK_FACILITY = "사무" as const;
+
 export type StationFacilityArea = (typeof STATION_FACILITY_AREAS)[number];
 
 export type WorkFacilityArea =
   | StationFacilityArea
-  | typeof MANAGEMENT_OFFICE_FACILITY;
+  | typeof MANAGEMENT_OFFICE_FACILITY
+  | typeof OFFICE_WORK_FACILITY;
 
 /** 전기실·변전소 공종 */
 export const PROCESSING_ROLES_POWER = [
@@ -33,6 +37,9 @@ export const PROCESSING_ROLES_MAINTENANCE_OFFICE = ["유지보수 용역"] as co
 export function getProcessingRolesForFacility(
   facilityArea: string | undefined
 ): readonly string[] {
+  if (facilityArea === OFFICE_WORK_FACILITY) {
+    return PROCESSING_ROLES;
+  }
   if (facilityArea === MANAGEMENT_OFFICE_FACILITY) {
     return PROCESSING_ROLES_MAINTENANCE_OFFICE;
   }
@@ -87,7 +94,9 @@ export function isStationFacilityArea(
 
 export function isWorkFacilityArea(value: string): value is WorkFacilityArea {
   return (
-    isStationFacilityArea(value) || value === MANAGEMENT_OFFICE_FACILITY
+    isStationFacilityArea(value) ||
+    value === MANAGEMENT_OFFICE_FACILITY ||
+    value === OFFICE_WORK_FACILITY
   );
 }
 
@@ -99,6 +108,9 @@ export function formatStationVisitLabel(
   const station = stationName.trim();
   const area = facilityArea?.trim();
   if (!station) return area ?? "";
+  if (area === OFFICE_WORK_FACILITY) {
+    return `${station} · 사무`;
+  }
   if (area === MANAGEMENT_OFFICE_FACILITY) {
     const office = managementOffice
       ? resolveManagementOffice(managementOffice)
