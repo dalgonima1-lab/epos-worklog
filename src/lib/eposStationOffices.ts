@@ -24,6 +24,12 @@ const OFFICES = (productData.offices ?? []) as ManagementOffice[];
 const STATION_OFFICES = (productData.stationOffices ??
   []) as StationOfficeLink[];
 
+/** 예전 데이터·엑셀 표기 → 표준 관리소 id */
+const OFFICE_ID_ALIASES: Record<string, string> = {
+  동대문: "동대문2",
+  동대문4: "동대문2",
+};
+
 const officeById = new Map(OFFICES.map((o) => [o.id, o]));
 const officeByShort = new Map(OFFICES.map((o) => [o.shortLabel, o]));
 
@@ -33,8 +39,10 @@ for (const row of STATION_OFFICES) {
   officeByLineStation.set(key, row);
 }
 
+const HIDDEN_OFFICE_IDS = new Set(["동대문", "동대문4"]);
+
 export function getManagementOffices(): ManagementOffice[] {
-  return OFFICES;
+  return OFFICES.filter((o) => !HIDDEN_OFFICE_IDS.has(o.id));
 }
 
 export function getOfficeMetroLine(office: ManagementOffice): number | null {
@@ -125,5 +133,12 @@ export function resolveManagementOffice(
 ): ManagementOffice | null {
   const t = value.trim();
   if (!t) return null;
-  return officeById.get(t) ?? officeByShort.get(t) ?? null;
+  const canonical = OFFICE_ID_ALIASES[t] ?? t;
+  return (
+    officeById.get(canonical) ??
+    officeByShort.get(canonical) ??
+    officeById.get(t) ??
+    officeByShort.get(t) ??
+    null
+  );
 }

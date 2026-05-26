@@ -19,9 +19,12 @@ const DEFAULT_FILE =
 const DEFAULT_MAINTENANCE_FILE =
   "f:/01. EPOS/00. 25년도 EPOS/0001. 전력감시 용역(유지보수)/00_착수계/02_정기점검계획/정기점검계획서.xlsx";
 
-/** 정기점검계획서 관리소명 → 기존 id */
+/** 정기점검계획서·엑셀 관리소명 → 표준 id */
 const OFFICE_ID_ALIASES = {
   종합운동: "종합운동장",
+  /** 계획서 표기 `동대문(4) 전기관리소` — 동대문2(4호선), plain 동대문 없음 */
+  동대문: "동대문2",
+  동대문4: "동대문2",
 };
 
 const OFFICE_WITH_LINE_RE = /^(.+?)\((\d+)\)\s*전기관리소\s*$/;
@@ -204,8 +207,8 @@ function registerOffice(shortLabel, lineNum) {
   const id = officeIdFromShort(shortLabel);
   const label =
     lineNum != null
-      ? `${shortLabel}(${lineNum}) 전기관리소`
-      : `${shortLabel} 전기관리소`;
+      ? `${id}(${lineNum}) 전기관리소`
+      : `${id} 전기관리소`;
   const existing = officesById.get(id);
   if (!existing) {
     officesById.set(id, {
@@ -223,7 +226,7 @@ function registerOffice(shortLabel, lineNum) {
 
 function linkStationOffice(lineNum, stationName, officeShort) {
   if (!lineNum || !stationName || !officeShort) return;
-  const officeId = registerOffice(officeShort);
+  const officeId = registerOffice(officeShort, lineNum);
   const office = officesById.get(officeId);
   if (office?.line != null && office.line !== lineNum) return;
 
@@ -232,8 +235,33 @@ function linkStationOffice(lineNum, stationName, officeShort) {
     line: lineNum,
     stationName,
     officeId,
-    officeShortLabel: officeShort,
+    officeShortLabel: office?.shortLabel ?? officeId,
   });
+}
+
+/** plain 동대문·동대문4 제거, 동대문1=2호선·동대문2=4호선 고정 */
+function finalizeDongdaemunOffices() {
+  for (const row of stationOfficeByKey.values()) {
+    if (row.officeId === "동대문" || row.officeId === "동대문4") {
+      row.officeId = "동대문2";
+      row.officeShortLabel = "동대문2";
+    }
+  }
+  officesById.delete("동대문");
+  officesById.delete("동대문4");
+
+  const d1 = officesById.get("동대문1");
+  if (d1) {
+    d1.line = 2;
+    d1.shortLabel = "동대문1";
+    d1.label = "동대문1(2) 전기관리소";
+  }
+  const d2 = officesById.get("동대문2");
+  if (d2) {
+    d2.line = 4;
+    d2.shortLabel = "동대문2";
+    d2.label = "동대문2(4) 전기관리소";
+  }
 }
 
 function inferOfficeLineFromMetro(shortLabel) {
@@ -482,6 +510,7 @@ const inputs = process.argv.slice(2).length
 
 for (const fp of inputs) ingestWorkbook(fp);
 
+finalizeDongdaemunOffices();
 filterStationOfficesByOfficeLine();
 
 if (
