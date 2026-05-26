@@ -126,11 +126,13 @@ export async function POST(request: NextRequest) {
     const cached = await loadGeneratedAnalysis(key);
     if (cached?.markdown) {
       const sourceLabel =
-        cached.source === "cursor"
-          ? "Cursor"
-          : cached.source === "gemini"
-            ? "Gemini"
-            : "저장본";
+        cached.source === "auto"
+          ? "자동 분석"
+          : cached.source === "cursor"
+            ? "Cursor"
+            : cached.source === "gemini"
+              ? "Gemini"
+              : "저장본";
       return NextResponse.json({
         markdown: cached.markdown,
         weekKey: key,

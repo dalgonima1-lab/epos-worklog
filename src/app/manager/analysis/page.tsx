@@ -20,8 +20,9 @@ export default function ManagerAnalysisPage() {
   const [analysis, setAnalysis] = useState("");
   const [analysisNotice, setAnalysisNotice] = useState("");
   const [analysisSource, setAnalysisSource] = useState<
-    "gemini" | "cursor" | "file" | ""
+    "gemini" | "cursor" | "file" | "auto" | ""
   >("");
+  const [autoRunning, setAutoRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [meta, setMeta] = useState<{
     currentWeek: string;
@@ -70,9 +71,11 @@ export default function ManagerAnalysisPage() {
           setAnalysis(d.markdown);
           setAnalysisSource(d.source ?? "file");
           setAnalysisNotice(
-            d.source === "cursor"
-              ? "저장된 Cursor 주간 분석입니다. Gemini 없이도 확인할 수 있습니다."
-              : ""
+            d.source === "auto"
+              ? "매주 토요일 자동 저장된 주간 분석입니다."
+              : d.source === "cursor"
+                ? "저장된 Cursor 주간 분석입니다."
+                : ""
           );
         } else {
           setAnalysis("");
@@ -146,6 +149,7 @@ export default function ManagerAnalysisPage() {
   async function loadSavedAnalysis() {
     setError("");
     setAnalysisNotice("");
+    setAnalysis("");
     const res = await fetch(
       `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
     );
@@ -223,6 +227,41 @@ export default function ManagerAnalysisPage() {
     window.print();
   }
 
+  async function runAutoAnalysis(force = false) {
+    setAutoRunning(true);
+    setError("");
+    try {
+      const res = await fetch("/api/analysis/auto-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin,
+          force,
+          start: week.start,
+          end: week.end,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? data.reason ?? "자동 분석 실행 실패");
+        return;
+      }
+      if (data.ok) {
+        await loadSavedAnalysis();
+        setAnalysisNotice(
+          data.message ??
+            `자동 분석을 저장했습니다 (${data.source === "gemini" ? "Gemini" : "자동"})`
+        );
+      } else {
+        setError(data.reason ?? "아직 전원 제출이 완료되지 않았습니다.");
+      }
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setAutoRunning(false);
+    }
+  }
+
   return (
     <>
       <Header
@@ -275,6 +314,10 @@ export default function ManagerAnalysisPage() {
                 저번주를 분석하려면 「이전 주」로 한 번, 저저번주와 비교하려면
                 「이전 주」를 두 번 눌러 주차를 맞추세요.
               </p>
+              <p className="mt-2 text-xs font-medium text-indigo-800">
+                매주 토요일 오전 9시: 팀원 전원 월~금 제출이 완료되면 주간 분석이
+                자동 저장됩니다.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -290,6 +333,14 @@ export default function ManagerAnalysisPage() {
                 onClick={() => setAnchor(new Date())}
               >
                 {"\uc774\ubc88 \uc8fc"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => runAutoAnalysis(false)}
+                disabled={autoRunning}
+              >
+                {autoRunning ? "자동 분석 중…" : "지금 자동 분석·저장"}
               </button>
               <button
                 type="button"

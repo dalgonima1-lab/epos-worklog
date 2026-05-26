@@ -3,5 +3,11 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "crons": [
+    {
+      "path": "/api/cron/weekly-analysis",
+      "schedule": "0 0 * * 6"
+    }
+  ]
 }

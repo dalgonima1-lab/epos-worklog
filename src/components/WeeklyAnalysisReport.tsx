@@ -10,7 +10,7 @@ import { StrategicChecklistPanel } from "@/components/StrategicChecklistPanel";
 interface WeeklyAnalysisReportProps {
   markdown: string;
   weekLabel?: string;
-  source?: "gemini" | "cursor" | "file" | "";
+  source?: "gemini" | "cursor" | "file" | "auto" | "";
 }
 
 function InlineText({ text }: { text: string }) {
@@ -109,11 +109,13 @@ function ReportHeader({
       </MetaGrid>
       {source ? (
         <span className="war-source-badge">
-          {source === "cursor"
-            ? "Cursor 분석"
-            : source === "gemini"
-              ? "Gemini AI 생성"
-              : "저장된 보고서"}
+          {source === "auto"
+            ? "토요일 자동 분석"
+            : source === "cursor"
+              ? "Cursor 분석"
+              : source === "gemini"
+                ? "Gemini AI 생성"
+                : "저장된 보고서"}
         </span>
       ) : null}
     </header>

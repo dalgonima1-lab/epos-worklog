@@ -55,7 +55,7 @@ export interface ScheduleEntry {
 /** 주간 팀장 분석 (Gemini 또는 Cursor 등) */
 export interface WeeklyAnalysisRecord {
   markdown: string;
-  source: "gemini" | "cursor" | "file";
+  source: "gemini" | "cursor" | "file" | "auto";
   updatedAt: string;
 }
 
