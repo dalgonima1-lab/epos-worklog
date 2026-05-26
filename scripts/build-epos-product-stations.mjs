@@ -224,6 +224,9 @@ function registerOffice(shortLabel, lineNum) {
 function linkStationOffice(lineNum, stationName, officeShort) {
   if (!lineNum || !stationName || !officeShort) return;
   const officeId = registerOffice(officeShort);
+  const office = officesById.get(officeId);
+  if (office?.line != null && office.line !== lineNum) return;
+
   const key = `${lineNum}|${stationName}`;
   stationOfficeByKey.set(key, {
     line: lineNum,
@@ -231,6 +234,40 @@ function linkStationOffice(lineNum, stationName, officeShort) {
     officeId,
     officeShortLabel: officeShort,
   });
+}
+
+function inferOfficeLineFromMetro(shortLabel) {
+  const norm = normKey(shortLabel);
+  if (!norm) return null;
+  for (const lineRow of metroData.lines) {
+    for (const s of lineRow.stations) {
+      const sn = normKey(s.name);
+      if (sn === norm) return lineRow.line;
+    }
+  }
+  return null;
+}
+
+function filterStationOfficesByOfficeLine() {
+  const kept = [];
+  for (const row of stationOfficeByKey.values()) {
+    const office = officesById.get(row.officeId);
+    if (!office) continue;
+    let officeLine = office.line ?? null;
+    if (officeLine == null) {
+      officeLine = inferOfficeLineFromMetro(office.shortLabel);
+      if (officeLine != null) {
+        office.line = officeLine;
+        office.label = `${office.shortLabel}(${officeLine}) 전기관리소`;
+      }
+    }
+    if (officeLine == null || row.line !== officeLine) continue;
+    kept.push(row);
+  }
+  stationOfficeByKey.clear();
+  for (const row of kept) {
+    stationOfficeByKey.set(`${row.line}|${row.stationName}`, row);
+  }
 }
 
 function addStationRecord(line, stationName, facilityList, lightingYes) {
@@ -441,9 +478,11 @@ function ingestWorkbook(filePath) {
 
 const inputs = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : [DEFAULT_FILE, DEFAULT_MAINTENANCE_FILE];
+  : [DEFAULT_MAINTENANCE_FILE, DEFAULT_FILE];
 
 for (const fp of inputs) ingestWorkbook(fp);
+
+filterStationOfficesByOfficeLine();
 
 if (
   !process.argv.slice(2).some((p) => /정기점검/.test(p)) &&

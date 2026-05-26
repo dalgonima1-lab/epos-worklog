@@ -1,7 +1,7 @@
 {
   "source": [
-    "f:/01. EPOS/서울교통공사 기능실 관리소 현황-2025.xlsx",
-    "f:/01. EPOS/00. 25년도 EPOS/0001. 전력감시 용역(유지보수)/00_착수계/02_정기점검계획/정기점검계획서.xlsx"
+    "f:/01. EPOS/00. 25년도 EPOS/0001. 전력감시 용역(유지보수)/00_착수계/02_정기점검계획/정기점검계획서.xlsx",
+    "f:/01. EPOS/서울교통공사 기능실 관리소 현황-2025.xlsx"
   ],
   "generatedAt": "2026-05-26",
   "note": "서울교통공사 기능실·관리소 현황(2025) + 유지보수 정기점검계획서. 조명제어·조명제어연계는 역무실로 매핑.",
@@ -697,7 +697,8 @@
     {
       "id": "구의",
       "shortLabel": "구의",
-      "label": "구의 전기관리소"
+      "label": "구의(2) 전기관리소",
+      "line": 2
     },
     {
       "id": "군자",
@@ -797,27 +798,9 @@
   "stationOffices": [
     {
       "line": 1,
-      "stationName": "동대문역",
-      "officeId": "동대문4",
-      "officeShortLabel": "동대문4"
-    },
-    {
-      "line": 1,
-      "stationName": "서울역",
-      "officeId": "신답",
-      "officeShortLabel": "신답"
-    },
-    {
-      "line": 1,
       "stationName": "시청역",
       "officeId": "신답",
       "officeShortLabel": "신답"
-    },
-    {
-      "line": 1,
-      "stationName": "신도림역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
     },
     {
       "line": 1,
@@ -839,21 +822,9 @@
     },
     {
       "line": 1,
-      "stationName": "종로3가역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 1,
       "stationName": "종로5가역",
       "officeId": "신답",
       "officeShortLabel": "신답"
-    },
-    {
-      "line": 1,
-      "stationName": "창동역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -864,8 +835,8 @@
     {
       "line": 2,
       "stationName": "낙성대역",
-      "officeId": "대림",
-      "officeShortLabel": "대림"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -876,8 +847,8 @@
     {
       "line": 2,
       "stationName": "문래역",
-      "officeId": "신정",
-      "officeShortLabel": "신정"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -888,20 +859,14 @@
     {
       "line": 2,
       "stationName": "봉천역",
-      "officeId": "대림",
-      "officeShortLabel": "대림"
-    },
-    {
-      "line": 2,
-      "stationName": "상왕십리역",
-      "officeId": "동대문1",
-      "officeShortLabel": "동대문1"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
       "stationName": "서초역",
-      "officeId": "종합운동장",
-      "officeShortLabel": "종합운동"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -917,12 +882,6 @@
     },
     {
       "line": 2,
-      "stationName": "신당역",
-      "officeId": "동대문1",
-      "officeShortLabel": "동대문1"
-    },
-    {
-      "line": 2,
       "stationName": "신림역",
       "officeId": "구의",
       "officeShortLabel": "구의"
@@ -930,8 +889,8 @@
     {
       "line": 2,
       "stationName": "신정네거리역",
-      "officeId": "신정",
-      "officeShortLabel": "신정"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -941,15 +900,9 @@
     },
     {
       "line": 2,
-      "stationName": "아현역",
-      "officeId": "동대문1",
-      "officeShortLabel": "동대문1"
-    },
-    {
-      "line": 2,
       "stationName": "양천구청역",
-      "officeId": "신정",
-      "officeShortLabel": "신정"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -972,14 +925,8 @@
     {
       "line": 2,
       "stationName": "잠실역",
-      "officeId": "종합운동장",
-      "officeShortLabel": "종합운동"
-    },
-    {
-      "line": 2,
-      "stationName": "충정로역",
-      "officeId": "동대문1",
-      "officeShortLabel": "동대문1"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -990,8 +937,8 @@
     {
       "line": 2,
       "stationName": "합정역",
-      "officeId": "신정",
-      "officeShortLabel": "신정"
+      "officeId": "구의",
+      "officeShortLabel": "구의"
     },
     {
       "line": 2,
@@ -1001,123 +948,15 @@
     },
     {
       "line": 3,
-      "stationName": "경복궁역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
-      "stationName": "고속터미널역",
-      "officeId": "옥수",
-      "officeShortLabel": "옥수"
-    },
-    {
-      "line": 3,
-      "stationName": "구파발역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
-      "stationName": "금호역",
-      "officeId": "옥수",
-      "officeShortLabel": "옥수"
-    },
-    {
-      "line": 3,
-      "stationName": "남부터미널역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
-      "stationName": "녹번역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
-      "stationName": "대청역",
-      "officeId": "수서",
-      "officeShortLabel": "수서"
-    },
-    {
-      "line": 3,
-      "stationName": "대치역",
-      "officeId": "수서",
-      "officeShortLabel": "수서"
-    },
-    {
-      "line": 3,
-      "stationName": "도곡역",
-      "officeId": "수서",
-      "officeShortLabel": "수서"
-    },
-    {
-      "line": 3,
-      "stationName": "독립문역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
       "stationName": "동대입구역",
       "officeId": "옥수",
       "officeShortLabel": "옥수"
     },
     {
       "line": 3,
-      "stationName": "매봉역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
-      "stationName": "무악재역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
-      "stationName": "불광역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
-      "stationName": "수서역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
-      "stationName": "신사역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
       "stationName": "안국역",
       "officeId": "옥수",
       "officeShortLabel": "옥수"
-    },
-    {
-      "line": 3,
-      "stationName": "압구정역",
-      "officeId": "옥수",
-      "officeShortLabel": "옥수"
-    },
-    {
-      "line": 3,
-      "stationName": "약수역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 3,
-      "stationName": "연신내역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
     },
     {
       "line": 3,
@@ -1133,33 +972,9 @@
     },
     {
       "line": 3,
-      "stationName": "지축역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 3,
       "stationName": "충무로역",
       "officeId": "옥수",
       "officeShortLabel": "옥수"
-    },
-    {
-      "line": 3,
-      "stationName": "학여울역",
-      "officeId": "수서",
-      "officeShortLabel": "수서"
-    },
-    {
-      "line": 3,
-      "stationName": "홍제역",
-      "officeId": "지축",
-      "officeShortLabel": "지축"
-    },
-    {
-      "line": 4,
-      "stationName": "길음역",
-      "officeId": "동대문",
-      "officeShortLabel": "동대문"
     },
     {
       "line": 4,
@@ -1169,39 +984,9 @@
     },
     {
       "line": 4,
-      "stationName": "당고개역",
-      "officeId": "창동",
-      "officeShortLabel": "창동"
-    },
-    {
-      "line": 4,
       "stationName": "동역사역",
       "officeId": "동대문",
       "officeShortLabel": "동대문"
-    },
-    {
-      "line": 4,
-      "stationName": "동작역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 4,
-      "stationName": "미아사거리역",
-      "officeId": "동대문",
-      "officeShortLabel": "동대문"
-    },
-    {
-      "line": 4,
-      "stationName": "미아역",
-      "officeId": "창동",
-      "officeShortLabel": "창동"
-    },
-    {
-      "line": 4,
-      "stationName": "삼각지역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
     },
     {
       "line": 4,
@@ -1210,160 +995,10 @@
       "officeShortLabel": "동작"
     },
     {
-      "line": 4,
-      "stationName": "성신여대입구역",
-      "officeId": "동대문",
-      "officeShortLabel": "동대문"
-    },
-    {
-      "line": 4,
-      "stationName": "숙대입구역",
-      "officeId": "동작",
-      "officeShortLabel": "동작"
-    },
-    {
-      "line": 4,
-      "stationName": "신용산역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 4,
-      "stationName": "쌍문역",
-      "officeId": "창동",
-      "officeShortLabel": "창동"
-    },
-    {
-      "line": 4,
-      "stationName": "이촌역",
-      "officeId": "동작",
-      "officeShortLabel": "동작"
-    },
-    {
-      "line": 4,
-      "stationName": "회현역",
-      "officeId": "동대문",
-      "officeShortLabel": "동대문"
-    },
-    {
-      "line": 5,
-      "stationName": "강동역",
-      "officeId": "고덕",
-      "officeShortLabel": "고덕"
-    },
-    {
-      "line": 5,
-      "stationName": "개화산역",
-      "officeId": "개화산",
-      "officeShortLabel": "개화산"
-    },
-    {
-      "line": 5,
-      "stationName": "고덕역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 5,
-      "stationName": "광나루역",
-      "officeId": "답십리",
-      "officeShortLabel": "답십리"
-    },
-    {
-      "line": 5,
-      "stationName": "광화문역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 5,
-      "stationName": "군자역",
-      "officeId": "군자",
-      "officeShortLabel": "군자"
-    },
-    {
-      "line": 5,
-      "stationName": "마곡역",
-      "officeId": "개화산",
-      "officeShortLabel": "개화산"
-    },
-    {
-      "line": 5,
-      "stationName": "마장역",
-      "officeId": "답십리",
-      "officeShortLabel": "답십리"
-    },
-    {
-      "line": 5,
-      "stationName": "목동역",
-      "officeId": "개화산",
-      "officeShortLabel": "개화산"
-    },
-    {
-      "line": 5,
-      "stationName": "신정역",
-      "officeId": "신정",
-      "officeShortLabel": "신정"
-    },
-    {
       "line": 5,
       "stationName": "왕십리역",
       "officeId": "답십리",
       "officeShortLabel": "답십리"
-    },
-    {
-      "line": 5,
-      "stationName": "천호역",
-      "officeId": "답십리",
-      "officeShortLabel": "답십리"
-    },
-    {
-      "line": 6,
-      "stationName": "구산역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 6,
-      "stationName": "마포구청역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 7,
-      "stationName": "마들역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 7,
-      "stationName": "면목역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 7,
-      "stationName": "상봉역",
-      "officeId": "건대입구",
-      "officeShortLabel": "건대입구"
-    },
-    {
-      "line": 8,
-      "stationName": "남위례역",
-      "officeId": "모란",
-      "officeShortLabel": "모란"
-    },
-    {
-      "line": 8,
-      "stationName": "모란역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
-    },
-    {
-      "line": 8,
-      "stationName": "문정역",
-      "officeId": "구의",
-      "officeShortLabel": "구의"
     }
   ]
 }

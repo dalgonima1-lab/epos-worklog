@@ -1,5 +1,6 @@
 import productData from "@/data/epos-product-stations.json";
 import {
+  findMetroLineForStationName,
   formatMetroStationValue,
   normalizeStationName,
 } from "@/lib/metroStations";
@@ -45,7 +46,16 @@ export function getOfficeMetroLine(office: ManagementOffice): number | null {
     const n = Number(m[1]);
     if (n >= 1 && n <= 9) return n;
   }
-  return null;
+  return findMetroLineForStationName(office.shortLabel);
+}
+
+function stationOfficeMatchesOfficeLine(
+  row: StationOfficeLink,
+  office: ManagementOffice
+): boolean {
+  const officeLine = getOfficeMetroLine(office);
+  if (officeLine == null) return false;
+  return row.line === officeLine;
 }
 
 export function getStationOfficeShortLabel(
@@ -81,9 +91,11 @@ export function getStationsForOffice(officeIdOrShort: string): Set<string> {
   if (!office) return keys;
 
   for (const row of STATION_OFFICES) {
-    if (row.officeId === office.id || row.officeShortLabel === office.shortLabel) {
-      keys.add(`${row.line}|${normalizeStationName(row.stationName)}`);
+    if (row.officeId !== office.id && row.officeShortLabel !== office.shortLabel) {
+      continue;
     }
+    if (!stationOfficeMatchesOfficeLine(row, office)) continue;
+    keys.add(`${row.line}|${normalizeStationName(row.stationName)}`);
   }
   return keys;
 }
@@ -101,6 +113,7 @@ export function getStationDisplayNamesForOffice(
     if (row.officeId !== office.id && row.officeShortLabel !== office.shortLabel) {
       continue;
     }
+    if (!stationOfficeMatchesOfficeLine(row, office)) continue;
     const display = formatMetroStationValue(row.line, row.stationName);
     if (display) names.push(display);
   }

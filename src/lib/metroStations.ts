@@ -47,6 +47,19 @@ export function getMetroStationsForLine(line: number): MetroStationInfo[] {
   return row?.stations ?? [];
 }
 
+/** 역사명(구의·구의역 등)이 속한 호선 — 관리소 호선 추론용 */
+export function findMetroLineForStationName(stationName: string): number | null {
+  const norm = normalizeStationName(stationName).replace(/역$/, "");
+  if (!norm) return null;
+  for (const lineRow of LINES) {
+    for (const s of lineRow.stations) {
+      const sn = normalizeStationName(s.name).replace(/역$/, "");
+      if (sn === norm) return lineRow.line;
+    }
+  }
+  return null;
+}
+
 /** DB·화면에 저장할 표기 (예: `2호선 강남역`) */
 export function canonicalStationDisplayName(raw: string): string {
   const t = raw.trim().replace(/\s+/g, " ");
