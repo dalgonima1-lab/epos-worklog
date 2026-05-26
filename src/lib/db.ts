@@ -561,6 +561,7 @@ export async function upsertSchedule(payload: {
   managementOffice?: string;
   note?: string;
   visitGroupId?: string;
+  maintenanceStationNames?: string[];
 }): Promise<ScheduleEntry> {
   const db = await ensureDb();
   const now = new Date().toISOString();
@@ -584,6 +585,9 @@ export async function upsertSchedule(payload: {
       managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       visitGroupId: payload.visitGroupId?.trim() || undefined,
+      maintenanceStationNames: payload.maintenanceStationNames?.length
+        ? payload.maintenanceStationNames
+        : undefined,
       updatedAt: now,
     };
     db.schedules[idx] = entry;
@@ -598,6 +602,9 @@ export async function upsertSchedule(payload: {
       managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       visitGroupId: payload.visitGroupId?.trim() || undefined,
+      maintenanceStationNames: payload.maintenanceStationNames?.length
+        ? payload.maintenanceStationNames
+        : undefined,
       createdAt: now,
       updatedAt: now,
     };

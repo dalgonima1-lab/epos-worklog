@@ -61,6 +61,8 @@ export interface ScheduleEntry {
   facilityArea?: string;
   /** 유지보수 시 전기관리소 id */
   managementOffice?: string;
+  /** 유지보수 일정에 포함된 역사 전체 (일일기록에서 해제 가능) */
+  maintenanceStationNames?: string[];
   /** 작업 내용 (제목 자동 생성에 사용) */
   note?: string;
   /** 여러 역·일정을 묶는 그룹 id */

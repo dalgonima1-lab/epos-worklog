@@ -17,6 +17,8 @@ import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
 import { StationPicker } from "@/components/StationPicker";
 import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
+import { decodeMaintenanceStationNames } from "@/lib/maintenanceSchedule";
+import { getStationDisplayNamesForOffice } from "@/lib/eposStationOffices";
 import { calcWorkMinutes } from "@/lib/workTime";
 
 const ROLE_OTHER = "\uae30\ud0c0";
@@ -170,6 +172,7 @@ function DailyPageInner() {
     const qStation = searchParams.get("station");
     const qFacility = searchParams.get("facility")?.trim() ?? "";
     const qOffice = searchParams.get("office")?.trim() ?? "";
+    const qStations = searchParams.get("stations")?.trim() ?? "";
     if (qDate) setDate(qDate);
     if (qMember) setMemberId(qMember);
     if (qStation) setStationName(qStation);
@@ -177,6 +180,19 @@ function DailyPageInner() {
       setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
       setManagementOffice(qOffice);
       setMaintenanceMode(true);
+      setProcessingRole("유지보수 용역");
+      const fromUrl = decodeMaintenanceStationNames(qStations);
+      const planned =
+        fromUrl.length > 0
+          ? fromUrl
+          : qOffice
+            ? getStationDisplayNamesForOffice(qOffice)
+            : [];
+      if (planned.length > 0) {
+        setSelectedStations(planned);
+        setMultiStationMode(true);
+        if (!qStation && planned[0]) setStationName(planned[0]);
+      }
     } else if (isStationFacilityArea(qFacility)) {
       setFacilityArea(qFacility);
     }
@@ -325,13 +341,17 @@ function DailyPageInner() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const stations =
-      multiStationMode && selectedStations.length > 0
+      (maintenanceMode || multiStationMode) && selectedStations.length > 0
         ? selectedStations
         : stationName.trim()
           ? [stationName.trim()]
           : [];
     if (!stations.length) {
-      setStatus("역사명을 선택하거나 입력해 주세요.");
+      setStatus(
+        maintenanceMode
+          ? "방문한 역사가 없습니다. 해제한 역이 많다면 최소 1개 역은 남겨 주세요."
+          : "역사명을 선택하거나 입력해 주세요."
+      );
       return;
     }
     const facilityAreas = stations.map((st) =>
@@ -463,12 +483,16 @@ function DailyPageInner() {
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
               setManagementOffice("");
               setStationFacilityByStation({});
+              setMultiStationMode(false);
+              setSelectedStations([]);
               setProcessingRole("유지보수 용역");
               setCustomRole("");
             } else {
               setManagementOffice("");
               setFacilityArea("");
               setStationFacilityByStation({});
+              setSelectedStations([]);
+              setMultiStationMode(false);
             }
           }}
           managementOffice={managementOffice}

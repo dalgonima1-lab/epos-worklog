@@ -34,6 +34,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const maintenanceBulk = Boolean(body.maintenanceBulk);
+    const maintenanceStationNames = body.maintenanceStationNames as
+      | string[]
+      | undefined;
+
+    if (maintenanceBulk) {
+      const schedule = await upsertSchedule({
+        id: body.id,
+        date: body.date ?? "",
+        memberId: body.memberId ?? "",
+        title: body.title ?? "",
+        stationName: body.stationName,
+        facilityArea: body.facilityArea,
+        managementOffice: body.managementOffice,
+        note: body.note,
+        maintenanceStationNames: Array.isArray(maintenanceStationNames)
+          ? maintenanceStationNames
+          : undefined,
+      });
+      return NextResponse.json({ schedule });
+    }
+
     const stationNames = body.stationNames as string[] | undefined;
     const groupId =
       (body.visitGroupId as string | undefined) ?? createVisitGroupId();

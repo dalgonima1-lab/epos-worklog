@@ -347,7 +347,7 @@ export function StationPicker({
 
   return (
     <div className="station-picker">
-      {onMultiStationModeChange ? (
+      {onMultiStationModeChange && !maintenanceMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -383,8 +383,8 @@ export function StationPicker({
           <span className="text-sm">
             <strong className="text-amber-950">유지보수 용역</strong>
             <span className="mt-0.5 block text-xs font-normal text-amber-900/90">
-              체크 시 전기관리소를 작업 장소로 선택한 뒤, 해당 관리소 소속
-              역사를 방문합니다.
+              체크 시 전기관리소를 선택하면 소속 역·기능실이 묶여 일정 1건으로
+              등록됩니다. 일일기록에서는 방문하지 않은 역은 해제할 수 있습니다.
             </span>
           </span>
         </label>
@@ -707,19 +707,26 @@ export function StationPicker({
         </div>
       )}
 
-      {multiStationMode && onSelectedStationsChange ? (
+      {(multiStationMode || maintenanceMode) && onSelectedStationsChange ? (
         <div className="mt-4">
           <label className="label text-sm font-medium text-indigo-950">
-            선택한 역사{" "}
+            {maintenanceMode ? "방문 대상 역사" : "선택한 역사"}{" "}
             {selectedStations.length > 0 ? (
               <span className="font-normal text-slate-600">
                 ({selectedStations.length}역)
               </span>
             ) : null}
           </label>
+          {maintenanceMode && selectedStations.length > 0 ? (
+            <p className="muted mb-2 text-xs">
+              오늘 돌지 않은 역은「해제」로 목록에서 빼 주세요.
+            </p>
+          ) : null}
           {selectedStations.length === 0 ? (
             <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
-              호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다.
+              {maintenanceMode
+                ? "전기관리소를 선택하면 소속 역사가 여기에 표시됩니다."
+                : "호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다."}
               {perStationFacilityPick ? (
                 <>
                   <br />
@@ -754,15 +761,26 @@ export function StationPicker({
                       <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">
                         {name}
                       </span>
-                      <button
-                        type="button"
-                        className="shrink-0 text-sm text-slate-400 hover:text-red-600"
-                        disabled={disabled}
-                        aria-label={`${name} 제거`}
-                        onClick={() => removeFromMultiList(name)}
-                      >
-                        ×
-                      </button>
+                      {maintenanceMode ? (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                          disabled={disabled}
+                          onClick={() => removeFromMultiList(name)}
+                        >
+                          해제
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="shrink-0 text-sm text-slate-400 hover:text-red-600"
+                          disabled={disabled}
+                          aria-label={`${name} 제거`}
+                          onClick={() => removeFromMultiList(name)}
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                     {perStationFacilityPick ? (
                       <div className="mt-2 border-t border-indigo-50 pt-2">
