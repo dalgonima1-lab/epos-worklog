@@ -152,14 +152,57 @@ function findFacilityHeader(rows) {
     const yearCol = cells.findIndex(
       (c) => c.includes("설치") && c.includes("년도")
     );
+    const officeCol = cells.findIndex(
+      (c) => c === "관리소 명" || c === "관리소명"
+    );
 
-    return { headerIdx: i, facilityCol, lightingCol, yearCol };
+    return { headerIdx: i, facilityCol, lightingCol, yearCol, officeCol };
   }
   return null;
 }
 
 /** @type {Map<string, { line: number, stationName: string, facilities: Set<string> }>} */
 const byKey = new Map();
+
+/** @type {Map<string, { id: string, shortLabel: string, label: string }>} */
+const officesById = new Map();
+
+/** @type {Map<string, { line: number, stationName: string, officeId: string, officeShortLabel: string }>} */
+const stationOfficeByKey = new Map();
+
+function parseOfficeHeader(cell) {
+  const text = String(cell ?? "").trim();
+  if (!text) return null;
+  const firstLine = text.split(/\r?\n/)[0]?.trim() ?? "";
+  if (!firstLine) return null;
+  if (/관리소\s*명|기능실|설치|DB-|metrommi|오토베이스/i.test(firstLine)) {
+    return null;
+  }
+  if (/^\d{4}$/.test(firstLine)) return null;
+  const m = firstLine.match(/^([가-힣0-9]+)/);
+  return m?.[1] ?? null;
+}
+
+function registerOffice(shortLabel) {
+  const id = shortLabel.replace(/\s+/g, "");
+  const label = `${shortLabel} 전기관리소`;
+  if (!officesById.has(id)) {
+    officesById.set(id, { id, shortLabel, label });
+  }
+  return id;
+}
+
+function linkStationOffice(lineNum, stationName, officeShort) {
+  if (!lineNum || !stationName || !officeShort) return;
+  const officeId = registerOffice(officeShort);
+  const key = `${lineNum}|${stationName}`;
+  stationOfficeByKey.set(key, {
+    line: lineNum,
+    stationName,
+    officeId,
+    officeShortLabel: officeShort,
+  });
+}
 
 function addStationRecord(line, stationName, facilityList, lightingYes) {
   const match = findMetroMatch(stationName, line);
@@ -188,11 +231,17 @@ function ingestFacilitySheet(rows) {
   const header = findFacilityHeader(rows);
   if (!header) return 0;
 
-  const { headerIdx, facilityCol, lightingCol } = header;
+  const { headerIdx, facilityCol, lightingCol, officeCol } = header;
   let added = 0;
+  let currentOfficeShort = null;
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
+    if (officeCol >= 0) {
+      const officeFromCell = parseOfficeHeader(r[officeCol]);
+      if (officeFromCell) currentOfficeShort = officeFromCell;
+    }
+
     const facilityText = String(r[facilityCol] ?? "").trim();
     if (!facilityText) continue;
 
@@ -211,6 +260,13 @@ function ingestFacilitySheet(rows) {
         lightingYes
       );
       if (byKey.size > before) added++;
+
+      const match = findMetroMatch(item.station, item.lineHint);
+      const canonical = normStation(match?.name ?? item.station);
+      const lineNum = match?.line ?? item.lineHint;
+      if (currentOfficeShort && lineNum && canonical) {
+        linkStationOffice(lineNum, canonical, currentOfficeShort);
+      }
     }
 
     if (parsed.length && lightingYes) {
@@ -314,14 +370,33 @@ const stations = [...byKey.values()]
     return a.stationName.localeCompare(b.stationName, "ko");
   });
 
+const offices = [...officesById.values()].sort((a, b) =>
+  a.shortLabel.localeCompare(b.shortLabel, "ko")
+);
+const stationOffices = [...stationOfficeByKey.values()].sort((a, b) => {
+  if (a.line !== b.line) return a.line - b.line;
+  return a.stationName.localeCompare(b.stationName, "ko");
+});
+
 const out = {
   source: inputs,
   generatedAt: new Date().toISOString().slice(0, 10),
   note:
     "서울교통공사 기능실·관리소 현황(2025). 조명제어·조명제어연계는 역무실로 매핑.",
   stations,
+  offices,
+  stationOffices,
 };
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(out, null, 2), "utf8");
-console.log("wrote", OUT, "stations", stations.length);
+console.log(
+  "wrote",
+  OUT,
+  "stations",
+  stations.length,
+  "offices",
+  offices.length,
+  "stationOffices",
+  stationOffices.length
+);

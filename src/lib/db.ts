@@ -30,7 +30,7 @@ import {
   isSecurityTestPlaceholder,
   sanitizeDatabaseTestArtifacts,
 } from "./sanitizeTestData";
-import { isStationFacilityArea } from "./stationFacility";
+import { isWorkFacilityArea } from "./stationFacility";
 
 export const DATA_SANITIZE_VERSION = 1;
 
@@ -67,6 +67,7 @@ export type ReportPayload = Pick<
   DailyReport,
   | "stationName"
   | "facilityArea"
+  | "managementOffice"
   | "processingRole"
   | "done"
   | "plan"
@@ -312,7 +313,12 @@ function normalizeReportStationName(raw: string): string {
 
 function normalizeFacilityArea(raw?: string): string {
   const t = raw?.trim() ?? "";
-  return isStationFacilityArea(t) ? t : "";
+  return isWorkFacilityArea(t) ? t : "";
+}
+
+function normalizeManagementOffice(raw?: string): string | undefined {
+  const t = raw?.trim() ?? "";
+  return t || undefined;
 }
 
 export async function upsertReport(
@@ -346,6 +352,9 @@ export async function upsertReport(
   if (existing) {
     existing.stationName = payload.stationName;
     existing.facilityArea = normalizeFacilityArea(payload.facilityArea);
+    existing.managementOffice = normalizeManagementOffice(
+      payload.managementOffice
+    );
     existing.processingRole = payload.processingRole;
     existing.done = payload.done;
     existing.plan = payload.plan;
@@ -366,6 +375,7 @@ export async function upsertReport(
     date,
     stationName: payload.stationName,
     facilityArea: normalizeFacilityArea(payload.facilityArea),
+    managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
     done: payload.done,
     plan: payload.plan,
@@ -500,6 +510,7 @@ export async function upsertSchedule(payload: {
   title: string;
   stationName?: string;
   facilityArea?: string;
+  managementOffice?: string;
   note?: string;
 }): Promise<ScheduleEntry> {
   const db = await ensureDb();
@@ -521,6 +532,7 @@ export async function upsertSchedule(payload: {
       title,
       stationName: payload.stationName?.trim() || undefined,
       facilityArea: payload.facilityArea?.trim() || undefined,
+      managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       updatedAt: now,
     };
@@ -533,6 +545,7 @@ export async function upsertSchedule(payload: {
       title,
       stationName: payload.stationName?.trim() || undefined,
       facilityArea: payload.facilityArea?.trim() || undefined,
+      managementOffice: payload.managementOffice?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       createdAt: now,
       updatedAt: now,

@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       title: body.title,
       stationName: body.stationName,
       facilityArea: body.facilityArea,
+      managementOffice: body.managementOffice,
       note: body.note,
     });
     return NextResponse.json({ schedule });

@@ -8,6 +8,7 @@ import {
   getProcessingRolesForFacility,
   isProcessingRoleAllowedForFacility,
   isStationFacilityArea,
+  MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
@@ -40,12 +41,15 @@ function DailyPageInner() {
   const [stationName, setStationName] = useState(
     () => searchParams.get("station")?.trim() ?? ""
   );
-  const [facilityArea, setFacilityArea] = useState<StationFacilityArea | "">(
-    () => {
-      const q = searchParams.get("facility")?.trim() ?? "";
-      return isStationFacilityArea(q) ? q : "";
-    }
-  );
+  const [facilityArea, setFacilityArea] = useState<
+    StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
+  >(() => {
+    const q = searchParams.get("facility")?.trim() ?? "";
+    if (q === MANAGEMENT_OFFICE_FACILITY) return MANAGEMENT_OFFICE_FACILITY;
+    return isStationFacilityArea(q) ? q : "";
+  });
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [managementOffice, setManagementOffice] = useState("");
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
   const [done, setDone] = useState("");
@@ -64,7 +68,9 @@ function DailyPageInner() {
     processingRole === ROLE_OTHER ? customRole.trim() : processingRole;
 
   const rolesForFacility = getProcessingRolesForFacility(
-    facilityArea || undefined
+    facilityArea === MANAGEMENT_OFFICE_FACILITY
+      ? MANAGEMENT_OFFICE_FACILITY
+      : facilityArea || undefined
   );
 
   useEffect(() => {
@@ -109,10 +115,17 @@ function DailyPageInner() {
     const qMember = searchParams.get("memberId");
     const qStation = searchParams.get("station");
     const qFacility = searchParams.get("facility")?.trim() ?? "";
+    const qOffice = searchParams.get("office")?.trim() ?? "";
     if (qDate) setDate(qDate);
     if (qMember) setMemberId(qMember);
     if (qStation) setStationName(qStation);
-    if (isStationFacilityArea(qFacility)) setFacilityArea(qFacility);
+    if (qFacility === MANAGEMENT_OFFICE_FACILITY) {
+      setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+      setManagementOffice(qOffice);
+      setMaintenanceMode(true);
+    } else if (isStationFacilityArea(qFacility)) {
+      setFacilityArea(qFacility);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -155,12 +168,22 @@ function DailyPageInner() {
           : fromReport;
         setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
-        if (isStationFacilityArea(area)) {
+        if (area === MANAGEMENT_OFFICE_FACILITY) {
+          setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+          setManagementOffice(report?.managementOffice?.trim() ?? "");
+          setMaintenanceMode(true);
+        } else if (isStationFacilityArea(area)) {
           setFacilityArea(area);
+          setManagementOffice("");
+          setMaintenanceMode(false);
         } else if (isStationFacilityArea(facilityFromSchedule)) {
           setFacilityArea(facilityFromSchedule);
+          setManagementOffice("");
+          setMaintenanceMode(false);
         } else {
           setFacilityArea("");
+          setManagementOffice("");
+          setMaintenanceMode(false);
         }
         if (stationFromSchedule && !fromReport) {
           void fetch("/api/stations", {
@@ -230,6 +253,10 @@ function DailyPageInner() {
         date,
         stationName: stationName.trim(),
         facilityArea,
+        managementOffice:
+          facilityArea === MANAGEMENT_OFFICE_FACILITY
+            ? managementOffice
+            : undefined,
         processingRole: effectiveRole,
         done,
         plan,
@@ -306,6 +333,19 @@ function DailyPageInner() {
           onFacilityChange={setFacilityArea}
           requireFacility
           disabled={loading}
+          maintenanceMode={maintenanceMode}
+          onMaintenanceModeChange={(enabled) => {
+            setMaintenanceMode(enabled);
+            if (enabled) {
+              setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+              setManagementOffice("");
+            } else {
+              setManagementOffice("");
+              setFacilityArea("");
+            }
+          }}
+          managementOffice={managementOffice}
+          onManagementOfficeChange={setManagementOffice}
         />
 
         <div>
@@ -315,8 +355,11 @@ function DailyPageInner() {
           </label>
           {!facilityArea ? (
             <p className="muted text-xs">
-              작업 장소(전기실·변전소·역무실)를 먼저 선택하면 공종 목록이
-              표시됩니다.
+              작업 장소를 먼저 선택하면 공종 목록이 표시됩니다.
+            </p>
+          ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
+            <p className="muted mb-1 text-xs">
+              관리소(유지보수): 유지보수 용역만 선택 가능합니다.
             </p>
           ) : (
             <p className="muted mb-1 text-xs">

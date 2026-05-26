@@ -7,12 +7,18 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
+import {
+  formatStationNameWithOffice,
+  getStationsForOffice,
+} from "@/lib/eposStationOffices";
 import {
   filterMetroStations,
   formatMetroStationValue,
   getMetroLineColor,
   getMetroStationsForLine,
+  normalizeStationName,
   parseMetroStationValue,
   type MetroLineInfo,
 } from "@/lib/metroStations";
@@ -23,6 +29,7 @@ import {
 } from "@/lib/eposProductStations";
 import {
   formatStationVisitLabel,
+  MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 
@@ -43,6 +50,11 @@ interface StationPickerProps {
   onFacilityChange?: (area: StationFacilityArea | "") => void;
   /** 작업 장소 필수 (일일기록) */
   requireFacility?: boolean;
+  /** 유지보수 용역(관리소 단위) */
+  maintenanceMode?: boolean;
+  onMaintenanceModeChange?: (enabled: boolean) => void;
+  managementOffice?: string;
+  onManagementOfficeChange?: (officeId: string) => void;
 }
 
 function recentTabMatches(name: string, query: string): boolean {
@@ -62,6 +74,10 @@ export function StationPicker({
   facilityArea = "",
   onFacilityChange,
   requireFacility = false,
+  maintenanceMode = false,
+  onMaintenanceModeChange,
+  managementOffice = "",
+  onManagementOfficeChange,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
@@ -119,19 +135,56 @@ export function StationPicker({
     return getMetroStationsForLine(selectedLine);
   }, [selectedLine]);
 
+  const officeStationKeys = useMemo(() => {
+    if (!maintenanceMode || !managementOffice) return null;
+    return getStationsForOffice(managementOffice);
+  }, [maintenanceMode, managementOffice]);
+
   const filteredStations = useMemo(() => {
     if (selectedLine === "") return [];
     const q = stationQuery.trim();
-    const list = q
+    let list = q
       ? filterMetroStations(selectedLine, q)
       : allLineStations;
+    if (officeStationKeys) {
+      list = list.filter((s) =>
+        officeStationKeys.has(
+          `${selectedLine}|${normalizeStationName(s.name)}`
+        )
+      );
+    }
     return [...list].sort((a, b) => {
       const ha = hasEposProductAtStation(selectedLine, a.name);
       const hb = hasEposProductAtStation(selectedLine, b.name);
       if (ha !== hb) return ha ? -1 : 1;
       return a.name.localeCompare(b.name, "ko");
     });
-  }, [selectedLine, stationQuery, allLineStations]);
+  }, [selectedLine, stationQuery, allLineStations, officeStationKeys]);
+
+  function handleMaintenanceToggle(enabled: boolean) {
+    onMaintenanceModeChange?.(enabled);
+    if (enabled) {
+      onFacilityChange?.(MANAGEMENT_OFFICE_FACILITY as StationFacilityArea);
+      onManagementOfficeChange?.("");
+    } else {
+      onManagementOfficeChange?.("");
+      onFacilityChange?.("");
+    }
+    setSelectedLine("");
+    setSelectedStation("");
+    setStationQuery("");
+    onChange("");
+  }
+
+  function handleManagementOfficePick(officeId: string) {
+    onManagementOfficeChange?.(officeId);
+    if (officeId) {
+      onFacilityChange?.(MANAGEMENT_OFFICE_FACILITY as StationFacilityArea);
+    }
+    setSelectedStation("");
+    setStationQuery("");
+    if (value.trim()) onChange("");
+  }
 
   const productFacilitiesForSelection = useMemo(() => {
     if (selectedLine === "" || !selectedStation) return [];
@@ -230,14 +283,58 @@ export function StationPicker({
     };
   }
 
+  const canPickStation =
+    !maintenanceMode || Boolean(managementOffice);
+
   return (
     <div className="station-picker">
+      {onMaintenanceModeChange ? (
+        <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2.5">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={maintenanceMode}
+            disabled={disabled}
+            onChange={(e) => handleMaintenanceToggle(e.target.checked)}
+          />
+          <span className="text-sm">
+            <strong className="text-amber-950">유지보수 용역</strong>
+            <span className="mt-0.5 block text-xs font-normal text-amber-900/90">
+              체크 시 전기관리소를 작업 장소로 선택한 뒤, 해당 관리소 소속
+              역사를 방문합니다.
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      {maintenanceMode && onManagementOfficeChange ? (
+        <div className="mb-4">
+          <ManagementOfficePicker
+            value={managementOffice}
+            onChange={handleManagementOfficePick}
+            disabled={disabled}
+            accentColor={lineColor || valueLineColor || undefined}
+          />
+        </div>
+      ) : null}
+
       <label className="label">
         역사명 <span className="text-red-600">*</span>
       </label>
       <p className="muted mb-3 text-xs">
-        <strong>1단계 호선</strong> → <strong>2단계 역사명</strong> 순으로
-        선택하세요. (서울교통공사 1~9호선 데이터)
+        {maintenanceMode ? (
+          <>
+            <strong>1단계 호선</strong> → <strong>2단계 역사명</strong>
+            {managementOffice
+              ? " (괄호 안은 소속 전기관리소)"
+              : " — 먼저 위에서 관리소를 선택하세요"}
+          </>
+        ) : (
+          <>
+            <strong>1단계 호선</strong> → <strong>2단계 역사명</strong> 순으로
+            선택하세요. (서울교통공사 1~9호선 데이터)
+          </>
+        )}
       </p>
 
       {enableMetroPicker && !useDirectInput && (
@@ -266,9 +363,9 @@ export function StationPicker({
                 className={`input mt-1${lineColor ? " metro-input--lined" : ""}`}
                 style={lineColor ? { borderColor: lineColor } : undefined}
                 value={selectedLine === "" ? "" : String(selectedLine)}
-                disabled={disabled}
-                onChange={(e) => handleLineChange(e.target.value)}
-              >
+                    disabled={disabled || !canPickStation}
+                    onChange={(e) => handleLineChange(e.target.value)}
+                  >
                 <option value="">호선을 선택하세요</option>
                 {lines.map((l) => (
                   <option key={l.line} value={l.line}>
@@ -306,7 +403,11 @@ export function StationPicker({
               <label className="label text-sm" htmlFor="metro-station-search">
                 역사명 선택
               </label>
-              {selectedLine === "" ? (
+              {!canPickStation ? (
+                <p className="muted mt-1 text-xs">
+                  유지보수 작업은 먼저 전기관리소를 선택해 주세요.
+                </p>
+              ) : selectedLine === "" ? (
                 <p className="muted mt-1 text-xs">먼저 호선을 선택해 주세요.</p>
               ) : (
                 <>
@@ -420,7 +521,14 @@ export function StationPicker({
                                 disabled={disabled}
                                 onClick={() => handleStationPick(s.name)}
                               >
-                                <span className="font-medium">{s.name}</span>
+                                <span className="font-medium">
+                                {typeof selectedLine === "number"
+                                  ? formatStationNameWithOffice(
+                                      selectedLine,
+                                      s.name
+                                    )
+                                  : s.name}
+                              </span>
                                 {facilityLabel ? (
                                   <span className="metro-station-facilities">
                                     {facilityLabel}
@@ -541,7 +649,7 @@ export function StationPicker({
         </div>
       )}
 
-      {value.trim() && onFacilityChange ? (
+      {value.trim() && onFacilityChange && !maintenanceMode ? (
         <div className="mt-4">
           <StationFacilityPicker
             value={facilityArea}
@@ -572,7 +680,11 @@ export function StationPicker({
         >
           선택됨:{" "}
           <strong>
-            {formatStationVisitLabel(value, facilityArea) || value}
+            {formatStationVisitLabel(
+              value,
+              facilityArea,
+              managementOffice
+            ) || value}
           </strong>
           {isKnownRecent ? " · 최근 목록에 있음" : ""}
           {requireFacility && !facilityArea ? (

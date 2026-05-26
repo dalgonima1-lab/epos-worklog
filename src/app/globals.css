@@ -1370,6 +1370,42 @@ a {
   cursor: not-allowed;
 }
 
+.management-office-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+.management-office-btn {
+  padding: 0.5rem 0.35rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.management-office-btn:hover:not(:disabled):not(.active) {
+  background: #f8fafc;
+}
+
+.management-office-btn.active {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #312e81;
+}
+
+.management-office-btn--lined.active {
+  border-color: var(--accent, #4f46e5);
+  background: var(--accent, #4f46e5);
+  color: #fff;
+}
+
 /* AI 주간분석 — 분석 대상 / 비교 기준 안내 */
 .analysis-scope-banner {
   margin-bottom: 1rem;

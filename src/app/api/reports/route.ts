@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
 import {
   isProcessingRoleAllowedForFacility,
-  isStationFacilityArea,
+  isWorkFacilityArea,
+  MANAGEMENT_OFFICE_FACILITY,
 } from "@/lib/stationFacility";
 
 export async function GET(request: NextRequest) {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     date,
     stationName,
     facilityArea,
+    managementOffice,
     processingRole,
     done,
     plan,
@@ -61,9 +63,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!facilityArea?.trim() || !isStationFacilityArea(String(facilityArea).trim())) {
+  const facility = String(facilityArea).trim();
+  if (!facility || !isWorkFacilityArea(facility)) {
     return NextResponse.json(
-      { error: "작업 장소(전기실·변전소·역무실)를 선택해 주세요." },
+      { error: "작업 장소를 선택해 주세요." },
+      { status: 400 }
+    );
+  }
+
+  if (
+    facility === MANAGEMENT_OFFICE_FACILITY &&
+    !String(managementOffice ?? "").trim()
+  ) {
+    return NextResponse.json(
+      { error: "유지보수 용역 시 전기관리소를 선택해 주세요." },
       { status: 400 }
     );
   }
@@ -75,7 +88,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const facility = String(facilityArea).trim();
   const role = String(processingRole).trim();
   if (!isProcessingRoleAllowedForFacility(role, facility)) {
     return NextResponse.json(
@@ -90,8 +102,9 @@ export async function POST(request: NextRequest) {
 
   const report = await upsertReport(memberId, date, {
     stationName: String(stationName).trim(),
-    facilityArea: String(facilityArea).trim(),
-    processingRole: String(processingRole).trim(),
+    facilityArea: facility,
+    managementOffice: String(managementOffice ?? "").trim() || undefined,
+    processingRole: role,
     done: done ?? "",
     plan: plan ?? "",
     issues: issues ?? "",

@@ -18,8 +18,10 @@ export interface DailyReport {
   date: string;
   /** 현장 역사명 (예: 2호선 강남역) */
   stationName: string;
-  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 */
+  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 | 관리소(유지보수) */
   facilityArea?: string;
+  /** 유지보수 시 전기관리소 id (예: 신답) */
+  managementOffice?: string;
   /** 공종 */
   processingRole: string;
   done: string;
@@ -49,8 +51,10 @@ export interface ScheduleEntry {
   memberId: string;
   title: string;
   stationName?: string;
-  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 */
+  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 | 관리소(유지보수) */
   facilityArea?: string;
+  /** 유지보수 시 전기관리소 id */
+  managementOffice?: string;
   /** 작업 내용 (제목 자동 생성에 사용) */
   note?: string;
   createdAt: string;

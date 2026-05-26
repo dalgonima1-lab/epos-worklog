@@ -16,6 +16,7 @@ import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import {
   formatStationVisitLabel,
   isStationFacilityArea,
+  MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
@@ -68,9 +69,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [formMemberId, setFormMemberId] = useState("");
   const [formStation, setFormStation] = useState("");
   const [formFacilityArea, setFormFacilityArea] = useState<
-    StationFacilityArea | ""
+    StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
   >("");
   const [formWorkContent, setFormWorkContent] = useState("");
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [managementOffice, setManagementOffice] = useState("");
   const [saving, setSaving] = useState(false);
 
   const weekAnchor = useMemo(
@@ -90,13 +93,28 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   }, [members]);
 
   const scheduleTitlePreview = useMemo(() => {
-    if (!formStation.trim() || !formFacilityArea) return "";
+    if (!formStation.trim()) return "";
+    if (maintenanceMode && managementOffice) {
+      return buildScheduleTitle(
+        formStation,
+        MANAGEMENT_OFFICE_FACILITY,
+        formWorkContent,
+        managementOffice
+      );
+    }
+    if (!formFacilityArea) return "";
     return buildScheduleTitle(
       formStation,
       formFacilityArea,
       formWorkContent
     );
-  }, [formStation, formFacilityArea, formWorkContent]);
+  }, [
+    formStation,
+    formFacilityArea,
+    formWorkContent,
+    maintenanceMode,
+    managementOffice,
+  ]);
 
   const reportByKey = useMemo(() => {
     const m = new Map<string, DailyReport>();
@@ -156,6 +174,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setFormStation("");
     setFormFacilityArea("");
     setFormWorkContent("");
+    setMaintenanceMode(false);
+    setManagementOffice("");
     if (!formMemberId && members.length) {
       setFormMemberId(members[0].id);
     }
@@ -170,6 +190,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     const area = entry.facilityArea?.trim() ?? "";
     setFormFacilityArea(isStationFacilityArea(area) ? area : "");
     setFormWorkContent(entry.note ?? "");
+    setMaintenanceMode(entry.facilityArea === MANAGEMENT_OFFICE_FACILITY);
+    setManagementOffice(entry.managementOffice ?? "");
     setModalOpen(true);
   }
 
@@ -177,7 +199,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     date: string,
     memberId: string,
     stationName?: string,
-    facilityArea?: string
+    facilityArea?: string,
+    managementOfficeId?: string
   ) {
     const q = new URLSearchParams({ date, memberId });
     if (stationName?.trim()) {
@@ -186,6 +209,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     const area = facilityArea?.trim() ?? "";
     if (isStationFacilityArea(area)) {
       q.set("facility", area);
+    }
+    if (area === MANAGEMENT_OFFICE_FACILITY && managementOfficeId?.trim()) {
+      q.set("office", managementOfficeId.trim());
     }
     router.push(`/daily?${q.toString()}`);
   }
@@ -196,19 +222,27 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setError("호선과 역사명을 선택해 주세요.");
       return;
     }
+    if (maintenanceMode && !managementOffice) {
+      setError("유지보수 용역 시 전기관리소를 선택해 주세요.");
+      return;
+    }
     if (!formFacilityArea) {
-      setError("작업 장소(전기실·변전소·역무실)를 선택해 주세요.");
+      setError("작업 장소를 선택해 주세요.");
       return;
     }
     if (!formWorkContent.trim()) {
       setError("작업 내용을 입력해 주세요.");
       return;
     }
-    const title = buildScheduleTitle(
-      formStation,
-      formFacilityArea,
-      formWorkContent
-    );
+    const title =
+      maintenanceMode && managementOffice
+        ? buildScheduleTitle(
+            formStation,
+            MANAGEMENT_OFFICE_FACILITY,
+            formWorkContent,
+            managementOffice
+          )
+        : buildScheduleTitle(formStation, formFacilityArea, formWorkContent);
     setSaving(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -221,6 +255,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           title,
           stationName: formStation.trim(),
           facilityArea: formFacilityArea,
+          managementOffice:
+            formFacilityArea === MANAGEMENT_OFFICE_FACILITY
+              ? managementOffice
+              : undefined,
           note: formWorkContent.trim(),
         }),
       });
@@ -341,7 +379,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                                   s.date,
                                   s.memberId,
                                   s.stationName,
-                                  s.facilityArea
+                                  s.facilityArea,
+                                  s.managementOffice
                                 )
                               }
                             >
@@ -465,6 +504,19 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 enableRecentTabs
                 enableMetroPicker
                 enableDirectInput
+                maintenanceMode={maintenanceMode}
+                onMaintenanceModeChange={(enabled) => {
+                  setMaintenanceMode(enabled);
+                  if (enabled) {
+                    setFormFacilityArea(MANAGEMENT_OFFICE_FACILITY);
+                    setManagementOffice("");
+                  } else {
+                    setManagementOffice("");
+                    setFormFacilityArea("");
+                  }
+                }}
+                managementOffice={managementOffice}
+                onManagementOfficeChange={setManagementOffice}
               />
               <div>
                 <label className="label">
@@ -516,7 +568,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     formDate,
                     formMemberId,
                     formStation,
-                    formFacilityArea
+                    formFacilityArea,
+                    managementOffice
                   );
                 }}
               >
