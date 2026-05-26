@@ -328,7 +328,9 @@ export function StationPicker({
 
   const lineInfo = lines.find((l) => l.line === selectedLine);
   const lineColor =
-    selectedLine !== "" ? (lineInfo?.color ?? getMetroLineColor(selectedLine)) : "";
+    typeof selectedLine === "number"
+      ? (lineInfo?.color ?? getMetroLineColor(selectedLine))
+      : "";
   const metroLineStyle = lineColor
     ? ({ "--metro-line-color": lineColor } as CSSProperties)
     : undefined;
@@ -666,7 +668,7 @@ export function StationPicker({
                       {multiStationMode &&
                       onSelectedStationsChange &&
                       selectedStation &&
-                      selectedLine !== "" ? (
+                      typeof selectedLine === "number" ? (
                         <button
                           type="button"
                           className="btn btn-secondary mt-2 w-full text-sm"
