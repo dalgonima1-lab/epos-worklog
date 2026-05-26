@@ -10,7 +10,13 @@ import {
   weekdayLabel,
   weekdaysBetween,
 } from "@/lib/dates";
+import { StationPicker } from "@/components/StationPicker";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
+import {
+  formatStationVisitLabel,
+  isStationFacilityArea,
+  type StationFacilityArea,
+} from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
 
 type WeekTab = -1 | 0 | 1;
@@ -61,6 +67,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [formMemberId, setFormMemberId] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formStation, setFormStation] = useState("");
+  const [formFacilityArea, setFormFacilityArea] = useState<
+    StationFacilityArea | ""
+  >("");
   const [formNote, setFormNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -137,6 +146,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setFormDate(date);
     setFormTitle("");
     setFormStation("");
+    setFormFacilityArea("");
     setFormNote("");
     if (!formMemberId && members.length) {
       setFormMemberId(members[0].id);
@@ -150,6 +160,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setFormMemberId(entry.memberId);
     setFormTitle(entry.title);
     setFormStation(entry.stationName ?? "");
+    const area = entry.facilityArea?.trim() ?? "";
+    setFormFacilityArea(isStationFacilityArea(area) ? area : "");
     setFormNote(entry.note ?? "");
     setModalOpen(true);
   }
@@ -157,17 +169,26 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   function goDaily(
     date: string,
     memberId: string,
-    stationName?: string
+    stationName?: string,
+    facilityArea?: string
   ) {
     const q = new URLSearchParams({ date, memberId });
     if (stationName?.trim()) {
       q.set("station", stationName.trim());
+    }
+    const area = facilityArea?.trim() ?? "";
+    if (isStationFacilityArea(area)) {
+      q.set("facility", area);
     }
     router.push(`/daily?${q.toString()}`);
   }
 
   async function saveSchedule(e: React.FormEvent) {
     e.preventDefault();
+    if (formStation.trim() && !formFacilityArea) {
+      setError("역사를 선택했으면 작업 장소(전기실·변전소·역무실)도 선택해 주세요.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -178,7 +199,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           date: formDate,
           memberId: formMemberId,
           title: formTitle,
-          stationName: formStation,
+          stationName: formStation.trim() || undefined,
+          facilityArea: formFacilityArea || undefined,
           note: formNote,
         }),
       });
@@ -295,7 +317,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                               type="button"
                               className="w-full text-left"
                               onClick={() =>
-                                goDaily(s.date, s.memberId, s.stationName)
+                                goDaily(
+                                  s.date,
+                                  s.memberId,
+                                  s.stationName,
+                                  s.facilityArea
+                                )
                               }
                             >
                               <p className="line-clamp-2 text-xs font-bold text-slate-900">
@@ -307,7 +334,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                               {s.stationName &&
                               !isSecurityTestPlaceholder(s.stationName) ? (
                                 <p className="mt-0.5 text-[11px] text-blue-700">
-                                  {s.stationName}
+                                  {formatStationVisitLabel(
+                                    s.stationName,
+                                    s.facilityArea
+                                  )}
                                 </p>
                               ) : null}
                               <span
@@ -372,7 +402,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             onClick={() => setModalOpen(false)}
           />
           <form
-            className="relative z-10 w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
             onSubmit={(e) => void saveSchedule(e)}
             onClick={(e) => e.stopPropagation()}
           >
@@ -415,15 +445,17 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   required
                 />
               </div>
-              <div>
-                <label className="label">역사 (선택)</label>
-                <input
-                  className="input"
-                  placeholder="예: 길음역"
-                  value={formStation}
-                  onChange={(e) => setFormStation(e.target.value)}
-                />
-              </div>
+              <StationPicker
+                value={formStation}
+                onChange={setFormStation}
+                facilityArea={formFacilityArea}
+                onFacilityChange={setFormFacilityArea}
+                requireFacility={!!formStation.trim()}
+                disabled={saving}
+                enableRecentTabs
+                enableMetroPicker
+                enableDirectInput
+              />
               <div>
                 <label className="label">메모 (선택)</label>
                 <textarea
@@ -446,8 +478,19 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 className="btn btn-secondary"
                 disabled={saving || !formDate || !formMemberId}
                 onClick={() => {
+                  if (formStation.trim() && !formFacilityArea) {
+                    setError(
+                      "역사를 선택했으면 작업 장소(전기실·변전소·역무실)도 선택해 주세요."
+                    );
+                    return;
+                  }
                   setModalOpen(false);
-                  goDaily(formDate, formMemberId, formStation);
+                  goDaily(
+                    formDate,
+                    formMemberId,
+                    formStation,
+                    formFacilityArea
+                  );
                 }}
               >
                 일일 기록 작성
@@ -462,7 +505,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             </div>
             {formStation.trim() ? (
               <p className="muted mt-2 text-xs">
-                「일일 기록 작성」 시 역사 <strong>{formStation.trim()}</strong>
+                「일일 기록 작성」 시{" "}
+                <strong>
+                  {formatStationVisitLabel(formStation, formFacilityArea) ||
+                    formStation.trim()}
+                </strong>
                 가 자동으로 채워집니다.
               </p>
             ) : null}

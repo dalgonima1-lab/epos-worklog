@@ -49,6 +49,8 @@ export interface ScheduleEntry {
   memberId: string;
   title: string;
   stationName?: string;
+  /** 역사 내 작업 장소: 전기실 | 변전소 | 역무실 */
+  facilityArea?: string;
   note?: string;
   createdAt: string;
   updatedAt: string;

@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       memberId: body.memberId,
       title: body.title,
       stationName: body.stationName,
+      facilityArea: body.facilityArea,
       note: body.note,
     });
     return NextResponse.json({ schedule });

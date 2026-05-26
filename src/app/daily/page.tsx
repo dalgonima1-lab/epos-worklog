@@ -43,7 +43,10 @@ function DailyPageInner() {
     () => searchParams.get("station")?.trim() ?? ""
   );
   const [facilityArea, setFacilityArea] = useState<StationFacilityArea | "">(
-    ""
+    () => {
+      const q = searchParams.get("facility")?.trim() ?? "";
+      return isStationFacilityArea(q) ? q : "";
+    }
   );
   const [processingRole, setProcessingRole] = useState("");
   const [customRole, setCustomRole] = useState("");
@@ -86,14 +89,17 @@ function DailyPageInner() {
     const qDate = searchParams.get("date");
     const qMember = searchParams.get("memberId");
     const qStation = searchParams.get("station");
+    const qFacility = searchParams.get("facility")?.trim() ?? "";
     if (qDate) setDate(qDate);
     if (qMember) setMemberId(qMember);
     if (qStation) setStationName(qStation);
+    if (isStationFacilityArea(qFacility)) setFacilityArea(qFacility);
   }, [searchParams]);
 
   useEffect(() => {
     if (!memberId || !date) return;
     const stationFromSchedule = searchParams.get("station")?.trim() ?? "";
+    const facilityFromSchedule = searchParams.get("facility")?.trim() ?? "";
     setLoading(true);
     setBeforePhotoAt(undefined);
     setAfterPhotoAt(undefined);
@@ -122,7 +128,13 @@ function DailyPageInner() {
           : fromReport;
         setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
-        setFacilityArea(isStationFacilityArea(area) ? area : "");
+        if (isStationFacilityArea(area)) {
+          setFacilityArea(area);
+        } else if (isStationFacilityArea(facilityFromSchedule)) {
+          setFacilityArea(facilityFromSchedule);
+        } else {
+          setFacilityArea("");
+        }
         if (stationFromSchedule && !fromReport) {
           void fetch("/api/stations", {
             method: "POST",

@@ -499,6 +499,7 @@ export async function upsertSchedule(payload: {
   memberId: string;
   title: string;
   stationName?: string;
+  facilityArea?: string;
   note?: string;
 }): Promise<ScheduleEntry> {
   const db = await ensureDb();
@@ -519,6 +520,7 @@ export async function upsertSchedule(payload: {
       memberId: payload.memberId,
       title,
       stationName: payload.stationName?.trim() || undefined,
+      facilityArea: payload.facilityArea?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       updatedAt: now,
     };
@@ -530,6 +532,7 @@ export async function upsertSchedule(payload: {
       memberId: payload.memberId,
       title,
       stationName: payload.stationName?.trim() || undefined,
+      facilityArea: payload.facilityArea?.trim() || undefined,
       note: payload.note?.trim() || undefined,
       createdAt: now,
       updatedAt: now,
