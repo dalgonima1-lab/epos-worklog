@@ -19,4 +19,6 @@ alwaysApply: true
 [System.Media.SystemSounds]::Exclamation.Play(); Start-Sleep -Milliseconds 80; [console]::beep(523, 180); Start-Sleep -Milliseconds 90; [console]::beep(440, 180); Start-Sleep -Milliseconds 90; [console]::beep(523, 220)
 ```
 
-사용자 PC에는 `~/.cursor/hooks.json`의 `beforeShellExecution` / `beforeMCPExecution` 훅이 같은 승인 대기음을 자동 재생한다. 훅이 없는 환경에서는 위 PowerShell을 에이전트가 직접 실행한다.
+Windows에서는 `~/.cursor/hooks.json`과 프로젝트 `.cursor/hooks.json`이 `cmd /c powershell.exe -File ...play-approval-attention.ps1`로 훅을 실행한다 (`preToolUse` Shell/MCP/Task, `beforeShellExecution`, `beforeMCPExecution`). 훅이 자동 승인하지 않으므로 RUN UI는 그대로 뜨고, 훅이 소리만 낸다. 훅이 없거나 실패하면 에이전트가 위 PowerShell을 직접 실행한다.
+
+훅이 안 들리면 Cursor **View → Output → Hooks** 채널을 확인하고, `hooks.json` 저장 후 Cursor를 한 번 재시작한다.

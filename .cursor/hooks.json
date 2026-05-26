@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "cmd /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \".cursor\\hooks\\play-approval-attention.ps1\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "cmd /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \".cursor\\hooks\\play-approval-attention.ps1\"",
+        "matcher": "CallMcpTool"
+      },
+      {
+        "command": "cmd /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \".cursor\\hooks\\play-approval-attention.ps1\"",
+        "matcher": "Task"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "cmd /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \".cursor\\hooks\\play-approval-attention.ps1\""
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "cmd /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \".cursor\\hooks\\play-approval-attention.ps1\""
+      }
+    ]
+  }
+}
