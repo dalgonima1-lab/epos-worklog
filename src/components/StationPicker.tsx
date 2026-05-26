@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
@@ -37,14 +31,10 @@ import {
 } from "@/lib/stationFacility";
 import { shortStationLabel } from "@/lib/visitGroup";
 
-const RECENT_STATION_LIMIT = 5;
-
 interface StationPickerProps {
   value: string;
   onChange: (name: string) => void;
   disabled?: boolean;
-  /** 최근 사용 역 탭 */
-  enableRecentTabs?: boolean;
   /** 호선 → 역사명 선택 (서울교통공사 1~9호선) */
   enableMetroPicker?: boolean;
   /** 호선 목록에 없을 때 직접 입력 */
@@ -66,18 +56,10 @@ interface StationPickerProps {
   onSelectedStationsChange?: (stations: string[]) => void;
 }
 
-function recentTabMatches(name: string, query: string): boolean {
-  const q = query.trim().toLowerCase().replace(/\s+/g, "");
-  if (!q) return true;
-  const n = name.toLowerCase().replace(/\s+/g, "");
-  return n.includes(q);
-}
-
 export function StationPicker({
   value,
   onChange,
   disabled,
-  enableRecentTabs = true,
   enableMetroPicker = true,
   enableDirectInput = true,
   facilityArea = "",
@@ -99,16 +81,8 @@ export function StationPicker({
   const [selectedStation, setSelectedStation] = useState("");
   const [stationQuery, setStationQuery] = useState("");
 
-  const [recentStations, setRecentStations] = useState<string[]>([]);
-  const [recentQuery, setRecentQuery] = useState("");
   const [useDirectInput, setUseDirectInput] = useState(false);
   const [directValue, setDirectValue] = useState("");
-
-  const loadRecent = useCallback(() => {
-    fetch("/api/stations")
-      .then((r) => r.json())
-      .then((d) => setRecentStations(d.recent ?? d.stations ?? []));
-  }, []);
 
   useEffect(() => {
     if (!enableMetroPicker) return;
@@ -116,10 +90,6 @@ export function StationPicker({
       .then((r) => r.json())
       .then((d) => setLines(d.lines ?? []));
   }, [enableMetroPicker]);
-
-  useEffect(() => {
-    loadRecent();
-  }, [loadRecent]);
 
   useEffect(() => {
     const parsed = parseMetroStationValue(value);
@@ -244,23 +214,9 @@ export function StationPicker({
     onChange(name);
   }
 
-  function applyMetroSelection(line: number, stationName: string) {
+  function addStationToMultiList(line: number, stationName: string) {
+    if (!onSelectedStationsChange) return;
     const formatted = formatMetroStationValue(line, stationName);
-    if (multiStationMode && onSelectedStationsChange) {
-      setSelectedStation(stationName);
-      setStationQuery("");
-      setStationListOpen(false);
-      return;
-    }
-    setStationValue(formatted);
-    void registerStation(formatted);
-  }
-
-  function addCurrentToMultiList() {
-    if (!onSelectedStationsChange || selectedLine === "" || !selectedStation) {
-      return;
-    }
-    const formatted = formatMetroStationValue(selectedLine, selectedStation);
     if (selectedStations.some((s) => s === formatted)) return;
     const next = [...selectedStations, formatted];
     onSelectedStationsChange(next);
@@ -268,6 +224,17 @@ export function StationPicker({
     void registerStation(formatted);
     setSelectedStation("");
     setStationQuery("");
+    setStationListOpen(false);
+  }
+
+  function applyMetroSelection(line: number, stationName: string) {
+    const formatted = formatMetroStationValue(line, stationName);
+    if (multiStationMode && onSelectedStationsChange) {
+      addStationToMultiList(line, stationName);
+      return;
+    }
+    setStationValue(formatted);
+    void registerStation(formatted);
   }
 
   function removeFromMultiList(name: string) {
@@ -309,7 +276,6 @@ export function StationPicker({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
-    loadRecent();
   }
 
   async function commitDirect() {
@@ -318,13 +284,6 @@ export function StationPicker({
     setStationValue(trimmed);
     await registerStation(trimmed);
   }
-
-  const filteredRecent = useMemo(() => {
-    const list = recentStations
-      .slice(0, RECENT_STATION_LIMIT)
-      .filter((s) => recentTabMatches(s, recentQuery));
-    return list;
-  }, [recentStations, recentQuery]);
 
   const lineInfo = lines.find((l) => l.line === selectedLine);
   const lineColor =
@@ -339,17 +298,11 @@ export function StationPicker({
   const valueLineColor =
     valueParsed.line != null ? getMetroLineColor(valueParsed.line) : "";
 
-  const isKnownRecent = value && recentStations.some((s) => s === value);
-
-  function recentTabBorderStyle(name: string): CSSProperties | undefined {
+  function selectedStationRowStyle(name: string): CSSProperties | undefined {
     const { line } = parseMetroStationValue(name);
     if (line == null) return undefined;
     const c = getMetroLineColor(line);
-    return {
-      borderColor: c,
-      borderWidth: 2,
-      boxShadow: value === name ? `0 0 0 1px ${c}` : undefined,
-    };
+    return { borderLeftColor: c, borderLeftWidth: 4 };
   }
 
   const canPickStation =
@@ -374,35 +327,10 @@ export function StationPicker({
           <span className="text-sm">
             <strong className="text-indigo-950">여러 역 한번에</strong>
             <span className="mt-0.5 block text-xs font-normal text-indigo-900/90">
-              같은 공종·작업으로 묶어 등록합니다. 역을 고른 뒤 목록에 추가하세요.
+              호선·역사를 누르면 아래 목록에 순서대로 추가됩니다.
             </span>
           </span>
         </label>
-      ) : null}
-
-      {multiStationMode && selectedStations.length > 0 ? (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {selectedStations.map((name) => (
-            <span
-              key={name}
-              className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-950"
-            >
-              {shortStationLabel(name)}
-              <button
-                type="button"
-                className="text-indigo-600 hover:text-red-600"
-                disabled={disabled}
-                aria-label={`${name} 제거`}
-                onClick={() => removeFromMultiList(name)}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <span className="self-center text-xs text-slate-600">
-            {selectedStations.length}역 선택됨
-          </span>
-        </div>
       ) : null}
 
       {onMaintenanceModeChange ? (
@@ -434,7 +362,7 @@ export function StationPicker({
           {managementOffice && selectedStations.length > 0 ? (
             <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
               <strong>{selectedStations.length}개 역</strong>이 이 관리소 소속으로
-              자동 선택되었습니다. 필요하면 아래에서 역을 추가·제거할 수 있습니다.
+              자동 선택되었습니다. 아래 목록에서 확인·수정할 수 있습니다.
             </p>
           ) : null}
         </div>
@@ -665,23 +593,11 @@ export function StationPicker({
                           })
                         )}
                       </div>
-                      {multiStationMode &&
-                      onSelectedStationsChange &&
-                      selectedStation &&
-                      typeof selectedLine === "number" ? (
-                        <button
-                          type="button"
-                          className="btn btn-secondary mt-2 w-full text-sm"
-                          disabled={disabled}
-                          onClick={addCurrentToMultiList}
-                        >
-                          「
-                          {formatStationNameWithOffice(
-                            selectedLine as number,
-                            selectedStation
-                          )}
-                          」 목록에 추가
-                        </button>
+                      {multiStationMode && onSelectedStationsChange ? (
+                        <p className="muted mt-2 text-xs">
+                          역 목록에서 역사를 누르면 아래「선택한 역사」에
+                          추가됩니다.
+                        </p>
                       ) : null}
                     </div>
                   ) : null}
@@ -753,41 +669,61 @@ export function StationPicker({
         </div>
       )}
 
-      {enableRecentTabs && recentStations.length > 0 && (
+      {multiStationMode && onSelectedStationsChange ? (
         <div className="mt-4">
-          <label className="label text-xs font-medium text-slate-600">
-            최근 사용 역 (최대 {RECENT_STATION_LIMIT}개)
+          <label className="label text-sm font-medium text-indigo-950">
+            선택한 역사{" "}
+            {selectedStations.length > 0 ? (
+              <span className="font-normal text-slate-600">
+                ({selectedStations.length}역)
+              </span>
+            ) : null}
           </label>
-          <input
-            type="search"
-            className="input mt-1"
-            placeholder="최근 역 검색…"
-            value={recentQuery}
-            disabled={disabled}
-            autoComplete="off"
-            onChange={(e) => setRecentQuery(e.target.value)}
-          />
-          <div className="station-tabs mt-2 max-h-40 overflow-y-auto" role="tablist">
-            {filteredRecent.map((name) => (
-              <button
-                key={name}
-                type="button"
-                role="tab"
-                aria-selected={value === name}
-                className={`station-tab ${value === name ? "active" : ""}`}
-                style={recentTabBorderStyle(name)}
-                disabled={disabled}
-                onClick={() => {
-                  setStationValue(name);
-                  void registerStation(name);
-                }}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
+          {selectedStations.length === 0 ? (
+            <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
+              호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다.
+            </p>
+          ) : (
+            <ol className="mt-2 max-h-52 list-none space-y-1.5 overflow-y-auto p-0">
+              {selectedStations.map((name, index) => {
+                const { line } = parseMetroStationValue(name);
+                const lineColor =
+                  line != null ? getMetroLineColor(line) : undefined;
+                return (
+                  <li
+                    key={`${index}-${name}`}
+                    className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-white px-2.5 py-2 shadow-sm"
+                    style={selectedStationRowStyle(name)}
+                  >
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={
+                        lineColor
+                          ? { backgroundColor: lineColor }
+                          : { backgroundColor: "#6366f1" }
+                      }
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">
+                      {name}
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-sm text-slate-400 hover:text-red-600"
+                      disabled={disabled}
+                      aria-label={`${name} 제거`}
+                      onClick={() => removeFromMultiList(name)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </div>
-      )}
+      ) : null}
 
       {value.trim() && onFacilityChange && !maintenanceMode ? (
         <div className="mt-4">
@@ -826,7 +762,6 @@ export function StationPicker({
               managementOffice
             ) || value}
           </strong>
-          {isKnownRecent ? " · 최근 목록에 있음" : ""}
           {requireFacility && !facilityArea ? (
             <span className="text-red-600"> · 작업 장소를 선택해 주세요</span>
           ) : null}

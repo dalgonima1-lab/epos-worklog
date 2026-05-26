@@ -530,7 +530,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 onFacilityChange={setFormFacilityArea}
                 requireFacility
                 disabled={saving}
-                enableRecentTabs
                 enableMetroPicker
                 enableDirectInput
                 multiStationMode={multiStationMode}
