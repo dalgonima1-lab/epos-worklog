@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(stationNames) && stationNames.length > 0) {
       const schedules: ScheduleEntry[] = [];
       let idx = 0;
+      const facilityAreas = body.facilityAreas as string[] | undefined;
       for (const name of stationNames) {
         const trimmed = String(name).trim();
         if (!trimmed) continue;
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
           memberId: body.memberId ?? "",
           title: titles?.[idx] ?? body.title ?? trimmed,
           stationName: trimmed,
-          facilityArea: body.facilityArea,
+          facilityArea:
+            facilityAreas?.[idx] ?? body.facilityArea,
           managementOffice: body.managementOffice,
           note: body.note,
           visitGroupId: groupId,

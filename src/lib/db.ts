@@ -67,6 +67,7 @@ export type ReportPayload = Pick<
   DailyReport,
   | "stationName"
   | "facilityArea"
+  | "additionalFacilityAreas"
   | "managementOffice"
   | "processingRole"
   | "done"
@@ -391,6 +392,10 @@ export async function upsertReport(
         : undefined;
     existing.visitGroupId = payload.visitGroupId;
     existing.facilityArea = normalizeFacilityArea(payload.facilityArea);
+    existing.additionalFacilityAreas =
+      payload.additionalFacilityAreas?.length
+        ? payload.additionalFacilityAreas.map((a) => normalizeFacilityArea(a))
+        : undefined;
     existing.managementOffice = normalizeManagementOffice(
       payload.managementOffice
     );
@@ -418,6 +423,9 @@ export async function upsertReport(
       : undefined,
     visitGroupId: payload.visitGroupId,
     facilityArea: normalizeFacilityArea(payload.facilityArea),
+    additionalFacilityAreas: payload.additionalFacilityAreas?.length
+      ? payload.additionalFacilityAreas.map((a) => normalizeFacilityArea(a))
+      : undefined,
     managementOffice: normalizeManagementOffice(payload.managementOffice),
     processingRole: payload.processingRole,
     done: payload.done,

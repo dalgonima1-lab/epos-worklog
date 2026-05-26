@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import {
+  isProcessingRoleAllowedForFacilities,
   isProcessingRoleAllowedForFacility,
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
     stationNames,
     visitGroupId,
     facilityArea,
+    additionalFacilityAreas,
     managementOffice,
     processingRole,
     done,
@@ -98,10 +100,35 @@ export async function POST(request: NextRequest) {
   }
 
   const role = String(processingRole).trim();
-  if (!isProcessingRoleAllowedForFacility(role, facility)) {
+  const extraFacilities = Array.isArray(additionalFacilityAreas)
+    ? additionalFacilityAreas.map((a: string) => String(a).trim())
+    : [];
+  const allFacilities =
+    namesList.length > 1
+      ? [facility, ...extraFacilities.slice(0, namesList.length - 1)]
+      : [facility];
+  if (namesList.length > 1) {
+    for (let i = 0; i < namesList.length; i++) {
+      const f = allFacilities[i] ?? "";
+      if (!f || !isWorkFacilityArea(f)) {
+        return NextResponse.json(
+          { error: "각 역사마다 작업 장소를 선택해 주세요." },
+          { status: 400 }
+        );
+      }
+    }
+  }
+  if (
+    namesList.length > 1
+      ? !isProcessingRoleAllowedForFacilities(role, allFacilities)
+      : !isProcessingRoleAllowedForFacility(role, facility)
+  ) {
     return NextResponse.json(
       {
-        error: `${facility}에 맞지 않는 공종입니다. 작업 장소별 공종 목록에서 선택해 주세요.`,
+        error:
+          namesList.length > 1
+            ? "선택한 모든 역사의 작업 장소에 맞는 공종을 선택해 주세요."
+            : `${facility}에 맞지 않는 공종입니다. 작업 장소별 공종 목록에서 선택해 주세요.`,
       },
       { status: 400 }
     );
@@ -119,6 +146,10 @@ export async function POST(request: NextRequest) {
     stationNames: namesList.length > 1 ? namesList : undefined,
     visitGroupId: groupId,
     facilityArea: facility,
+    additionalFacilityAreas:
+      namesList.length > 1
+        ? allFacilities.slice(1)
+        : undefined,
     managementOffice: String(managementOffice ?? "").trim() || undefined,
     processingRole: role,
     done: done ?? "",

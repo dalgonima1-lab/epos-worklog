@@ -77,6 +77,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [managementOffice, setManagementOffice] = useState("");
   const [multiStationMode, setMultiStationMode] = useState(false);
   const [selectedStations, setSelectedStations] = useState<string[]>([]);
+  const [stationFacilityByStation, setStationFacilityByStation] = useState<
+    Record<string, StationFacilityArea | "">
+  >({});
   const [saving, setSaving] = useState(false);
 
   const weekAnchor = useMemo(
@@ -96,31 +99,39 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   }, [members]);
 
   const scheduleTitlePreview = useMemo(() => {
-    const previewStation =
+    const stations =
       multiStationMode && selectedStations.length > 0
-        ? selectedStations[0]
-        : formStation.trim();
-    if (!previewStation) return "";
+        ? selectedStations
+        : formStation.trim()
+          ? [formStation.trim()]
+          : [];
+    if (!stations.length) return "";
+
+    const facilityFor = (st: string) =>
+      stations.length >= 2
+        ? (stationFacilityByStation[st] ?? "")
+        : formFacilityArea;
+
     if (maintenanceMode && managementOffice) {
-      const t = buildScheduleTitle(
-        previewStation,
-        MANAGEMENT_OFFICE_FACILITY,
-        formWorkContent,
-        managementOffice
+      const titles = stations.map((st) =>
+        buildScheduleTitle(
+          st,
+          MANAGEMENT_OFFICE_FACILITY,
+          formWorkContent,
+          managementOffice
+        )
       );
-      return selectedStations.length > 1
-        ? `${t} 외 ${selectedStations.length - 1}역`
-        : t;
+      return titles.join(" · ");
     }
-    if (!formFacilityArea) return "";
-    const t = buildScheduleTitle(
-      previewStation,
-      formFacilityArea,
-      formWorkContent
-    );
-    return selectedStations.length > 1
-      ? `${t} 외 ${selectedStations.length - 1}역`
-      : t;
+
+    const titles = stations
+      .map((st) => {
+        const area = facilityFor(st);
+        if (!area) return "";
+        return buildScheduleTitle(st, area, formWorkContent);
+      })
+      .filter(Boolean);
+    return titles.join(" · ");
   }, [
     formStation,
     formFacilityArea,
@@ -129,6 +140,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     managementOffice,
     multiStationMode,
     selectedStations,
+    stationFacilityByStation,
   ]);
 
   const reportByKey = useMemo(() => {
@@ -193,6 +205,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setManagementOffice("");
     setMultiStationMode(false);
     setSelectedStations([]);
+    setStationFacilityByStation({});
     if (!formMemberId && members.length) {
       setFormMemberId(members[0].id);
     }
@@ -249,8 +262,17 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setError("유지보수 용역 시 전기관리소를 선택해 주세요.");
       return;
     }
-    if (!formFacilityArea) {
-      setError("작업 장소를 선택해 주세요.");
+    const facilityForStation = (st: string) =>
+      stations.length >= 2
+        ? stationFacilityByStation[st]?.trim()
+        : formFacilityArea.trim();
+
+    if (stations.some((st) => !facilityForStation(st))) {
+      setError(
+        stations.length >= 2
+          ? "각 역사마다 작업 장소를 선택해 주세요."
+          : "작업 장소를 선택해 주세요."
+      );
       return;
     }
     if (!formWorkContent.trim()) {
@@ -267,8 +289,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             formWorkContent,
             managementOffice
           )
-        : buildScheduleTitle(st, formFacilityArea, formWorkContent)
+        : buildScheduleTitle(st, facilityForStation(st)!, formWorkContent)
     );
+    const facilityAreas = stations.map((st) => facilityForStation(st)!);
     setSaving(true);
     try {
       const res = await fetch("/api/schedules", {
@@ -283,9 +306,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           stationNames: stations.length > 1 ? stations : undefined,
           stationName: stations.length === 1 ? stations[0] : undefined,
           visitGroupId,
-          facilityArea: formFacilityArea,
+          facilityArea: facilityAreas[0],
+          facilityAreas: stations.length > 1 ? facilityAreas : undefined,
           managementOffice:
-            formFacilityArea === MANAGEMENT_OFFICE_FACILITY
+            facilityAreas[0] === MANAGEMENT_OFFICE_FACILITY
               ? managementOffice
               : undefined,
           note: formWorkContent.trim(),
@@ -536,6 +560,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 onMultiStationModeChange={setMultiStationMode}
                 selectedStations={selectedStations}
                 onSelectedStationsChange={setSelectedStations}
+                stationFacilityByStation={stationFacilityByStation}
+                onStationFacilityByStationChange={setStationFacilityByStation}
                 maintenanceMode={maintenanceMode}
                 onMaintenanceModeChange={(enabled) => {
                   setMaintenanceMode(enabled);
@@ -544,11 +570,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     setManagementOffice("");
                     setMultiStationMode(false);
                     setSelectedStations([]);
+                    setStationFacilityByStation({});
                   } else {
                     setManagementOffice("");
                     setFormFacilityArea("");
                     setMultiStationMode(false);
                     setSelectedStations([]);
+                    setStationFacilityByStation({});
                   }
                 }}
                 managementOffice={managementOffice}

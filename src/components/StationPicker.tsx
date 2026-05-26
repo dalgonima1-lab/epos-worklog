@@ -22,6 +22,7 @@ import {
 import {
   formatEposFacilitiesLabel,
   getEposProductFacilities,
+  getEposProductForDisplayName,
   hasEposProductAtStation,
 } from "@/lib/eposProductStations";
 import {
@@ -54,6 +55,11 @@ interface StationPickerProps {
   onMultiStationModeChange?: (enabled: boolean) => void;
   selectedStations?: string[];
   onSelectedStationsChange?: (stations: string[]) => void;
+  /** 여러 역 선택 시 역별 작업 장소 */
+  stationFacilityByStation?: Record<string, StationFacilityArea | "">;
+  onStationFacilityByStationChange?: (
+    map: Record<string, StationFacilityArea | "">
+  ) => void;
 }
 
 export function StationPicker({
@@ -73,6 +79,8 @@ export function StationPicker({
   onMultiStationModeChange,
   selectedStations = [],
   onSelectedStationsChange,
+  stationFacilityByStation = {},
+  onStationFacilityByStationChange,
 }: StationPickerProps) {
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
@@ -242,6 +250,35 @@ export function StationPicker({
     const next = selectedStations.filter((s) => s !== name);
     onSelectedStationsChange(next);
     if (value === name) onChange(next[0] ?? "");
+    if (onStationFacilityByStationChange) {
+      const { [name]: _removed, ...rest } = stationFacilityByStation;
+      onStationFacilityByStationChange(rest);
+    }
+  }
+
+  const perStationFacilityPick =
+    multiStationMode &&
+    !maintenanceMode &&
+    selectedStations.length >= 2 &&
+    Boolean(onStationFacilityByStationChange);
+
+  function setFacilityForStation(
+    station: string,
+    area: StationFacilityArea | ""
+  ) {
+    if (!onStationFacilityByStationChange) return;
+    onStationFacilityByStationChange({
+      ...stationFacilityByStation,
+      [station]: area,
+    });
+    if (station === selectedStations[0]) {
+      onFacilityChange?.(area);
+    }
+  }
+
+  function facilitiesForStation(station: string): StationFacilityArea[] | undefined {
+    const { facilities } = getEposProductForDisplayName(station);
+    return facilities.length ? facilities : undefined;
   }
 
   function handleLineChange(lineStr: string) {
@@ -321,6 +358,7 @@ export function StationPicker({
               onMultiStationModeChange(e.target.checked);
               if (!e.target.checked) {
                 onSelectedStationsChange?.([]);
+                onStationFacilityByStationChange?.({});
               }
             }}
           />
@@ -682,6 +720,12 @@ export function StationPicker({
           {selectedStations.length === 0 ? (
             <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
               호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다.
+              {perStationFacilityPick ? (
+                <>
+                  <br />
+                  역이 2개 이상이면 각 역마다 작업 장소를 따로 선택합니다.
+                </>
+              ) : null}
             </p>
           ) : (
             <ol className="mt-2 max-h-52 list-none space-y-1.5 overflow-y-auto p-0">
@@ -689,34 +733,48 @@ export function StationPicker({
                 const { line } = parseMetroStationValue(name);
                 const lineColor =
                   line != null ? getMetroLineColor(line) : undefined;
+                const stationFacility = stationFacilityByStation[name] ?? "";
                 return (
                   <li
                     key={`${index}-${name}`}
-                    className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-white px-2.5 py-2 shadow-sm"
+                    className="rounded-lg border border-indigo-100 bg-white px-2.5 py-2 shadow-sm"
                     style={selectedStationRowStyle(name)}
                   >
-                    <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={
-                        lineColor
-                          ? { backgroundColor: lineColor }
-                          : { backgroundColor: "#6366f1" }
-                      }
-                    >
-                      {index + 1}
-                    </span>
-                    <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">
-                      {name}
-                    </span>
-                    <button
-                      type="button"
-                      className="shrink-0 text-sm text-slate-400 hover:text-red-600"
-                      disabled={disabled}
-                      aria-label={`${name} 제거`}
-                      onClick={() => removeFromMultiList(name)}
-                    >
-                      ×
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                        style={
+                          lineColor
+                            ? { backgroundColor: lineColor }
+                            : { backgroundColor: "#6366f1" }
+                        }
+                      >
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">
+                        {name}
+                      </span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-sm text-slate-400 hover:text-red-600"
+                        disabled={disabled}
+                        aria-label={`${name} 제거`}
+                        onClick={() => removeFromMultiList(name)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    {perStationFacilityPick ? (
+                      <div className="mt-2 border-t border-indigo-50 pt-2">
+                        <StationFacilityPicker
+                          value={stationFacility}
+                          onChange={(area) => setFacilityForStation(name, area)}
+                          disabled={disabled}
+                          accentColor={lineColor}
+                          availableFacilities={facilitiesForStation(name)}
+                        />
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
@@ -725,7 +783,10 @@ export function StationPicker({
         </div>
       ) : null}
 
-      {value.trim() && onFacilityChange && !maintenanceMode ? (
+      {value.trim() &&
+      onFacilityChange &&
+      !maintenanceMode &&
+      !perStationFacilityPick ? (
         <div className="mt-4">
           <StationFacilityPicker
             value={facilityArea}

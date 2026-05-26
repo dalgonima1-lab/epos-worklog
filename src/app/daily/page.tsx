@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import {
+  getProcessingRolesForFacilities,
   getProcessingRolesForFacility,
+  isProcessingRoleAllowedForFacilities,
   isProcessingRoleAllowedForFacility,
   isStationFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
@@ -43,6 +45,9 @@ function DailyPageInner() {
   );
   const [multiStationMode, setMultiStationMode] = useState(false);
   const [selectedStations, setSelectedStations] = useState<string[]>([]);
+  const [stationFacilityByStation, setStationFacilityByStation] = useState<
+    Record<string, StationFacilityArea | "">
+  >({});
   const [facilityArea, setFacilityArea] = useState<
     StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
   >(() => {
@@ -66,6 +71,38 @@ function DailyPageInner() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const activeStations = useMemo(() => {
+    if (multiStationMode && selectedStations.length > 0) {
+      return selectedStations;
+    }
+    return stationName.trim() ? [stationName.trim()] : [];
+  }, [multiStationMode, selectedStations, stationName]);
+
+  const perStationFacilities =
+    multiStationMode && activeStations.length >= 2 && !maintenanceMode;
+
+  const activeFacilityAreas = useMemo(() => {
+    if (maintenanceMode) return [MANAGEMENT_OFFICE_FACILITY];
+    if (perStationFacilities) {
+      return activeStations
+        .map((s) => stationFacilityByStation[s]?.trim() ?? "")
+        .filter(Boolean);
+    }
+    return facilityArea ? [facilityArea] : [];
+  }, [
+    activeStations,
+    facilityArea,
+    maintenanceMode,
+    perStationFacilities,
+    stationFacilityByStation,
+  ]);
+
+  const allFacilitiesChosen =
+    maintenanceMode ||
+    (perStationFacilities
+      ? activeStations.every((s) => stationFacilityByStation[s]?.trim())
+      : Boolean(facilityArea));
+
   const effectiveRole =
     facilityArea === MANAGEMENT_OFFICE_FACILITY
       ? "유지보수 용역"
@@ -73,11 +110,14 @@ function DailyPageInner() {
         ? customRole.trim()
         : processingRole;
 
-  const rolesForFacility = getProcessingRolesForFacility(
-    facilityArea === MANAGEMENT_OFFICE_FACILITY
-      ? MANAGEMENT_OFFICE_FACILITY
-      : facilityArea || undefined
-  );
+  const rolesForFacility =
+    activeFacilityAreas.length > 1
+      ? getProcessingRolesForFacilities(activeFacilityAreas)
+      : getProcessingRolesForFacility(
+          facilityArea === MANAGEMENT_OFFICE_FACILITY
+            ? MANAGEMENT_OFFICE_FACILITY
+            : facilityArea || undefined
+        );
 
   useEffect(() => {
     fetch("/api/members")
@@ -100,12 +140,15 @@ function DailyPageInner() {
   }, [memberId]);
 
   useEffect(() => {
-    if (!facilityArea) {
+    if (!allFacilitiesChosen) {
       setProcessingRole("");
       setCustomRole("");
       return;
     }
-    const allowed = getProcessingRolesForFacility(facilityArea);
+    const allowed =
+      activeFacilityAreas.length > 1
+        ? getProcessingRolesForFacilities(activeFacilityAreas)
+        : getProcessingRolesForFacility(facilityArea);
     if (
       processingRole &&
       processingRole !== ROLE_OTHER &&
@@ -114,7 +157,12 @@ function DailyPageInner() {
       setProcessingRole("");
       setCustomRole("");
     }
-  }, [facilityArea, processingRole]);
+  }, [
+    activeFacilityAreas,
+    allFacilitiesChosen,
+    facilityArea,
+    processingRole,
+  ]);
 
   useEffect(() => {
     const qDate = searchParams.get("date");
@@ -154,10 +202,32 @@ function DailyPageInner() {
           : isStationFacilityArea(facilityFromSchedule)
             ? facilityFromSchedule
             : "";
+        const fromReport = report?.stationName?.trim() ?? "";
+        const safeReportStation = isSecurityTestPlaceholder(fromReport)
+          ? ""
+          : fromReport;
+        const additional = report?.additionalStationNames ?? [];
+        const cohortFacilities = (() => {
+          const names = [safeReportStation, ...additional].filter(Boolean);
+          if (names.length <= 1) {
+            return facilityForRole ? [facilityForRole] : [];
+          }
+          const extras = report?.additionalFacilityAreas ?? [];
+          return names
+            .map((_, i) => {
+              if (i === 0) return facilityForRole;
+              const extra = extras[i - 1]?.trim() ?? "";
+              return isStationFacilityArea(extra) ? extra : facilityForRole;
+            })
+            .filter((f): f is StationFacilityArea => Boolean(f));
+        })();
+
         if (
           role &&
-          facilityForRole &&
-          isProcessingRoleAllowedForFacility(role, facilityForRole)
+          cohortFacilities.length > 0 &&
+          (cohortFacilities.length > 1
+            ? isProcessingRoleAllowedForFacilities(role, cohortFacilities)
+            : isProcessingRoleAllowedForFacility(role, cohortFacilities[0]!))
         ) {
           setProcessingRole(role);
           setCustomRole("");
@@ -168,20 +238,34 @@ function DailyPageInner() {
           setProcessingRole("");
           setCustomRole("");
         }
-        const fromReport = report?.stationName?.trim() ?? "";
-        const safeReportStation = isSecurityTestPlaceholder(fromReport)
-          ? ""
-          : fromReport;
-        const additional = report?.additionalStationNames ?? [];
         if (additional.length > 0) {
-          setMultiStationMode(true);
-          setSelectedStations([
+          const cohort = [
             safeReportStation,
             ...additional.filter(Boolean),
-          ].filter(Boolean));
+          ].filter(Boolean);
+          setMultiStationMode(true);
+          setSelectedStations(cohort);
+          const extraAreas = report?.additionalFacilityAreas ?? [];
+          const map: Record<string, StationFacilityArea | ""> = {};
+          cohort.forEach((name, i) => {
+            if (i === 0) {
+              map[name] = isStationFacilityArea(loadedFacility)
+                ? loadedFacility
+                : "";
+            } else {
+              const extra = extraAreas[i - 1]?.trim() ?? "";
+              map[name] = isStationFacilityArea(extra)
+                ? extra
+                : isStationFacilityArea(loadedFacility)
+                  ? loadedFacility
+                  : "";
+            }
+          });
+          setStationFacilityByStation(map);
         } else {
           setMultiStationMode(false);
           setSelectedStations([]);
+          setStationFacilityByStation({});
         }
         setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
@@ -250,8 +334,17 @@ function DailyPageInner() {
       setStatus("역사명을 선택하거나 입력해 주세요.");
       return;
     }
-    if (!facilityArea) {
-      setStatus("작업 장소(전기실·변전소·역무실)를 선택해 주세요.");
+    const facilityAreas = stations.map((st) =>
+      stations.length >= 2 && !maintenanceMode
+        ? stationFacilityByStation[st]?.trim() ?? ""
+        : facilityArea.trim()
+    );
+    if (facilityAreas.some((f) => !f)) {
+      setStatus(
+        stations.length >= 2
+          ? "각 역사마다 작업 장소를 선택해 주세요."
+          : "작업 장소(전기실·변전소·역무실)를 선택해 주세요."
+      );
       return;
     }
     if (!effectiveRole) {
@@ -260,10 +353,14 @@ function DailyPageInner() {
     }
     if (
       processingRole !== ROLE_OTHER &&
-      !isProcessingRoleAllowedForFacility(effectiveRole, facilityArea)
+      (stations.length >= 2 && !maintenanceMode
+        ? !isProcessingRoleAllowedForFacilities(effectiveRole, facilityAreas)
+        : !isProcessingRoleAllowedForFacility(effectiveRole, facilityAreas[0]!))
     ) {
       setStatus(
-        `${facilityArea}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
+        stations.length >= 2
+          ? "선택한 모든 역사의 작업 장소에 맞는 공종을 선택해 주세요."
+          : `${facilityAreas[0]}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
       );
       return;
     }
@@ -276,9 +373,11 @@ function DailyPageInner() {
         date,
         stationName: stations[0],
         stationNames: stations.length > 1 ? stations : undefined,
-        facilityArea,
+        facilityArea: facilityAreas[0],
+        additionalFacilityAreas:
+          stations.length > 1 ? facilityAreas.slice(1) : undefined,
         managementOffice:
-          facilityArea === MANAGEMENT_OFFICE_FACILITY
+          facilityAreas[0] === MANAGEMENT_OFFICE_FACILITY
             ? managementOffice
             : undefined,
         processingRole: effectiveRole,
@@ -363,11 +462,13 @@ function DailyPageInner() {
             if (enabled) {
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
               setManagementOffice("");
+              setStationFacilityByStation({});
               setProcessingRole("유지보수 용역");
               setCustomRole("");
             } else {
               setManagementOffice("");
               setFacilityArea("");
+              setStationFacilityByStation({});
             }
           }}
           managementOffice={managementOffice}
@@ -376,6 +477,8 @@ function DailyPageInner() {
           onMultiStationModeChange={setMultiStationMode}
           selectedStations={selectedStations}
           onSelectedStationsChange={setSelectedStations}
+          stationFacilityByStation={stationFacilityByStation}
+          onStationFacilityByStationChange={setStationFacilityByStation}
         />
 
         <div>
@@ -383,13 +486,20 @@ function DailyPageInner() {
             {"\uacf5\uc885 "}
             <span className="text-red-600">*</span>
           </label>
-          {!facilityArea ? (
+          {!allFacilitiesChosen ? (
             <p className="muted text-xs">
-              작업 장소를 먼저 선택하면 공종 목록이 표시됩니다.
+              {perStationFacilities
+                ? "각 역사의 작업 장소를 모두 선택하면 공종 목록이 표시됩니다."
+                : "작업 장소를 먼저 선택하면 공종 목록이 표시됩니다."}
             </p>
           ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
             <p className="muted mb-1 text-xs">
               관리소(유지보수): 공종은「유지보수 용역」으로 자동 설정됩니다.
+            </p>
+          ) : perStationFacilities ? (
+            <p className="muted mb-1 text-xs">
+              여러 역 방문: 모든 역의 작업 장소에 공통으로 선택 가능한 공종만
+              표시됩니다.
             </p>
           ) : (
             <p className="muted mb-1 text-xs">
@@ -409,7 +519,7 @@ function DailyPageInner() {
             onChange={(e) => setProcessingRole(e.target.value)}
             disabled={
               loading ||
-              !facilityArea ||
+              !allFacilitiesChosen ||
               facilityArea === MANAGEMENT_OFFICE_FACILITY
             }
           >

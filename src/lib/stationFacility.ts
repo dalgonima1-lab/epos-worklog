@@ -54,6 +54,31 @@ export function isProcessingRoleAllowedForFacility(
   return getProcessingRolesForFacility(facilityArea).includes(trimmed);
 }
 
+/** 여러 역·여러 작업 장소일 때 공통으로 선택 가능한 공종 */
+export function getProcessingRolesForFacilities(
+  facilityAreas: string[]
+): readonly string[] {
+  const valid = facilityAreas.map((f) => f.trim()).filter(Boolean);
+  if (!valid.length) return PROCESSING_ROLES;
+  let roles = [...getProcessingRolesForFacility(valid[0])];
+  for (let i = 1; i < valid.length; i++) {
+    const next = getProcessingRolesForFacility(valid[i]);
+    roles = roles.filter((r) => next.includes(r));
+  }
+  return roles;
+}
+
+export function isProcessingRoleAllowedForFacilities(
+  role: string,
+  facilityAreas: string[]
+): boolean {
+  const trimmed = role.trim();
+  if (!trimmed) return false;
+  const valid = facilityAreas.map((f) => f.trim()).filter(isWorkFacilityArea);
+  if (!valid.length) return false;
+  return valid.every((f) => isProcessingRoleAllowedForFacility(trimmed, f));
+}
+
 export function isStationFacilityArea(
   value: string
 ): value is StationFacilityArea {

@@ -24,6 +24,8 @@ export interface DailyReport {
   managementOffice?: string;
   /** 같은 묶음 방문 시 추가 역사명 (첫 역 제외) */
   additionalStationNames?: string[];
+  /** additionalStationNames와 같은 순서의 작업 장소 */
+  additionalFacilityAreas?: string[];
   /** 여러 역·일정을 묶는 그룹 id */
   visitGroupId?: string;
   /** 공종 */
