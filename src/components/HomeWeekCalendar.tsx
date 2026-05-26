@@ -104,7 +104,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [maintenanceSelections, setMaintenanceSelections] = useState<
     MaintenanceVisitTarget[]
   >([]);
-  const [multiMemberMode, setMultiMemberMode] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -232,7 +231,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setSelectedStations([]);
     setStationFacilityByStation({});
     setMaintenanceSelections([]);
-    setMultiMemberMode(false);
     const first =
       writers[0]?.id ?? members.find((m) => m.role === "member")?.id ?? "";
     if (first) {
@@ -247,17 +245,23 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       const has = prev.includes(id);
       const next = has ? prev.filter((x) => x !== id) : [...prev, id];
       if (next.length === 0) return prev;
-      if (!has && next.length === 1) setFormMemberId(id);
+      setFormMemberId(next[0]!);
       return next;
     });
   }
 
   function resolveMemberIdsForSave(): string[] {
-    if (multiMemberMode && selectedMemberIds.length > 0) {
-      return selectedMemberIds;
-    }
-    return formMemberId.trim() ? [formMemberId.trim()] : [];
+    return selectedMemberIds.length > 0
+      ? selectedMemberIds
+      : formMemberId.trim()
+        ? [formMemberId.trim()]
+        : [];
   }
+
+  const cohortMemberLabel = useMemo(() => {
+    if (selectedMemberIds.length < 2) return "";
+    return formatCohortMemberLabel(selectedMemberIds, memberNameById);
+  }, [selectedMemberIds, memberNameById]);
 
   function openEdit(entry: ScheduleEntry) {
     setEditing(entry);
@@ -304,15 +308,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
         entry.date,
         entry.visitGroupId
       );
-      if (cohort.length > 1) {
-        setMultiMemberMode(true);
-        setSelectedMemberIds(cohort);
-      } else {
-        setMultiMemberMode(false);
-        setSelectedMemberIds([entry.memberId]);
-      }
+      const ids = cohort.length > 0 ? cohort : [entry.memberId];
+      setSelectedMemberIds(ids);
+      setFormMemberId(ids[0] ?? entry.memberId);
     } else {
-      setMultiMemberMode(false);
       setSelectedMemberIds([entry.memberId]);
     }
     setModalOpen(true);
@@ -737,79 +736,40 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               </div>
               <div>
                 <label className="label">담당자</label>
-                <label className="mb-2 flex cursor-pointer items-start gap-2 rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={multiMemberMode}
-                    disabled={saving}
-                    onChange={(e) => {
-                      const on = e.target.checked;
-                      setMultiMemberMode(on);
-                      if (on) {
-                        const base = formMemberId
-                          ? [formMemberId]
-                          : writers[0]
-                            ? [writers[0].id]
-                            : [];
-                        setSelectedMemberIds(base);
-                      } else if (formMemberId) {
-                        setSelectedMemberIds([formMemberId]);
-                      }
-                    }}
-                  />
-                  <span className="text-sm">
-                    <strong className="text-violet-950">
-                      팀원 여러 명 함께
-                    </strong>
-                    <span className="mt-0.5 block text-xs font-normal text-violet-900/90">
-                      선택한 팀원마다 같은 일정이 생깁니다. 한 명만 일일
-                      기록하면 동행 인원은 추가 기록이 필요 없습니다.
-                    </span>
-                  </span>
-                </label>
-                {multiMemberMode ? (
-                  <div className="flex flex-wrap gap-2 rounded-lg border border-violet-100 bg-white p-2.5">
-                    {writers.map((m) => {
-                      const checked = selectedMemberIds.includes(m.id);
-                      return (
-                        <label
-                          key={m.id}
-                          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium ${
-                            checked
-                              ? "border-violet-500 bg-violet-500 text-white"
-                              : "border-slate-200 bg-slate-50 text-slate-700"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={checked}
-                            disabled={saving}
-                            onChange={() => toggleMemberSelection(m.id)}
-                          />
-                          {m.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <select
-                    className="select"
-                    value={formMemberId}
-                    onChange={(e) => {
-                      setFormMemberId(e.target.value);
-                      setSelectedMemberIds([e.target.value]);
-                    }}
-                    required
-                  >
-                    {writers.map((m) => (
-                      <option key={m.id} value={m.id}>
+                <p className="muted mb-2 text-xs">
+                  팀원을 눌러 선택하세요. <strong>2명 이상</strong>이면 자동으로
+                  동행 일정이 됩니다. 한 명만 일일 기록하면 나머지는 추가 기록이
+                  필요 없습니다.
+                </p>
+                <div className="flex flex-wrap gap-2 rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
+                  {writers.map((m) => {
+                    const checked = selectedMemberIds.includes(m.id);
+                    return (
+                      <label
+                        key={m.id}
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+                          checked
+                            ? "border-violet-500 bg-violet-500 text-white"
+                            : "border-slate-200 bg-white text-slate-700"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={checked}
+                          disabled={saving}
+                          onChange={() => toggleMemberSelection(m.id)}
+                        />
                         {m.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                      </label>
+                    );
+                  })}
+                </div>
+                {cohortMemberLabel ? (
+                  <p className="mt-2 text-xs font-semibold text-violet-800">
+                    동행: {cohortMemberLabel}
+                  </p>
+                ) : null}
               </div>
               <StationPicker
                 value={formStation}
@@ -879,9 +839,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   </p>
                   <p className="muted mt-1 text-[11px]">
                     {maintenanceMode
-                      ? "유지보수 용역은 선택한 팀원마다 관리소 산하 일정 1건으로 저장합니다."
-                      : multiMemberMode && selectedMemberIds.length > 1
-                        ? `선택한 ${selectedMemberIds.length}명 × 역사별 일정이 생성됩니다.`
+                      ? selectedMemberIds.length > 1
+                        ? `동행 ${selectedMemberIds.length}명에게 관리소 산하 일정 1건씩 저장합니다.`
+                        : "유지보수 용역은 관리소 산하 일정 1건으로 저장합니다."
+                      : selectedMemberIds.length > 1
+                        ? `동행 ${selectedMemberIds.length}명 × 역사별 일정이 생성됩니다.`
                         : "호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다."}
                   </p>
                 </div>
@@ -898,7 +860,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                disabled={saving || !formDate || !formMemberId}
+                disabled={saving || !formDate || selectedMemberIds.length === 0}
                 onClick={() => {
                   if (
                     !maintenanceMode &&
