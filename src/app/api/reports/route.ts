@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReport, getReportsInRange, upsertReport } from "@/lib/db";
+import {
+  getMembers,
+  getReport,
+  getReportsInRange,
+  getSchedulesInRange,
+  upsertReport,
+  visitGroupIdFromSchedules,
+} from "@/lib/db";
+import {
+  findCohortCoverage,
+  reportHasMeaningfulContent,
+} from "@/lib/visitCohort";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import {
   isProcessingRoleAllowedForFacilities,
@@ -17,7 +28,27 @@ export async function GET(request: NextRequest) {
 
   if (date && memberId) {
     const report = await getReport(memberId, date);
-    return NextResponse.json({ report });
+    const schedules = await getSchedulesInRange(date, date);
+    const reports = await getReportsInRange(date, date);
+    const memberNameById = new Map<string, string>();
+    const members = await getMembers();
+    for (const m of members) memberNameById.set(m.id, m.name);
+    const cohortCoverage = findCohortCoverage(
+      memberId,
+      date,
+      schedules,
+      reports,
+      memberNameById
+    );
+    const visitGroupId =
+      report?.visitGroupId?.trim() ??
+      visitGroupIdFromSchedules(schedules, memberId, date);
+    return NextResponse.json({
+      report,
+      visitGroupId,
+      cohortCoverage,
+      ownReportComplete: report ? reportHasMeaningfulContent(report) : false,
+    });
   }
 
   if (!start || !end) {
@@ -142,10 +173,12 @@ export async function POST(request: NextRequest) {
 
   const existing = await getReport(memberId, date);
 
+  const schedules = await getSchedulesInRange(date, date);
+  const scheduleGroupId = visitGroupIdFromSchedules(schedules, memberId, date);
   const groupId =
-    namesList.length > 1
-      ? (visitGroupId as string | undefined) ?? createVisitGroupId()
-      : (visitGroupId as string | undefined);
+    (visitGroupId as string | undefined)?.trim() ||
+    scheduleGroupId ||
+    (namesList.length > 1 ? createVisitGroupId() : undefined);
 
   const report = await upsertReport(memberId, date, {
     stationName: primaryStation,

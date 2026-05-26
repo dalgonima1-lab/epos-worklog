@@ -29,6 +29,13 @@ import {
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import {
+  cohortMemberIdsForVisit,
+  fieldMembers,
+  findCohortCoverage,
+  formatCohortMemberLabel,
+  isScheduleDayComplete,
+} from "@/lib/visitCohort";
+import {
   formatStationVisitLabel,
   isStationFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
@@ -97,7 +104,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [maintenanceSelections, setMaintenanceSelections] = useState<
     MaintenanceVisitTarget[]
   >([]);
+  const [multiMemberMode, setMultiMemberMode] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const writers = useMemo(() => fieldMembers(members), [members]);
 
   const weekAnchor = useMemo(
     () => shiftWeek(anchor, weekTab),
@@ -221,10 +232,31 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setSelectedStations([]);
     setStationFacilityByStation({});
     setMaintenanceSelections([]);
-    if (!formMemberId && members.length) {
-      setFormMemberId(members[0].id);
+    setMultiMemberMode(false);
+    const first =
+      writers[0]?.id ?? members.find((m) => m.role === "member")?.id ?? "";
+    if (first) {
+      setFormMemberId(first);
+      setSelectedMemberIds([first]);
     }
     setModalOpen(true);
+  }
+
+  function toggleMemberSelection(id: string) {
+    setSelectedMemberIds((prev) => {
+      const has = prev.includes(id);
+      const next = has ? prev.filter((x) => x !== id) : [...prev, id];
+      if (next.length === 0) return prev;
+      if (!has && next.length === 1) setFormMemberId(id);
+      return next;
+    });
+  }
+
+  function resolveMemberIdsForSave(): string[] {
+    if (multiMemberMode && selectedMemberIds.length > 0) {
+      return selectedMemberIds;
+    }
+    return formMemberId.trim() ? [formMemberId.trim()] : [];
   }
 
   function openEdit(entry: ScheduleEntry) {
@@ -266,6 +298,23 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     }
     setFormWorkContent(entry.note ?? "");
     setStationFacilityByStation({});
+    if (entry.visitGroupId) {
+      const cohort = cohortMemberIdsForVisit(
+        schedules,
+        entry.date,
+        entry.visitGroupId
+      );
+      if (cohort.length > 1) {
+        setMultiMemberMode(true);
+        setSelectedMemberIds(cohort);
+      } else {
+        setMultiMemberMode(false);
+        setSelectedMemberIds([entry.memberId]);
+      }
+    } else {
+      setMultiMemberMode(false);
+      setSelectedMemberIds([entry.memberId]);
+    }
     setModalOpen(true);
   }
 
@@ -338,6 +387,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setError("작업 내용을 입력해 주세요.");
       return;
     }
+    const memberIds = resolveMemberIdsForSave();
+    if (!memberIds.length) {
+      setError("담당자를 1명 이상 선택해 주세요.");
+      return;
+    }
+    const replaceVisitGroupId = editing?.visitGroupId?.trim() || undefined;
 
     if (maintenanceMode && managementOffice) {
       const visitStations = uniqueStationsFromTargets(maintenanceSelections);
@@ -352,9 +407,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: editing?.id,
             date: formDate,
-            memberId: formMemberId,
+            memberIds,
+            replaceVisitGroupId,
             maintenanceBulk: true,
             title,
             stationName: visitStations[0],
@@ -382,7 +437,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     }
 
     const visitGroupId =
-      stations.length > 1 ? createVisitGroupId() : undefined;
+      memberIds.length > 1 || stations.length > 1
+        ? createVisitGroupId()
+        : undefined;
     const titles = stations.map((st) =>
       buildScheduleTitle(st, facilityForStation(st)!, formWorkContent)
     );
@@ -393,9 +450,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: editing?.id,
+          id:
+            !replaceVisitGroupId && memberIds.length === 1
+              ? editing?.id
+              : undefined,
           date: formDate,
-          memberId: formMemberId,
+          memberIds,
+          replaceVisitGroupId,
           title: titles[0],
           titles: stations.length > 1 ? titles : undefined,
           stationNames: stations.length > 1 ? stations : undefined,
@@ -509,7 +570,39 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                         const report = reportByKey.get(
                           `${s.memberId}:${s.date}`
                         );
-                        const hasRecord = report && reportHasContent(report);
+                        const hasRecord = isScheduleDayComplete(
+                          s.memberId,
+                          s.date,
+                          report,
+                          schedules,
+                          reports,
+                          memberNameById
+                        );
+                        const cohortIds =
+                          s.visitGroupId && s.date
+                            ? cohortMemberIdsForVisit(
+                                schedules,
+                                s.date,
+                                s.visitGroupId
+                              )
+                            : [];
+                        const cohortLabel =
+                          cohortIds.length > 1
+                            ? formatCohortMemberLabel(
+                                cohortIds,
+                                memberNameById
+                              )
+                            : "";
+                        const coveredByPeer =
+                          report &&
+                          !reportHasContent(report) &&
+                          findCohortCoverage(
+                            s.memberId,
+                            s.date,
+                            schedules,
+                            reports,
+                            memberNameById
+                          );
                         return (
                           <div
                             key={s.id}
@@ -549,14 +642,25 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                                   )}
                                 </p>
                               ) : null}
+                              {cohortLabel ? (
+                                <p className="mt-0.5 text-[10px] font-medium text-violet-700">
+                                  동행 {cohortLabel}
+                                </p>
+                              ) : null}
                               <span
                                 className={`mt-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                                   hasRecord
-                                    ? "bg-emerald-100 text-emerald-800"
+                                    ? coveredByPeer
+                                      ? "bg-violet-100 text-violet-900"
+                                      : "bg-emerald-100 text-emerald-800"
                                     : "bg-slate-100 text-slate-600"
                                 }`}
                               >
-                                {hasRecord ? "기록 있음" : "기록 작성"}
+                                {hasRecord
+                                  ? coveredByPeer
+                                    ? "동행 기록"
+                                    : "기록 있음"
+                                  : "기록 작성"}
                               </span>
                             </button>
                             <div className="mt-1.5 flex gap-1 border-t border-slate-100 pt-1.5">
@@ -631,18 +735,79 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               </div>
               <div>
                 <label className="label">담당자</label>
-                <select
-                  className="select"
-                  value={formMemberId}
-                  onChange={(e) => setFormMemberId(e.target.value)}
-                  required
-                >
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="mb-2 flex cursor-pointer items-start gap-2 rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={multiMemberMode}
+                    disabled={saving}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setMultiMemberMode(on);
+                      if (on) {
+                        const base = formMemberId
+                          ? [formMemberId]
+                          : writers[0]
+                            ? [writers[0].id]
+                            : [];
+                        setSelectedMemberIds(base);
+                      } else if (formMemberId) {
+                        setSelectedMemberIds([formMemberId]);
+                      }
+                    }}
+                  />
+                  <span className="text-sm">
+                    <strong className="text-violet-950">
+                      팀원 여러 명 함께
+                    </strong>
+                    <span className="mt-0.5 block text-xs font-normal text-violet-900/90">
+                      선택한 팀원마다 같은 일정이 생깁니다. 한 명만 일일
+                      기록하면 동행 인원은 추가 기록이 필요 없습니다.
+                    </span>
+                  </span>
+                </label>
+                {multiMemberMode ? (
+                  <div className="flex flex-wrap gap-2 rounded-lg border border-violet-100 bg-white p-2.5">
+                    {writers.map((m) => {
+                      const checked = selectedMemberIds.includes(m.id);
+                      return (
+                        <label
+                          key={m.id}
+                          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+                            checked
+                              ? "border-violet-500 bg-violet-500 text-white"
+                              : "border-slate-200 bg-slate-50 text-slate-700"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            disabled={saving}
+                            onChange={() => toggleMemberSelection(m.id)}
+                          />
+                          {m.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <select
+                    className="select"
+                    value={formMemberId}
+                    onChange={(e) => {
+                      setFormMemberId(e.target.value);
+                      setSelectedMemberIds([e.target.value]);
+                    }}
+                    required
+                  >
+                    {writers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <StationPicker
                 value={formStation}
@@ -712,8 +877,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   </p>
                   <p className="muted mt-1 text-[11px]">
                     {maintenanceMode
-                      ? "유지보수 용역은 관리소 산하 역·기능실을 묶어 일정 1건으로 저장합니다."
-                      : "호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다."}
+                      ? "유지보수 용역은 선택한 팀원마다 관리소 산하 일정 1건으로 저장합니다."
+                      : multiMemberMode && selectedMemberIds.length > 1
+                        ? `선택한 ${selectedMemberIds.length}명 × 역사별 일정이 생성됩니다.`
+                        : "호선 · 역사명 · 작업 장소 · 작업 내용 순으로 자동 정리됩니다."}
                   </p>
                 </div>
               ) : null}

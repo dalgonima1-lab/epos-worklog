@@ -27,6 +27,7 @@ import {
   type MaintenanceVisitTarget,
 } from "@/lib/maintenanceVisit";
 import { calcWorkMinutes } from "@/lib/workTime";
+import type { CohortCoverage } from "@/lib/visitCohort";
 
 const ROLE_OTHER = "\uae30\ud0c0";
 
@@ -79,6 +80,11 @@ function DailyPageInner() {
   const [afterPhotoAt, setAfterPhotoAt] = useState<string | undefined>();
   const [hasBeforePhoto, setHasBeforePhoto] = useState(false);
   const [hasAfterPhoto, setHasAfterPhoto] = useState(false);
+  const [visitGroupId, setVisitGroupId] = useState<string | undefined>();
+  const [cohortCoverage, setCohortCoverage] = useState<CohortCoverage | null>(
+    null
+  );
+  const formLockedByCohort = cohortCoverage != null;
   const [workMinutes, setWorkMinutes] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -233,6 +239,8 @@ function DailyPageInner() {
     if (!memberId || !date) return;
     const stationFromSchedule = searchParams.get("station")?.trim() ?? "";
     const facilityFromSchedule = searchParams.get("facility")?.trim() ?? "";
+    setCohortCoverage(null);
+    setVisitGroupId(undefined);
     setLoading(true);
     setBeforePhotoAt(undefined);
     setAfterPhotoAt(undefined);
@@ -241,6 +249,8 @@ function DailyPageInner() {
     fetch(`/api/reports?memberId=${memberId}&date=${date}`)
       .then((r) => r.json())
       .then((data) => {
+        setVisitGroupId(data.visitGroupId?.trim() || undefined);
+        setCohortCoverage(data.cohortCoverage ?? null);
         const report = data.report;
         const role = report?.processingRole ?? "";
         const loadedFacility = report?.facilityArea?.trim() ?? "";
@@ -389,6 +399,12 @@ function DailyPageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (formLockedByCohort) {
+      setStatus(
+        `${cohortCoverage!.recordedByMemberName}님이 동행 일지를 작성했습니다. 추가 기록이 필요 없습니다.`
+      );
+      return;
+    }
     if (maintenanceMode && !maintenanceSelections.length) {
       setStatus("실제 방문한 점검 대상(역·기능실)을 1건 이상 남겨 주세요.");
       return;
@@ -464,6 +480,7 @@ function DailyPageInner() {
         deficiencies,
         beforePhotoAt,
         afterPhotoAt,
+        visitGroupId,
       }),
     });
     if (res.ok) {
@@ -493,7 +510,25 @@ function DailyPageInner() {
         ) : null}
       </p>
 
-      <form onSubmit={handleSubmit} className="card space-y-5 p-5">
+      <form
+        onSubmit={handleSubmit}
+        className="card space-y-5 p-5"
+        aria-disabled={formLockedByCohort}
+      >
+        {formLockedByCohort ? (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-950">
+            <p className="font-semibold">동행 일지가 이미 작성되었습니다</p>
+            <p className="mt-1 text-violet-900/90">
+              <strong>{cohortCoverage.recordedByMemberName}</strong>님이 같은
+              방문(동행) 일지를 남겼습니다. 이 날짜에는 추가 일일 기록이 필요
+              없습니다.
+            </p>
+          </div>
+        ) : null}
+        <fieldset
+          disabled={formLockedByCohort}
+          className="space-y-5 disabled:opacity-60"
+        >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="member">
@@ -736,11 +771,16 @@ function DailyPageInner() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading || formLockedByCohort}
+          >
             {"\uc800\uc7a5"}
           </button>
           {status && <span className="muted">{status}</span>}
         </div>
+        </fieldset>
       </form>
     </>
   );

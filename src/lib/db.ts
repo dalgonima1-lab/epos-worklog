@@ -639,6 +639,32 @@ export async function deleteSchedule(id: string): Promise<void> {
   await saveDb(db);
 }
 
+export async function deleteSchedulesByVisitGroup(
+  date: string,
+  visitGroupId: string
+): Promise<number> {
+  const db = await ensureDb();
+  const gid = visitGroupId.trim();
+  if (!gid) return 0;
+  const before = db.schedules.length;
+  db.schedules = db.schedules.filter(
+    (s) => !(s.date === date && s.visitGroupId === gid)
+  );
+  const removed = before - db.schedules.length;
+  if (removed > 0) await saveDb(db);
+  return removed;
+}
+
+export function visitGroupIdFromSchedules(
+  schedules: ScheduleEntry[],
+  memberId: string,
+  date: string
+): string | undefined {
+  return schedules.find(
+    (s) => s.memberId === memberId && s.date === date && s.visitGroupId?.trim()
+  )?.visitGroupId?.trim();
+}
+
 export async function saveWeeklyAnalysis(
   key: string,
   markdown: string,
