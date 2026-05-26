@@ -1,0 +1,197 @@
+[
+  {
+    "file": "20260522_유영준_주간업무보고서(EPOS 관리팀).xlsx",
+    "sheet": "주간 업무보고서(양식)",
+    "reporter": "유영준",
+    "memberId": "m3",
+    "weekStart": "2026-05-18",
+    "weekEnd": "2026-05-22",
+    "entries": [
+      {
+        "memberId": "m3",
+        "date": "2026-05-18",
+        "stationName": "신설동역",
+        "processingRole": "조명제어시스템",
+        "done": "[신설동역]\n\n1-4 조명제어 관제화면 설치 현장방문\n설치완료 및 스위치패널 적용완료",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "조명제어시스템\n구축"
+      },
+      {
+        "memberId": "m3",
+        "date": "2026-05-19",
+        "stationName": "을지로4가역",
+        "processingRole": "조명제어시스템",
+        "done": "[을지로4가역]\n\n1-4 조명제어 관제화면 설치 현장방문",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "ip차단으로 인하여 예외처리 진행하려했으나 부재중으로 기본적인 세팅만\n한 상태 추후 방문예정",
+        "workType": "조명제어시스템\n구축"
+      },
+      {
+        "memberId": "m3",
+        "date": "2026-05-20",
+        "stationName": "개화산관리소",
+        "processingRole": "조명제어시스템",
+        "done": "[개화산관리소]\n\n5-8호선 조명제어 구형단말기 수거로 인한 관리소 현장방문\n\n[남태령,숙대입구역]\n\nups 배터리 불량 및 고장으로 인한 교체 수거방문",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "조명제어시스템\nA/S"
+      },
+      {
+        "memberId": "m3",
+        "date": "2026-05-21",
+        "stationName": "을지로4가역, 신대방역",
+        "processingRole": "조명제어시스템",
+        "done": "[을지로4가역, 신대방역]\n\n1-4 조명제어 관제화면 설치 현장방문\n설치 완료 및 스위치패널 적용완료",
+        "plan": "",
+        "issues": "스위치 패널 승강장 소등 시 영업 전체 소등으로\n프로그램 최신화 예정",
+        "deficiencies": "",
+        "workType": "조명제어시스템"
+      },
+      {
+        "memberId": "m3",
+        "date": "2026-05-22",
+        "stationName": "제기동, 신설동역",
+        "processingRole": "조명제어시스템",
+        "done": "[제기동, 신설동역]\n\n1-4 조명제어 관제화면 설치 현장방문\n비상제어프로그램 최신화 및 스위치패널 적용완료",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "신답관리소 db깨짐으로 인해 쿼리적용 실패로 db복구상태.\n차주 화요일 재방문 예정",
+        "workType": "조명제어시스템\n구축"
+      }
+    ]
+  },
+  {
+    "file": "주간업무보고_05월3주차_이준명.xlsx",
+    "sheet": "주간 업무보고서(양식)",
+    "reporter": "이준명",
+    "memberId": "m2",
+    "weekStart": "2026-05-18",
+    "weekEnd": "2026-05-22",
+    "entries": [
+      {
+        "memberId": "m2",
+        "date": "2026-05-18",
+        "stationName": "잠실역, 대치역",
+        "processingRole": "조명제어시스템",
+        "done": "[주간]\n1. 잠실역 조명제어 화면작업\n2. 대치역 조명제어 화면작업\n3. 조명제어 자동화 기준 정리",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "[주간]"
+      },
+      {
+        "memberId": "m2",
+        "date": "2026-05-19",
+        "stationName": "신대방역, 을지로4가역",
+        "processingRole": "조명제어시스템",
+        "done": "[주간]\n1. 신대방역 조명제어 DB 작업\n2. 을지로4가역 조명제어 DB 작업\n3. 잠실역 조명제어 화면작업",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "[주간]"
+      },
+      {
+        "memberId": "m2",
+        "date": "2026-05-20",
+        "stationName": "제기동역, 신설동1역",
+        "processingRole": "조명제어시스템",
+        "done": "[주간]\n1. 제기동역 조명제어 화면·DB 작업\n2. 신설동1역 조명제어 DB 구조 검토\n3. 성신여대 변전소 부스덕트 연동",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "[주간]"
+      },
+      {
+        "memberId": "m2",
+        "date": "2026-05-21",
+        "stationName": "제기동역, 신설동1역",
+        "processingRole": "조명제어시스템",
+        "done": "[주간]\n1. 제기동역 조명제어 DB 매핑\n2. 신설동1역 조명제어 회로번호 기준 검토\n3. 조명제어 Object ID 검증",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "[주간]"
+      },
+      {
+        "memberId": "m2",
+        "date": "2026-05-22",
+        "stationName": "제기동역, 신설동1역",
+        "processingRole": "조명제어시스템",
+        "done": "[주간]\n1. 제기동역 조명제어 DB 작업\n2. 신설동1역 조명제어 DB 작업\n3. 수서역 / 일원역 조명제어 화면작업",
+        "plan": "1. 수서역 / 일원역 조명제어 화면 생성 및 산출물 검증\n2. 1-4호선 잔여 역사 조명제어 화면·DB 작업 진행\n3. 26.2분기 전력감시시스템 유지보수 수서전기관리소 방문 예정",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "[주간]"
+      }
+    ]
+  },
+  {
+    "file": "주간업무보고서(EPOS 관리팀)2026년5월18일 ~ 2026년5월22일.xlsx",
+    "sheet": "주간 업무보고서(양식)",
+    "reporter": "노 희찬",
+    "memberId": "m1",
+    "weekStart": "2026-05-18",
+    "weekEnd": "2026-05-22",
+    "entries": [
+      {
+        "memberId": "m1",
+        "date": "2026-05-18",
+        "stationName": "현장",
+        "processingRole": "조명제어시스템",
+        "done": "조명제어 사무실에서 테스트적용 가능하게 렉장서버연동 구축 \n\n신설동 조명제어 관제설치 완료 정상작동",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "조명제어 관제 화면작업 및 사무실 렉장 테스트용 장비세팅 \n\n신설동(2) 조명제어 관제작업"
+      },
+      {
+        "memberId": "m1",
+        "date": "2026-05-19",
+        "stationName": "조명제어 관제 화면작업",
+        "processingRole": "조명제어시스템",
+        "done": "성신여대 변전소 부스덕트 연동 포설라인 작업 확인및 장비확인",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "조명제어 관제 화면작업 \n\n성신여대 변전소 부스덕트연동 현장실사방문"
+      },
+      {
+        "memberId": "m1",
+        "date": "2026-05-20",
+        "stationName": "성인여대 부스덕트 연동작업",
+        "processingRole": "조명제어시스템",
+        "done": "485 통신라인 포설작업 및 관제 화면 설치",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "성인여대 부스덕트 연동작업"
+      },
+      {
+        "memberId": "m1",
+        "date": "2026-05-21",
+        "stationName": "신대방역",
+        "processingRole": "조명제어시스템",
+        "done": "을지로4가 현장방문하여 관제 설치 및 미비사항 점검 처리 통신 차단 증상 관련 예외처리 업체와 통화 처리 \n\n신대방 현장방문하여 관제 설치 및 미비사항 점검 진행",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "을지로4가 조명제어 관제설치 \n\n신대방역 조명제어 관제설치"
+      },
+      {
+        "memberId": "m1",
+        "date": "2026-05-22",
+        "stationName": "수진역",
+        "processingRole": "A/S",
+        "done": "진접차량기지 최신화 결선도 화면 보강작업\n\n수진역 익스큐트 최신 펌웨어 등록, 서버 대비 DB 지연 접속 증상에 따른 rc.local 속도 수정, 대합실 콘센트 직결·관제 수정 및 스위치패널 재설정 작업",
+        "plan": "",
+        "issues": "",
+        "deficiencies": "",
+        "workType": "진접차량기기 수전.교직 화면작업 미비사항 점검및 보강작업\n\n수진역 현장A/S 방문"
+      }
+    ]
+  }
+]
