@@ -18,7 +18,7 @@ export default async function HomePage() {
     <>
       <Header
         teamName={teamName}
-        subtitle="저번주·이번주·다음주 일정을 보고, 눌러서 일일 기록을 작성·수정하세요."
+        subtitle="주간 일정 · 일정 클릭으로 일일 기록"
       />
       <HomeWeekCalendar teamName={teamName} />
     </>

@@ -92,7 +92,7 @@ function reportHasContent(r: DailyReport): boolean {
 export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const router = useRouter();
   const [weekTab, setWeekTab] = useState<WeekTab>(0);
-  const [anchor] = useState(() => new Date());
+  const [anchor, setAnchor] = useState(() => new Date());
   const [members, setMembers] = useState<Member[]>([]);
   const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [reports, setReports] = useState<DailyReport[]>([]);
@@ -281,6 +281,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
 
   function openAdd(date: string) {
     setEditing(null);
+    setError("");
     setFormDate(date);
     const holidayName = getKoreanHolidayName(date);
     setFormScheduleKind(holidayName ? "public_holiday" : "field_visit");
@@ -328,6 +329,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
 
   function openEdit(entry: ScheduleEntry) {
     setEditing(entry);
+    setError("");
     setFormDate(entry.date);
     setFormMemberId(entry.memberId);
     if (isTimeOffFacility(entry.facilityArea)) {
@@ -655,7 +657,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             {teamName} · 일정을 누르면 해당 날짜·담당자의{" "}
             <strong className="text-slate-700">일일 기록</strong>으로 이동합니다.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {WEEK_TABS.map((tab) => (
               <button
                 key={tab.offset}
@@ -670,13 +672,23 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 {tab.label}
               </button>
             ))}
+            <button
+              type="button"
+              className="rounded-full px-3 py-2 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50"
+              onClick={() => {
+                setAnchor(new Date());
+                setWeekTab(0);
+              }}
+            >
+              오늘
+            </button>
           </div>
           <p className="muted mt-2 text-xs">{week.label}</p>
         </div>
 
-        {error && (
+        {error && !modalOpen ? (
           <p className="px-4 py-2 text-sm text-red-600 sm:px-5">{error}</p>
-        )}
+        ) : null}
 
         {loading ? (
           <p className="muted px-4 py-8 text-center text-sm sm:px-5">
@@ -796,10 +808,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                         return (
                           <div
                             key={s.id}
-                            className={`rounded-lg border p-2 shadow-sm ring-1 ${
+                            className={`rounded-lg border p-2 ${
                               timeOff
-                                ? "border-rose-100 bg-rose-50/90 ring-rose-100"
-                                : "border-white bg-white ring-slate-100"
+                                ? "border-rose-100 bg-rose-50/90"
+                                : "border-white bg-white"
                             }`}
                           >
                             <button
@@ -950,9 +962,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               <div>
                 <label className="label">담당자</label>
                 <p className="muted mb-2 text-xs">
-                  팀원을 눌러 선택하세요. <strong>2명 이상</strong>이면 자동으로
-                  동행 일정이 됩니다. 한 명만 일일 기록하면 나머지는 추가 기록이
-                  필요 없습니다.
+                  팀원을 탭해 선택 · 2명 이상이면 동행 일정
                 </p>
                 <div className="flex flex-wrap gap-2 rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
                   {writers.map((m) => {
@@ -1098,11 +1108,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               />
               ) : (
               <div>
-                <label className="label">
-                  {formScheduleKind === "public_holiday"
-                    ? "메모 (선택)"
-                    : "메모 (선택)"}
-                </label>
+                <label className="label">메모 (선택)</label>
                 <textarea
                   className="textarea min-h-[56px]"
                   placeholder={
@@ -1163,6 +1169,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 </div>
               ) : null}
             </div>
+            {error && modalOpen ? (
+              <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="submit"
@@ -1216,7 +1227,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   );
                 }}
               >
-                일일 기록 작성
+                기록 작성
               </button>
               <button
                 type="button"
@@ -1226,16 +1237,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 취소
               </button>
             </div>
-            {formStation.trim() ? (
-              <p className="muted mt-2 text-xs">
-                「일일 기록 작성」 시{" "}
-                <strong>
-                  {formatStationVisitLabel(formStation, formFacilityArea) ||
-                    formStation.trim()}
-                </strong>
-                가 자동으로 채워집니다.
-              </p>
-            ) : null}
           </form>
         </div>
       )}

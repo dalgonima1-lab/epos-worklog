@@ -41,7 +41,6 @@ import {
   type MaintenanceVisitTarget,
 } from "@/lib/maintenanceVisit";
 import {
-  formatStationVisitLabel,
   MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
@@ -410,7 +409,7 @@ export function StationPicker({
     setSelectedLine(line);
     setSelectedStation("");
     setStationQuery("");
-    setStationListOpen(false);
+    setStationListOpen(true);
     setStationValue("");
   }
 
@@ -465,16 +464,15 @@ export function StationPicker({
   return (
     <div className="station-picker">
       {officeWorkMode ? (
-        <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950">
-          <strong>사무 작업</strong>: 호선·역사를 누르면 아래 목록에 추가됩니다. 공종과
-          작업 내용은 아래에서 입력합니다.
+        <p className="mb-3 text-xs text-sky-900/90">
+          역을 고른 뒤 작업한 역만 ✓ · 공종·내용은 아래 폼에 입력
         </p>
       ) : null}
 
       {fieldVisitMode ? (
-        <p className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950">
-          <strong>외근</strong>: 호선·역사를 누르면 아래 목록에 추가됩니다.{" "}
-          <strong>2곳 이상</strong>이면 같은 날 역별 방문으로 등록됩니다.
+        <p className="mb-3 text-xs text-indigo-900/90">
+          호선·역사 선택 → 작업 장소(복수 가능). 역 2곳 이상이면 역별 방문으로
+          기록됩니다.
         </p>
       ) : null}
 
@@ -550,21 +548,6 @@ export function StationPicker({
       <label className="label">
         역사명 <span className="text-red-600">*</span>
       </label>
-      <p className="muted mb-3 text-xs">
-        {effectiveMaintenanceMode ? (
-          <>
-            <strong>1단계 호선</strong> → <strong>2단계 역사명</strong>
-            {managementOffice
-              ? " (괄호 안은 소속 전기관리소)"
-              : " — 먼저 위에서 관리소를 선택하세요"}
-          </>
-        ) : (
-          <>
-            <strong>1단계 호선</strong> → <strong>2단계 역사명</strong> 순으로
-            선택하세요. (서울교통공사 1~9호선 데이터)
-          </>
-        )}
-      </p>
 
       {enableMetroPicker && !useDirectInput && (
         <div
@@ -940,43 +923,39 @@ export function StationPicker({
       onSelectedStationsChange &&
       !maintenanceMode ? (
         <div className="mt-4">
-          <label className="label text-sm font-medium text-indigo-950">
-            {"선택한 역사"}{" "}
-            {selectedStations.length > 0 ? (
-              <span className="font-normal text-slate-600">
-                ({selectedStations.length}역)
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="label mb-0 text-sm font-medium text-indigo-950">
+              선택한 역사
+              {selectedStations.length > 0 ? (
+                <span className="font-normal text-slate-600">
+                  {" "}
+                  ({selectedStations.length}역)
+                </span>
+              ) : null}
+            </label>
+            {fieldVisitMode && selectedStations.length >= 2 ? (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-800">
+                역별 방문
               </span>
             ) : null}
-          </label>
+          </div>
           {maintenanceMode && selectedStations.length > 0 ? (
             <p className="muted mb-2 text-xs">
               오늘 돌지 않은 역은「해제」로 목록에서 빼 주세요.
             </p>
           ) : null}
-          {officeWorkMode && selectedStations.length > 0 ? (
-            <p className="muted mb-2 text-xs">
-              작업한 역만 체크(✓)하세요. 모두 비우면 AI 자동화 기록으로
-              전환됩니다.
-            </p>
-          ) : null}
           {selectedStations.length === 0 ? (
-            <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
-              {maintenanceMode
-                ? "전기관리소를 선택하면 소속 역사가 여기에 표시됩니다."
-                : fieldVisitMode
-                  ? "호선·역사를 누르면 아래에 추가됩니다. 2곳 이상이면 역별 방문입니다."
-                  : officeWorkMode
-                  ? "호선을 고른 뒤 역사명을 누르면 여기에 추가됩니다."
-                  : "호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다."}
-              {perStationFacilityPick ? (
-                <>
-                  <br />
-                  역이 2개 이상이면 각 역마다 작업 장소를 따로 선택합니다.
-                </>
-              ) : null}
+            <p className="muted mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-3 py-3 text-center text-xs">
+              호선·역사를 선택하면 여기에 표시됩니다
             </p>
           ) : (
-            <ol className="mt-2 max-h-52 list-none space-y-1.5 overflow-y-auto p-0">
+            <>
+              {perStationFacilityPick ? (
+                <p className="muted mb-2 mt-1 text-xs">
+                  역마다 작업 장소를 선택하세요 (복수 선택 가능)
+                </p>
+              ) : null}
+              <ol className="mt-2 max-h-52 list-none space-y-1.5 overflow-y-auto p-0">
               {selectedStations.map((name, index) => {
                 const { line } = parseMetroStationValue(name);
                 const lineColor =
@@ -1078,6 +1057,7 @@ export function StationPicker({
                       <div className="mt-2 border-t border-indigo-50 pt-2">
                         <StationFacilityPicker
                           multiple
+                          compact
                           values={stationFacilities}
                           onValuesChange={(areas) =>
                             setFacilitiesForStation(name, areas)
@@ -1092,6 +1072,7 @@ export function StationPicker({
                 );
               })}
             </ol>
+            </>
           )}
         </div>
       ) : null}
@@ -1119,30 +1100,9 @@ export function StationPicker({
         </div>
       ) : null}
 
-      {value.trim() ? (
-        <p
-          className={`muted mt-3 text-xs metro-selection-summary${
-            valueLineColor ? " metro-selection-summary--lined" : ""
-          }`}
-          style={
-            valueLineColor
-              ? { borderColor: valueLineColor, ["--metro-line-color" as string]: valueLineColor }
-              : undefined
-          }
-        >
-          선택됨:{" "}
-          <strong>
-            {formatStationVisitLabel(
-              value,
-              effectiveFacilityAreas.length > 1
-                ? effectiveFacilityAreas.join(" · ")
-                : effectiveFacilityAreas[0] ?? facilityArea,
-              managementOffice
-            ) || value}
-          </strong>
-          {requireFacility && effectiveFacilityAreas.length === 0 ? (
-            <span className="text-red-600"> · 작업 장소를 선택해 주세요</span>
-          ) : null}
+      {value.trim() && requireFacility && effectiveFacilityAreas.length === 0 ? (
+        <p className="mt-2 text-xs text-red-600">
+          작업 장소를 1곳 이상 선택해 주세요.
         </p>
       ) : null}
     </div>

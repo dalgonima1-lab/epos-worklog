@@ -133,6 +133,7 @@ function DailyPageInner() {
   const [workMinutes, setWorkMinutes] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [extraMemoOpen, setExtraMemoOpen] = useState(false);
 
   const fieldVisitMode =
     !maintenanceLocked && !officeWorkMode && !maintenanceMode;
@@ -574,6 +575,13 @@ function DailyPageInner() {
         setPlan(report?.plan ?? "");
         setIssues(report?.issues ?? "");
         setDeficiencies(report?.deficiencies ?? "");
+        setExtraMemoOpen(
+          Boolean(
+            report?.plan?.trim() ||
+              report?.issues?.trim() ||
+              report?.deficiencies?.trim()
+          )
+        );
         setBeforePhotoAt(report?.beforePhotoAt);
         setAfterPhotoAt(report?.afterPhotoAt);
         setHasBeforePhoto(!!report?.hasBeforePhoto);
@@ -835,18 +843,24 @@ function DailyPageInner() {
     <>
       <Header
         teamName={teamName}
-        subtitle={`${date} · 일일 업무 기록 · 사진·작업시간`}
+        subtitle={`${date} · 일일 업무 기록`}
       />
-      <p className="muted -mt-4 mb-4 text-sm">
-        <a href="/" className="link-accent">
-          ← 홈 일정으로
-        </a>
-        {searchParams.get("station")?.trim() ? (
+      {searchParams.get("station")?.trim() ? (
+        <p className="muted -mt-4 mb-4 text-sm">
+          <a href="/" className="link-accent">
+            ← 홈
+          </a>
           <span className="ml-2">
-            · 일정 역사 <strong>{searchParams.get("station")}</strong> 반영됨
+            · {searchParams.get("station")?.trim()}
           </span>
-        ) : null}
-      </p>
+        </p>
+      ) : (
+        <p className="muted -mt-4 mb-4 text-sm">
+          <a href="/" className="link-accent">
+            ← 홈 일정
+          </a>
+        </p>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -953,19 +967,6 @@ function DailyPageInner() {
             </button>
           </div>
         ) : null}
-        {!maintenanceLocked && fieldVisitMode ? (
-          <p className="muted text-xs">
-            역을 두 개 이상 고르면 같은 날 각 역에 외근한 것으로 자동
-            기록됩니다. 한 역에서 전기실·변전소 등 여러 곳을 다녔으면 작업
-            장소를 모두 선택하세요.
-          </p>
-        ) : null}
-        {!maintenanceLocked && officeWorkMode ? (
-          <p className="muted text-xs">
-            역사를 고른 뒤 작업한 역만 체크(✓)하고 공종별로 적습니다. 역
-            작업이 없으면 AI 자동화로 기록합니다.
-          </p>
-        ) : null}
 
         <StationPicker
           value={stationName}
@@ -1067,27 +1068,10 @@ function DailyPageInner() {
           {!allFacilitiesChosen ? (
             <p className="muted text-xs">
               {maintenanceMode
-                ? "점검 대상(역·기능실)을 1건 이상 선택하면 공종이 활성화됩니다."
-                : perStationFacilities
-                  ? "각 역사의 작업 장소를 1곳 이상 선택하면 공종 목록이 표시됩니다."
-                  : "작업 장소를 1곳 이상 선택하면 공종 목록이 표시됩니다."}
+                ? "점검 대상을 선택하면 공종이 활성화됩니다."
+                : "작업 장소를 선택하면 공종 목록이 표시됩니다."}
             </p>
-          ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
-            <p className="muted mb-1 text-xs">
-              관리소(유지보수): 공종은「유지보수 용역」으로 자동 설정됩니다.
-            </p>
-          ) : perStationFacilities ? (
-            <p className="muted mb-1 text-xs">
-              여러 역 방문: 모든 역의 작업 장소에 공통으로 선택 가능한 공종만
-              표시됩니다.
-            </p>
-          ) : (
-            <p className="muted mb-1 text-xs">
-              {facilityArea === "역무실"
-                ? "역무실: 조명제어시스템 · 유지보수 용역 · A/S"
-                : "전기실·변전소: 전력감시시스템 · 유지보수 용역 · A/S"}
-            </p>
-          )}
+          ) : null}
           <select
             id="role"
             className="select"
@@ -1103,7 +1087,9 @@ function DailyPageInner() {
               facilityArea === MANAGEMENT_OFFICE_FACILITY
             }
           >
-            <option value="">{"\uc120\ud0dd\ud558\uc138\uc694"}</option>
+            <option value="">
+              {allFacilitiesChosen ? "선택하세요" : "작업 장소를 먼저 선택하세요"}
+            </option>
             {rolesForFacility.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -1127,11 +1113,6 @@ function DailyPageInner() {
           <h2 className="mb-3 text-sm font-bold">
             {"\uc791\uc5c5 \uc804\u00b7\ud6c4 \uc0ac\uc9c4"}
           </h2>
-          <p className="muted mb-3 text-xs">
-            {
-              "\uc0ac\uc9c4\uc744 \ub4f1\ub85d\ud558\ub294 \uc21c\uac04 \uc791\uc5c5 \uc804/\ud6c4 \uc2dc\uac01\uc774 \uc790\ub3d9 \uae30\ub85d\ub418\uba70, \ub450 \uc2dc\uac01 \ucc28\uc774\ub85c \uc791\uc5c5 \uc2dc\uac04\uc774 \uc0b0\uc815\ub429\ub2c8\ub2e4."
-            }
-          </p>
           <div className="photo-grid">
             <PhotoCapture
               label={"\uc791\uc5c5 \uc804"}
@@ -1197,54 +1178,63 @@ function DailyPageInner() {
           ) : null
         )}
 
-        <div>
-          <label className="label" htmlFor="plan">
-            {"\uc775\uc77c \uacc4\ud68d"}
-          </label>
-          <textarea
-            id="plan"
-            className="textarea"
-            value={plan}
-            onChange={(e) => setPlan(e.target.value)}
-            disabled={loading}
-          />
+        <div className="rounded-lg border border-slate-200 bg-slate-50/50">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium text-slate-800"
+            onClick={() => setExtraMemoOpen((o) => !o)}
+          >
+            추가 메모
+            <span className="text-xs font-normal text-slate-500">
+              {extraMemoOpen ? "접기" : "익일 계획 · 이슈 · 미비사항"}
+            </span>
+          </button>
+          {extraMemoOpen ? (
+            <div className="space-y-4 border-t border-slate-200 px-3 pb-3 pt-2">
+              <div>
+                <label className="label" htmlFor="plan">
+                  {"\uc775\uc77c \uacc4\ud68d"}
+                </label>
+                <textarea
+                  id="plan"
+                  className="textarea"
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="issues">
+                  {"\uc774\uc288 / \uc9c0\uc6d0 \uc694\uccad"}
+                </label>
+                <textarea
+                  id="issues"
+                  className="textarea"
+                  value={issues}
+                  onChange={(e) => setIssues(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              {!maintenanceMode && !officeWorkMode ? (
+                <div>
+                  <label className="label" htmlFor="deficiencies">
+                    {"\ubbf8\ube44\uc0ac\ud56d"}
+                  </label>
+                  <textarea
+                    id="deficiencies"
+                    className="textarea"
+                    placeholder={
+                      "\ubbf8\uc644\ub8cc, \ubcf4\uc644 \ud544\uc694, \uc7ac\uc791\uc5c5 \uc608\uc815 \ub4f1"
+                    }
+                    value={deficiencies}
+                    onChange={(e) => setDeficiencies(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-
-        <div>
-          <label className="label" htmlFor="issues">
-            {"\uc774\uc288 / \uc9c0\uc6d0 \uc694\uccad (\uc120\ud0dd)"}
-          </label>
-          <textarea
-            id="issues"
-            className="textarea"
-            value={issues}
-            onChange={(e) => setIssues(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        {!maintenanceMode && !officeWorkMode ? (
-        <div>
-          <label className="label" htmlFor="deficiencies">
-            {"\ubbf8\ube44\uc0ac\ud56d"}
-          </label>
-          <textarea
-            id="deficiencies"
-            className="textarea"
-            placeholder={
-              "\ubbf8\uc644\ub8cc, \ubcf4\uc644 \ud544\uc694, \uc7ac\uc791\uc5c5 \uc608\uc815 \ub4f1"
-            }
-            value={deficiencies}
-            onChange={(e) => setDeficiencies(e.target.value)}
-            disabled={loading}
-          />
-          <p className="muted mt-1 text-xs">
-            {
-              "\ud488\uc9c8\u00b7\uc218\ub7c9\u00b7\uc808\ucc28\uc0c1 \ubd80\uc871\ud55c \uc810\uc774 \uc788\uc73c\uba74 \uae30\uc7ac\ud574 \uc8fc\uc138\uc694."
-            }
-          </p>
-        </div>
-        ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
           <button
