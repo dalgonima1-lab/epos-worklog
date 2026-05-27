@@ -16,8 +16,8 @@ interface OfficeWorkDailyFormProps {
   stations: string[];
   /** StationPicker에서 체크한 역 (작업한 역) */
   visitedStations: string[];
-  selectedRoles: string[];
-  onSelectedRolesChange: (roles: string[]) => void;
+  selectedRolesByStation: Record<string, string[]>;
+  onSelectedRolesByStationChange: (next: Record<string, string[]>) => void;
   workByKey: Record<string, string>;
   onWorkByKeyChange: (next: Record<string, string>) => void;
   disabled?: boolean;
@@ -26,8 +26,8 @@ interface OfficeWorkDailyFormProps {
 export function OfficeWorkDailyForm({
   stations,
   visitedStations,
-  selectedRoles,
-  onSelectedRolesChange,
+  selectedRolesByStation,
+  onSelectedRolesByStationChange,
   workByKey,
   onWorkByKeyChange,
   disabled,
@@ -60,20 +60,18 @@ export function OfficeWorkDailyForm({
   }, [visitedStations]);
 
   const availableRoles = useMemo(() => {
-    const roles = new Set<string>();
+    const map: Record<string, string[]> = {};
     for (const station of visitedStations) {
-      for (const role of stationRoleMap.get(station) ?? []) {
-        roles.add(role);
-      }
+      map[station] = stationRoleMap.get(station) ?? [];
     }
-    return [...roles];
+    return map;
   }, [visitedStations, stationRoleMap]);
 
   const stationRows = useMemo(() => {
     const list: { station: string; role: string; key: string }[] = [];
     for (const station of visitedStations) {
       const allowedRoles = new Set(stationRoleMap.get(station) ?? []);
-      for (const role of selectedRoles) {
+      for (const role of selectedRolesByStation[station] ?? []) {
         if (role === OFFICE_AI_AUTOMATION_ROLE) continue;
         if (!allowedRoles.has(role)) continue;
         list.push({
@@ -84,32 +82,34 @@ export function OfficeWorkDailyForm({
       }
     }
     return list;
-  }, [visitedStations, selectedRoles, stationRoleMap]);
+  }, [visitedStations, selectedRolesByStation, stationRoleMap]);
 
   useEffect(() => {
     if (hasStationWork) {
-      onSelectedRolesChange(
-        selectedRoles.filter(
-          (r) => r !== OFFICE_AI_AUTOMATION_ROLE && availableRoles.includes(r)
-        )
-      );
+      const next: Record<string, string[]> = {};
+      for (const station of visitedStations) {
+        const allowed = new Set(availableRoles[station] ?? []);
+        next[station] = (selectedRolesByStation[station] ?? []).filter(
+          (r) => r !== OFFICE_AI_AUTOMATION_ROLE && allowed.has(r)
+        );
+      }
+      onSelectedRolesByStationChange(next);
     } else {
-      onSelectedRolesChange(
-        selectedRoles.includes(OFFICE_AI_AUTOMATION_ROLE)
-          ? [OFFICE_AI_AUTOMATION_ROLE]
-          : [OFFICE_AI_AUTOMATION_ROLE]
-      );
+      onSelectedRolesByStationChange({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 역 작업 유무에 따라 공종 모드 전환
-  }, [hasStationWork, availableRoles]);
+  }, [hasStationWork, visitedStations, availableRoles]);
 
-  function toggleRole(role: string) {
+  function toggleRole(station: string, role: string) {
     if (activeTab === "ai") return;
-    onSelectedRolesChange(
-      selectedRoles.includes(role)
-        ? selectedRoles.filter((r) => r !== role)
-        : [...selectedRoles, role]
-    );
+    const current = selectedRolesByStation[station] ?? [];
+    const nextForStation = current.includes(role)
+      ? current.filter((r) => r !== role)
+      : [...current, role];
+    onSelectedRolesByStationChange({
+      ...selectedRolesByStation,
+      [station]: nextForStation,
+    });
   }
 
   const filledStationCount = stationRows.filter((r) =>
@@ -164,25 +164,46 @@ export function OfficeWorkDailyForm({
         {activeTab === "station" ? (
           <>
             <p className="muted mb-2 text-xs">
-              체크한 역사마다 공종별 작업 내용을 적습니다.
+              체크한 역사별로 공종을 따로 선택하세요.
             </p>
-            <div className="flex flex-wrap gap-2">
-              {availableRoles.map((role) => {
-                const active = selectedRoles.includes(role);
+            <div className="space-y-2">
+              {visitedStations.map((station) => {
+                const roles = availableRoles[station] ?? [];
+                const selected = selectedRolesByStation[station] ?? [];
+                const { line } = parseMetroStationValue(station);
+                const lineColor = line != null ? getMetroLineColor(line) : undefined;
                 return (
-                  <button
-                    key={role}
-                    type="button"
-                    disabled={disabled}
-                    className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
-                      active
-                        ? "border-sky-600 bg-sky-600 text-white"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                    onClick={() => toggleRole(role)}
+                  <div
+                    key={`roles-${station}`}
+                    className="rounded-lg border border-sky-100 bg-white px-2.5 py-2"
+                    style={
+                      lineColor
+                        ? { borderLeftWidth: 4, borderLeftColor: lineColor }
+                        : undefined
+                    }
                   >
-                    {role}
-                  </button>
+                    <p className="text-sm font-semibold text-slate-900">{station}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {roles.map((role) => {
+                        const active = selected.includes(role);
+                        return (
+                          <button
+                            key={`${station}-${role}`}
+                            type="button"
+                            disabled={disabled}
+                            className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+                              active
+                                ? "border-sky-600 bg-sky-600 text-white"
+                                : "border-slate-200 bg-white text-slate-700"
+                            }`}
+                            onClick={() => toggleRole(station, role)}
+                          >
+                            {role}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -201,10 +222,9 @@ export function OfficeWorkDailyForm({
             작업한 역사를 체크하거나, 역 작업이 없으면 체크를 모두 해제한 뒤
             「AI를 통한 자동화」 탭을 이용하세요.
           </p>
-        ) : selectedRoles.filter((r) => r !== OFFICE_AI_AUTOMATION_ROLE)
-            .length === 0 ? (
+        ) : stationRows.length === 0 ? (
           <p className="muted rounded-lg border border-dashed border-sky-200 px-3 py-4 text-center text-xs">
-            공종을 1개 이상 선택해 주세요.
+            역사별로 공종을 1개 이상 선택해 주세요.
           </p>
         ) : (
           <>

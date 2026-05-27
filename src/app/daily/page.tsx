@@ -111,7 +111,8 @@ function DailyPageInner() {
   );
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [officeWorkMode, setOfficeWorkMode] = useState(false);
-  const [selectedOfficeRoles, setSelectedOfficeRoles] = useState<string[]>([]);
+  const [selectedOfficeRolesByStation, setSelectedOfficeRolesByStation] =
+    useState<Record<string, string[]>>({});
   const [officeWorkByKey, setOfficeWorkByKey] = useState<Record<string, string>>(
     {}
   );
@@ -273,6 +274,19 @@ function DailyPageInner() {
   }, [selectedStations, officeWorkMode]);
 
   useEffect(() => {
+    if (!officeWorkMode) return;
+    const next: Record<string, string[]> = {};
+    for (const station of officeVisitedStations) {
+      next[station] = selectedOfficeRolesByStation[station] ?? [];
+    }
+    if (
+      JSON.stringify(next) !== JSON.stringify(selectedOfficeRolesByStation)
+    ) {
+      setSelectedOfficeRolesByStation(next);
+    }
+  }, [officeVisitedStations, officeWorkMode, selectedOfficeRolesByStation]);
+
+  useEffect(() => {
     if (memberId) saveLastMemberId(memberId);
   }, [memberId]);
 
@@ -295,6 +309,7 @@ function DailyPageInner() {
         deficiencies,
         officeWorkMode,
         maintenanceMode,
+        selectedOfficeRolesByStation,
         officeWorkByKey,
         officeVisitedStations,
       });
@@ -319,6 +334,7 @@ function DailyPageInner() {
     deficiencies,
     officeWorkMode,
     maintenanceMode,
+    selectedOfficeRolesByStation,
     officeWorkByKey,
     officeVisitedStations,
   ]);
@@ -507,7 +523,7 @@ function DailyPageInner() {
                 )
               : targets;
           setOfficeWorkMode(false);
-          setSelectedOfficeRoles([]);
+          setSelectedOfficeRolesByStation({});
           setOfficeWorkByKey({});
           setMaintenancePlannedTargets(planned);
           setMaintenanceSelections(targets);
@@ -570,7 +586,7 @@ function DailyPageInner() {
           scheduleIsMaintenance
         ) {
           setOfficeWorkMode(false);
-          setSelectedOfficeRoles([]);
+          setSelectedOfficeRolesByStation({});
           setOfficeWorkByKey({});
           setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
           setManagementOffice(
@@ -607,15 +623,15 @@ function DailyPageInner() {
                 )
               : officeVisitedStationsFromEntries(entries, officeStations);
           setOfficeVisitedStations(visited);
-          setSelectedOfficeRoles(
-            [
-              ...new Set(
-                entries
-                  .map((e: OfficeWorkEntry) => e.processingRole.trim())
-                  .filter(Boolean)
-              ),
-            ]
-          );
+          const rolesByStation: Record<string, string[]> = {};
+          for (const e of entries) {
+            const st = e.station.trim();
+            const role = e.processingRole.trim();
+            if (!st || !role || isOfficeGeneralStation(st)) continue;
+            if (!rolesByStation[st]) rolesByStation[st] = [];
+            if (!rolesByStation[st].includes(role)) rolesByStation[st].push(role);
+          }
+          setSelectedOfficeRolesByStation(rolesByStation);
           if (officeStations.length) {
             setMultiStationMode(true);
             setSelectedStations(officeStations);
@@ -635,7 +651,7 @@ function DailyPageInner() {
           setMaintenanceMode(false);
           setOfficeWorkMode(false);
           setOfficeWorkByKey({});
-          setSelectedOfficeRoles([]);
+          setSelectedOfficeRolesByStation({});
         } else if (isStationFacilityArea(facilityFromSchedule)) {
           const areas = parseStationFacilityAreas(facilityFromSchedule, []);
           setFacilityAreas(areas);
@@ -644,7 +660,7 @@ function DailyPageInner() {
           setMaintenanceMode(false);
           setOfficeWorkMode(false);
           setOfficeWorkByKey({});
-          setSelectedOfficeRoles([]);
+          setSelectedOfficeRolesByStation({});
         } else {
           setFacilityArea("");
           setFacilityAreas([]);
@@ -652,7 +668,7 @@ function DailyPageInner() {
           setMaintenanceMode(false);
           setOfficeWorkMode(false);
           setOfficeWorkByKey({});
-          setSelectedOfficeRoles([]);
+          setSelectedOfficeRolesByStation({});
         }
         if (stationFromSchedule && !fromReport) {
           void fetch("/api/stations", {
@@ -716,17 +732,21 @@ function DailyPageInner() {
       let officeEntries: OfficeWorkEntry[];
 
       if (hasVisited) {
-        const stationRoles = selectedOfficeRoles.filter(
-          (r) => !isOfficeAiAutomationRole(r)
+        const selectedRoleCount = officeVisitedStations.reduce(
+          (n, st) => n + (selectedOfficeRolesByStation[st]?.length ?? 0),
+          0
         );
-        if (!stationRoles.length) {
-          setStatus("공종을 1개 이상 선택해 주세요.");
+        if (!selectedRoleCount) {
+          setStatus("역사별로 공종을 1개 이상 선택해 주세요.");
           return;
         }
         const raw = notesMapToOfficeWorkEntries(officeWorkByKey).filter(
           (e) =>
             !isOfficeAiAutomationRole(e.processingRole) &&
-            officeVisitedStations.includes(e.station.trim())
+            officeVisitedStations.includes(e.station.trim()) &&
+            (selectedOfficeRolesByStation[e.station.trim()] ?? []).includes(
+              e.processingRole.trim()
+            )
         );
         officeEntries = filledOfficeWorkEntries(raw);
         if (!officeEntries.length) {
@@ -1021,7 +1041,7 @@ function DailyPageInner() {
               onClick={() => {
                 setOfficeWorkMode(false);
                 setMaintenanceMode(false);
-                setSelectedOfficeRoles([]);
+                setSelectedOfficeRolesByStation({});
                 setOfficeWorkByKey({});
                 setOfficeVisitedStations([]);
                 setFacilityArea("");
@@ -1054,6 +1074,7 @@ function DailyPageInner() {
                 setMaintenancePlannedTargets([]);
                 setDeficienciesByStation({});
                 setStationFacilityByStation({});
+                setSelectedOfficeRolesByStation({});
                 setProcessingRole("");
                 setCustomRole("");
               }}
@@ -1088,7 +1109,7 @@ function DailyPageInner() {
             setMaintenanceMode(enabled);
             if (enabled) {
               setOfficeWorkMode(false);
-              setSelectedOfficeRoles([]);
+              setSelectedOfficeRolesByStation({});
               setOfficeWorkByKey({});
               setOfficeVisitedStations([]);
               setFacilityArea(MANAGEMENT_OFFICE_FACILITY);
@@ -1132,8 +1153,8 @@ function DailyPageInner() {
           <OfficeWorkDailyForm
             stations={activeStations}
             visitedStations={officeVisitedStations}
-            selectedRoles={selectedOfficeRoles}
-            onSelectedRolesChange={setSelectedOfficeRoles}
+            selectedRolesByStation={selectedOfficeRolesByStation}
+            onSelectedRolesByStationChange={setSelectedOfficeRolesByStation}
             workByKey={officeWorkByKey}
             onWorkByKeyChange={setOfficeWorkByKey}
             disabled={loading || formLockedByCohort}
