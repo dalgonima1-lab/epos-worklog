@@ -539,7 +539,7 @@ export function StationPicker({
       {lockMaintenanceMode ? (
         <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
           <strong>유지보수 용역</strong> 일정에서 연결된 기록입니다. 아래에서
-          방문·미방문 역과 역별 미비사항을 입력하세요.
+          방문·미방문 역과 역별 보고 및 특이사항을 입력하세요.
         </p>
       ) : null}
 

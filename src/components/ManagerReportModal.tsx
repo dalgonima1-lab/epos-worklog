@@ -177,7 +177,7 @@ export function ManagerReportModal({
               ) : null}
               {report.maintenanceDeficienciesByStation?.length ? (
                 <div className="mt-3 border-t border-amber-200 pt-2">
-                  <p className="font-semibold text-amber-950">역별 미비</p>
+                  <p className="font-semibold text-amber-950">보고 및 특이사항</p>
                   {report.maintenanceDeficienciesByStation.map((d) =>
                     d.text?.trim() ? (
                       <p key={d.station} className="mt-1 whitespace-pre-wrap">

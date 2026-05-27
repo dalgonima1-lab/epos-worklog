@@ -95,7 +95,7 @@ function formatMaintenanceBlock(r: DailyReport): string[] {
   }
   const defs = r.maintenanceDeficienciesByStation ?? [];
   if (defs.length) {
-    lines.push(`- **역별 미비:**`);
+    lines.push(`- **보고 및 특이사항:**`);
     for (const d of defs) {
       if (d.text?.trim()) lines.push(`  - ${d.station}: ${d.text.trim()}`);
     }

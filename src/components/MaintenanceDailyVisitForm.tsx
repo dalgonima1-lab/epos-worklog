@@ -286,11 +286,11 @@ function StationVisitCard({
           </div>
           <label className="mt-3 block">
             <span className="text-xs font-medium text-slate-700">
-              미비사항 (이 역)
+              보고 및 특이사항
             </span>
             <textarea
               className="textarea mt-1 min-h-[56px] text-sm"
-              placeholder="이 역에서 발견한 미비·보완 사항"
+              placeholder="점검·조치 내용, 특이사항, 보고 사항"
               value={deficiencies}
               disabled={disabled}
               onChange={(e) => onDeficienciesChange(e.target.value)}

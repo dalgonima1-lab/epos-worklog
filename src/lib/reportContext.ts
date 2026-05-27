@@ -59,7 +59,7 @@ export function buildWeeklyReportsContext(
         }
         for (const d of r.maintenanceDeficienciesByStation ?? []) {
           if (d.text?.trim()) {
-            lines.push(`- 미비(${d.station}): ${d.text.trim()}`);
+            lines.push(`- 보고·특이(${d.station}): ${d.text.trim()}`);
           }
         }
       }
