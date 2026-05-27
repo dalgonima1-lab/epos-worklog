@@ -6,8 +6,12 @@ import {
 } from "@/lib/stationFacility";
 
 interface StationFacilityPickerProps {
-  value: string;
-  onChange: (area: StationFacilityArea | "") => void;
+  value?: string;
+  onChange?: (area: StationFacilityArea | "") => void;
+  /** true면 전기실·변전소 등 여러 작업 장소 동시 선택 */
+  multiple?: boolean;
+  values?: StationFacilityArea[];
+  onValuesChange?: (areas: StationFacilityArea[]) => void;
   disabled?: boolean;
   /** 호선색 테두리 (선택) */
   accentColor?: string;
@@ -16,8 +20,11 @@ interface StationFacilityPickerProps {
 }
 
 export function StationFacilityPicker({
-  value,
+  value = "",
   onChange,
+  multiple = false,
+  values = [],
+  onValuesChange,
   disabled,
   accentColor,
   availableFacilities,
@@ -25,19 +32,41 @@ export function StationFacilityPicker({
   const options =
     availableFacilities?.length ? availableFacilities : [...STATION_FACILITY_AREAS];
 
+  const selectedSet = multiple
+    ? new Set(values)
+    : value
+      ? new Set([value])
+      : new Set<string>();
+
+  function toggle(area: StationFacilityArea) {
+    if (multiple) {
+      const active = selectedSet.has(area);
+      const next = active
+        ? values.filter((v) => v !== area)
+        : [...values, area];
+      onValuesChange?.(next);
+      onChange?.(next[0] ?? "");
+      return;
+    }
+    const active = value === area;
+    onChange?.(active ? "" : area);
+  }
+
   return (
     <div className="station-facility-picker">
       <p className="label text-sm">
         작업 장소 <span className="text-red-600">*</span>
       </p>
       <p className="muted mb-2 text-xs">
-        {availableFacilities?.length
-          ? `이 역사 EPOS 설치 구역: ${options.join(" · ")}`
-          : "같은 역사라도 전기실·변전소·역무실 중 어디에서 작업했는지 선택하세요."}
+        {multiple
+          ? "전기실·변전소 등 작업한 곳을 모두 선택하세요. (여러 곳 가능)"
+          : availableFacilities?.length
+            ? `이 역사 EPOS 설치 구역: ${options.join(" · ")}`
+            : "같은 역사라도 전기실·변전소·역무실 중 어디에서 작업했는지 선택하세요."}
       </p>
       <div className="station-facility-buttons" role="group" aria-label="작업 장소">
         {options.map((area) => {
-          const active = value === area;
+          const active = selectedSet.has(area);
           return (
             <button
               key={area}
@@ -58,7 +87,7 @@ export function StationFacilityPicker({
               }
               disabled={disabled}
               aria-pressed={active}
-              onClick={() => onChange(active ? "" : area)}
+              onClick={() => toggle(area)}
             >
               {area}
             </button>

@@ -55,9 +55,12 @@ interface StationPickerProps {
   enableMetroPicker?: boolean;
   /** 호선 목록에 없을 때 직접 입력 */
   enableDirectInput?: boolean;
-  /** 역사 선택 후 작업 장소 (전기실·변전소·역무실) */
+  /** 역사 선택 후 작업 장소 (전기실·변전소·역무실) — 첫 번째 값(하위 호환) */
   facilityArea?: string;
   onFacilityChange?: (area: StationFacilityArea | "") => void;
+  /** 같은 역사에서 여러 작업 장소 */
+  facilityAreas?: StationFacilityArea[];
+  onFacilityAreasChange?: (areas: StationFacilityArea[]) => void;
   /** 작업 장소 필수 (일일기록) */
   requireFacility?: boolean;
   /** 유지보수 용역(관리소 단위) */
@@ -70,10 +73,10 @@ interface StationPickerProps {
   onMultiStationModeChange?: (enabled: boolean) => void;
   selectedStations?: string[];
   onSelectedStationsChange?: (stations: string[]) => void;
-  /** 여러 역 선택 시 역별 작업 장소 */
-  stationFacilityByStation?: Record<string, StationFacilityArea | "">;
+  /** 여러 역 선택 시 역별 작업 장소 (역마다 여러 곳 가능) */
+  stationFacilityByStation?: Record<string, StationFacilityArea[]>;
   onStationFacilityByStationChange?: (
-    map: Record<string, StationFacilityArea | "">
+    map: Record<string, StationFacilityArea[]>
   ) => void;
   /** 유지보수: 역·기능실 단위 선택 */
   maintenanceSelections?: MaintenanceVisitTarget[];
@@ -101,6 +104,8 @@ export function StationPicker({
   enableDirectInput = true,
   facilityArea = "",
   onFacilityChange,
+  facilityAreas = [],
+  onFacilityAreasChange,
   requireFacility = false,
   maintenanceMode = false,
   onMaintenanceModeChange,
@@ -361,19 +366,32 @@ export function StationPicker({
     selectedStations.length >= 2 &&
     Boolean(onStationFacilityByStationChange);
 
-  function setFacilityForStation(
+  function setFacilitiesForStation(
     station: string,
-    area: StationFacilityArea | ""
+    areas: StationFacilityArea[]
   ) {
     if (!onStationFacilityByStationChange) return;
     onStationFacilityByStationChange({
       ...stationFacilityByStation,
-      [station]: area,
+      [station]: areas,
     });
     if (station === selectedStations[0]) {
-      onFacilityChange?.(area);
+      onFacilityAreasChange?.(areas);
+      onFacilityChange?.(areas[0] ?? "");
     }
   }
+
+  function setSingleStationFacilities(areas: StationFacilityArea[]) {
+    onFacilityAreasChange?.(areas);
+    onFacilityChange?.(areas[0] ?? "");
+  }
+
+  const effectiveFacilityAreas =
+    facilityAreas.length > 0
+      ? facilityAreas
+      : facilityArea
+        ? [facilityArea as StationFacilityArea]
+        : [];
 
   function facilitiesForStation(station: string): StationFacilityArea[] | undefined {
     const { facilities } = getEposProductForDisplayName(station);
@@ -963,7 +981,7 @@ export function StationPicker({
                 const { line } = parseMetroStationValue(name);
                 const lineColor =
                   line != null ? getMetroLineColor(line) : undefined;
-                const stationFacility = stationFacilityByStation[name] ?? "";
+                const stationFacilities = stationFacilityByStation[name] ?? [];
                 const officeVisited =
                   officeWorkMode &&
                   officeVisitedStations
@@ -1059,8 +1077,11 @@ export function StationPicker({
                     {perStationFacilityPick ? (
                       <div className="mt-2 border-t border-indigo-50 pt-2">
                         <StationFacilityPicker
-                          value={stationFacility}
-                          onChange={(area) => setFacilityForStation(name, area)}
+                          multiple
+                          values={stationFacilities}
+                          onValuesChange={(areas) =>
+                            setFacilitiesForStation(name, areas)
+                          }
                           disabled={disabled}
                           accentColor={lineColor}
                           availableFacilities={facilitiesForStation(name)}
@@ -1082,8 +1103,9 @@ export function StationPicker({
       !perStationFacilityPick ? (
         <div className="mt-4">
           <StationFacilityPicker
-            value={facilityArea}
-            onChange={onFacilityChange}
+            multiple
+            values={effectiveFacilityAreas}
+            onValuesChange={setSingleStationFacilities}
             disabled={disabled}
             accentColor={valueLineColor || lineColor || undefined}
             availableFacilities={
@@ -1112,11 +1134,13 @@ export function StationPicker({
           <strong>
             {formatStationVisitLabel(
               value,
-              facilityArea,
+              effectiveFacilityAreas.length > 1
+                ? effectiveFacilityAreas.join(" · ")
+                : effectiveFacilityAreas[0] ?? facilityArea,
               managementOffice
             ) || value}
           </strong>
-          {requireFacility && !facilityArea ? (
+          {requireFacility && effectiveFacilityAreas.length === 0 ? (
             <span className="text-red-600"> · 작업 장소를 선택해 주세요</span>
           ) : null}
         </p>

@@ -12,6 +12,7 @@ import {
   isStationFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
+  parseStationFacilityAreas,
   type StationFacilityArea,
   type WorkFacilityArea,
 } from "@/lib/stationFacility";
@@ -72,7 +73,7 @@ function DailyPageInner() {
   const [multiStationMode, setMultiStationMode] = useState(false);
   const [selectedStations, setSelectedStations] = useState<string[]>([]);
   const [stationFacilityByStation, setStationFacilityByStation] = useState<
-    Record<string, StationFacilityArea | "">
+    Record<string, StationFacilityArea[]>
   >({});
   const [maintenanceSelections, setMaintenanceSelections] = useState<
     MaintenanceVisitTarget[]
@@ -88,6 +89,18 @@ function DailyPageInner() {
     if (q === MANAGEMENT_OFFICE_FACILITY) return MANAGEMENT_OFFICE_FACILITY;
     return isStationFacilityArea(q) ? q : "";
   });
+  const [facilityAreas, setFacilityAreas] = useState<StationFacilityArea[]>(
+    () => {
+      const q = searchParams.get("facility")?.trim() ?? "";
+      const extras =
+        searchParams
+          .get("facilities")
+          ?.split(",")
+          .map((s) => s.trim())
+          .filter(isStationFacilityArea) ?? [];
+      return parseStationFacilityAreas(q, extras);
+    }
+  );
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [officeWorkMode, setOfficeWorkMode] = useState(false);
   const [selectedOfficeRoles, setSelectedOfficeRoles] = useState<string[]>([]);
@@ -156,14 +169,19 @@ function DailyPageInner() {
     }
     if (maintenanceMode) return [MANAGEMENT_OFFICE_FACILITY];
     if (perStationFacilities) {
-      return activeStations
-        .map((s) => stationFacilityByStation[s]?.trim() ?? "")
-        .filter(Boolean);
+      return activeStations.flatMap(
+        (s) => stationFacilityByStation[s] ?? []
+      );
     }
-    return facilityArea ? [facilityArea] : [];
+    return facilityAreas.length > 0
+      ? facilityAreas
+      : facilityArea
+        ? [facilityArea as StationFacilityArea]
+        : [];
   }, [
     activeStations,
     facilityArea,
+    facilityAreas,
     maintenanceMode,
     perStationFacilities,
     stationFacilityByStation,
@@ -172,8 +190,10 @@ function DailyPageInner() {
   const allFacilitiesChosen =
     (maintenanceMode && maintenanceSelections.length > 0) ||
     (perStationFacilities
-      ? activeStations.every((s) => stationFacilityByStation[s]?.trim())
-      : Boolean(facilityArea));
+      ? activeStations.every(
+          (s) => (stationFacilityByStation[s] ?? []).length > 0
+        )
+      : facilityAreas.length > 0 || Boolean(facilityArea));
 
   const effectiveRole =
     facilityArea === MANAGEMENT_OFFICE_FACILITY
@@ -340,16 +360,13 @@ function DailyPageInner() {
         const additional = report?.additionalStationNames ?? [];
         const cohortFacilities = (() => {
           const names = [safeReportStation, ...additional].filter(Boolean);
-          if (names.length <= 1) {
-            return facilityForRole ? [facilityForRole] : [];
-          }
           const extras = report?.additionalFacilityAreas ?? [];
+          if (names.length <= 1) {
+            return parseStationFacilityAreas(facilityForRole, extras);
+          }
+          const list = parseStationFacilityAreas(facilityForRole, extras);
           return names
-            .map((_, i) => {
-              if (i === 0) return facilityForRole;
-              const extra = extras[i - 1]?.trim() ?? "";
-              return isStationFacilityArea(extra) ? extra : facilityForRole;
-            })
+            .map((_, i) => list[i])
             .filter((f): f is StationFacilityArea => Boolean(f));
         })();
 
@@ -430,24 +447,27 @@ function DailyPageInner() {
           ].filter(Boolean);
           setMultiStationMode(true);
           setSelectedStations(cohort);
-          const extraAreas = report?.additionalFacilityAreas ?? [];
-          const map: Record<string, StationFacilityArea | ""> = {};
+          const facilityList = parseStationFacilityAreas(
+            loadedFacility,
+            report?.additionalFacilityAreas ?? []
+          );
+          const map: Record<string, StationFacilityArea[]> = {};
           cohort.forEach((name, i) => {
-            if (i === 0) {
-              map[name] = isStationFacilityArea(loadedFacility)
-                ? loadedFacility
-                : "";
-            } else {
-              const extra = extraAreas[i - 1]?.trim() ?? "";
-              map[name] = isStationFacilityArea(extra)
-                ? extra
-                : isStationFacilityArea(loadedFacility)
-                  ? loadedFacility
-                  : "";
-            }
+            const fac = facilityList[i];
+            if (!fac) return;
+            if (!map[name]) map[name] = [];
+            if (!map[name].includes(fac)) map[name].push(fac);
           });
           setStationFacilityByStation(map);
+          setFacilityAreas([]);
+          setFacilityArea("");
         } else {
+          const areas = parseStationFacilityAreas(
+            loadedFacility,
+            report?.additionalFacilityAreas ?? []
+          );
+          setFacilityAreas(areas);
+          setFacilityArea(areas[0] ?? "");
           setMultiStationMode(false);
           setSelectedStations([]);
           setStationFacilityByStation({});
@@ -509,14 +529,25 @@ function DailyPageInner() {
             setMultiStationMode(true);
             setSelectedStations(officeStations);
           }
-        } else if (isStationFacilityArea(area)) {
-          setFacilityArea(area);
+        } else if (
+          isStationFacilityArea(area) &&
+          !additional.length &&
+          !report?.maintenanceVisitTargets?.length
+        ) {
+          const areas = parseStationFacilityAreas(
+            area,
+            report?.additionalFacilityAreas ?? []
+          );
+          setFacilityAreas(areas);
+          setFacilityArea(areas[0] ?? area);
           setManagementOffice("");
           setMaintenanceMode(false);
           setOfficeWorkMode(false);
           setOfficeWorkByKey({});
           setSelectedOfficeRoles([]);
         } else if (isStationFacilityArea(facilityFromSchedule)) {
+          const areas = parseStationFacilityAreas(facilityFromSchedule, []);
+          setFacilityAreas(areas);
           setFacilityArea(facilityFromSchedule);
           setManagementOffice("");
           setMaintenanceMode(false);
@@ -525,6 +556,7 @@ function DailyPageInner() {
           setSelectedOfficeRoles([]);
         } else {
           setFacilityArea("");
+          setFacilityAreas([]);
           setManagementOffice("");
           setMaintenanceMode(false);
           setOfficeWorkMode(false);
@@ -680,18 +712,20 @@ function DailyPageInner() {
       setStatus("역사명을 선택하거나 입력해 주세요.");
       return;
     }
-    const facilityAreas = maintenanceMode
+    const facilityAreasForSave = maintenanceMode
       ? [...new Set(maintenanceSelections.map((t) => t.facility))]
-      : stations.map((st) =>
-          stations.length >= 2 && !maintenanceMode
-            ? stationFacilityByStation[st]?.trim() ?? ""
-            : facilityArea.trim()
-        );
-    if (!maintenanceMode && facilityAreas.some((f) => !f)) {
+      : perStationFacilities
+        ? activeStations.flatMap((st) => stationFacilityByStation[st] ?? [])
+        : facilityAreas.length > 0
+          ? facilityAreas
+          : facilityArea
+            ? [facilityArea as StationFacilityArea]
+            : [];
+    if (!maintenanceMode && facilityAreasForSave.length === 0) {
       setStatus(
-        stations.length >= 2
-          ? "각 역사마다 작업 장소를 선택해 주세요."
-          : "작업 장소(전기실·변전소·역무실)를 선택해 주세요."
+        perStationFacilities
+          ? "각 역사마다 작업 장소를 1곳 이상 선택해 주세요."
+          : "작업 장소(전기실·변전소·역무실)를 1곳 이상 선택해 주세요."
       );
       return;
     }
@@ -701,14 +735,15 @@ function DailyPageInner() {
     }
     if (
       processingRole !== ROLE_OTHER &&
-      (stations.length >= 2 && !maintenanceMode
-        ? !isProcessingRoleAllowedForFacilities(effectiveRole, facilityAreas)
-        : !isProcessingRoleAllowedForFacility(effectiveRole, facilityAreas[0]!))
+      !isProcessingRoleAllowedForFacilities(
+        effectiveRole,
+        facilityAreasForSave
+      )
     ) {
       setStatus(
-        stations.length >= 2
-          ? "선택한 모든 역사의 작업 장소에 맞는 공종을 선택해 주세요."
-          : `${facilityAreas[0]}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
+        perStationFacilities || facilityAreasForSave.length > 1
+          ? "선택한 모든 작업 장소에 맞는 공종을 선택해 주세요."
+          : `${facilityAreasForSave[0]}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
       );
       return;
     }
@@ -725,6 +760,28 @@ function DailyPageInner() {
         : ""
       : deficiencies;
 
+    const visitSlots = maintenanceMode
+      ? maintenanceSelections.map((t) => ({
+          station: t.station.trim(),
+          facility: t.facility,
+        }))
+      : stations.flatMap((st) => {
+          const areas = perStationFacilities
+            ? (stationFacilityByStation[st] ?? [])
+            : facilityAreas.length > 0
+              ? facilityAreas
+              : facilityArea
+                ? [facilityArea as StationFacilityArea]
+                : [];
+          return areas.map((facility) => ({ station: st, facility }));
+        });
+    const slotStations = visitSlots.map((s) => s.station);
+    const slotFacilities = visitSlots.map((s) => s.facility);
+    const sameStationMultiFacility =
+      !maintenanceMode &&
+      slotStations.length > 1 &&
+      new Set(slotStations).size === 1;
+
     setStatus("\uc800\uc7a5 \uc911...");
     const res = await fetch("/api/reports", {
       method: "POST",
@@ -732,14 +789,17 @@ function DailyPageInner() {
       body: JSON.stringify({
         memberId,
         date,
-        stationName: stations[0],
-        stationNames: stations.length > 1 ? stations : undefined,
+        stationName: slotStations[0] ?? stations[0],
+        stationNames:
+          !maintenanceMode && slotStations.length > 1 && !sameStationMultiFacility
+            ? slotStations
+            : undefined,
         facilityArea: maintenanceMode
           ? MANAGEMENT_OFFICE_FACILITY
-          : facilityAreas[0],
+          : slotFacilities[0],
         additionalFacilityAreas:
-          !maintenanceMode && stations.length > 1
-            ? facilityAreas.slice(1)
+          !maintenanceMode && slotFacilities.length > 1
+            ? slotFacilities.slice(1)
             : undefined,
         maintenanceVisitTargets: maintenanceMode
           ? maintenanceSelections
@@ -856,6 +916,7 @@ function DailyPageInner() {
                 setOfficeWorkByKey({});
                 setOfficeVisitedStations([]);
                 setFacilityArea("");
+                setFacilityAreas([]);
                 setManagementOffice("");
                 setMaintenanceSelections([]);
                 setMaintenancePlannedTargets([]);
@@ -895,7 +956,8 @@ function DailyPageInner() {
         {!maintenanceLocked && fieldVisitMode ? (
           <p className="muted text-xs">
             역을 두 개 이상 고르면 같은 날 각 역에 외근한 것으로 자동
-            기록됩니다.
+            기록됩니다. 한 역에서 전기실·변전소 등 여러 곳을 다녔으면 작업
+            장소를 모두 선택하세요.
           </p>
         ) : null}
         {!maintenanceLocked && officeWorkMode ? (
@@ -910,6 +972,11 @@ function DailyPageInner() {
           onChange={setStationName}
           facilityArea={facilityArea}
           onFacilityChange={setFacilityArea}
+          facilityAreas={facilityAreas}
+          onFacilityAreasChange={(areas) => {
+            setFacilityAreas(areas);
+            setFacilityArea(areas[0] ?? "");
+          }}
           requireFacility={!maintenanceLocked && !officeWorkMode}
           disabled={loading}
           enableMetroPicker={!maintenanceLocked}
@@ -1002,8 +1069,8 @@ function DailyPageInner() {
               {maintenanceMode
                 ? "점검 대상(역·기능실)을 1건 이상 선택하면 공종이 활성화됩니다."
                 : perStationFacilities
-                  ? "각 역사의 작업 장소를 모두 선택하면 공종 목록이 표시됩니다."
-                  : "작업 장소를 먼저 선택하면 공종 목록이 표시됩니다."}
+                  ? "각 역사의 작업 장소를 1곳 이상 선택하면 공종 목록이 표시됩니다."
+                  : "작업 장소를 1곳 이상 선택하면 공종 목록이 표시됩니다."}
             </p>
           ) : facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
             <p className="muted mb-1 text-xs">

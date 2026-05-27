@@ -24,6 +24,7 @@ import {
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
+  parseStationFacilityAreas,
 } from "@/lib/stationFacility";
 
 export async function GET(request: NextRequest) {
@@ -226,21 +227,33 @@ export async function POST(request: NextRequest) {
     visitTargets.length > 0
       ? visitTargets.map((t: { facility: string }) => String(t.facility).trim())
       : namesList.length > 1
-        ? [facility, ...extraFacilities.slice(0, namesList.length - 1)]
-        : [facility];
+        ? (() => {
+            const list = parseStationFacilityAreas(facility, extraFacilities);
+            return namesList.map((_, i) => list[i] ?? "").filter(Boolean);
+          })()
+        : parseStationFacilityAreas(facility, extraFacilities);
   if (visitTargets.length === 0 && namesList.length > 1) {
     for (let i = 0; i < namesList.length; i++) {
       const f = allFacilities[i] ?? "";
       if (!f || !isWorkFacilityArea(f)) {
         return NextResponse.json(
-          { error: "각 역사마다 작업 장소를 선택해 주세요." },
+          { error: "각 역사마다 작업 장소를 1곳 이상 선택해 주세요." },
           { status: 400 }
         );
       }
     }
+  } else if (
+    visitTargets.length === 0 &&
+    !allFacilities.length &&
+    !isOfficeWork
+  ) {
+    return NextResponse.json(
+      { error: "작업 장소를 1곳 이상 선택해 주세요." },
+      { status: 400 }
+    );
   }
   if (
-    visitTargets.length > 0 || namesList.length > 1
+    visitTargets.length > 0 || allFacilities.length > 1 || namesList.length > 1
       ? !isProcessingRoleAllowedForFacilities(role, allFacilities)
       : !isProcessingRoleAllowedForFacility(role, facility)
   ) {
@@ -271,8 +284,10 @@ export async function POST(request: NextRequest) {
     facilityArea: facility,
     additionalFacilityAreas:
       namesList.length > 1
-        ? allFacilities.slice(1)
-        : undefined,
+        ? allFacilities.slice(1).filter(Boolean)
+        : allFacilities.length > 1
+          ? allFacilities.slice(1)
+          : undefined,
     maintenanceVisitTargets: visitTargets.length ? visitTargets : undefined,
     maintenancePlannedTargets: Array.isArray(maintenancePlannedTargets)
       ? maintenancePlannedTargets

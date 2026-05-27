@@ -92,6 +92,27 @@ export function isStationFacilityArea(
   return (STATION_FACILITY_AREAS as readonly string[]).includes(value);
 }
 
+/** primary + additionalFacilityAreas를 중복 없이 배열로 */
+export function parseStationFacilityAreas(
+  primary?: string,
+  additional?: string[]
+): StationFacilityArea[] {
+  const out: StationFacilityArea[] = [];
+  for (const raw of [primary, ...(additional ?? [])]) {
+    const area = raw?.trim() ?? "";
+    if (isStationFacilityArea(area) && !out.includes(area)) {
+      out.push(area);
+    }
+  }
+  return out;
+}
+
+export function formatStationFacilityAreasLabel(
+  areas: readonly StationFacilityArea[]
+): string {
+  return areas.join(" · ");
+}
+
 export function isWorkFacilityArea(value: string): value is WorkFacilityArea {
   return (
     isStationFacilityArea(value) ||
