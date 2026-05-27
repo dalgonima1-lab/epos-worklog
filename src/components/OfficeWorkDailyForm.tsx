@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { getEposProductForDisplayName } from "@/lib/eposProductStations";
 import {
   OFFICE_AI_AUTOMATION_ROLE,
   OFFICE_GENERAL_STATION,
-  OFFICE_STATION_ROLES,
   officeWorkEntryKey,
 } from "@/lib/officeWork";
 import { getMetroLineColor, parseMetroStationValue } from "@/lib/metroStations";
+import { getProcessingRolesForFacility } from "@/lib/stationFacility";
 
 type OfficeRoleTab = "station" | "ai";
 
@@ -43,11 +44,38 @@ export function OfficeWorkDailyForm({
 
   const activeTab: OfficeRoleTab = hasStationWork ? "station" : "ai";
 
+  const stationRoleMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const station of visitedStations) {
+      const facilities = getEposProductForDisplayName(station).facilities;
+      const roles = new Set<string>();
+      for (const facility of facilities) {
+        for (const role of getProcessingRolesForFacility(facility)) {
+          roles.add(role);
+        }
+      }
+      map.set(station, [...roles]);
+    }
+    return map;
+  }, [visitedStations]);
+
+  const availableRoles = useMemo(() => {
+    const roles = new Set<string>();
+    for (const station of visitedStations) {
+      for (const role of stationRoleMap.get(station) ?? []) {
+        roles.add(role);
+      }
+    }
+    return [...roles];
+  }, [visitedStations, stationRoleMap]);
+
   const stationRows = useMemo(() => {
     const list: { station: string; role: string; key: string }[] = [];
     for (const station of visitedStations) {
+      const allowedRoles = new Set(stationRoleMap.get(station) ?? []);
       for (const role of selectedRoles) {
         if (role === OFFICE_AI_AUTOMATION_ROLE) continue;
+        if (!allowedRoles.has(role)) continue;
         list.push({
           station,
           role,
@@ -56,12 +84,14 @@ export function OfficeWorkDailyForm({
       }
     }
     return list;
-  }, [visitedStations, selectedRoles]);
+  }, [visitedStations, selectedRoles, stationRoleMap]);
 
   useEffect(() => {
     if (hasStationWork) {
       onSelectedRolesChange(
-        selectedRoles.filter((r) => r !== OFFICE_AI_AUTOMATION_ROLE)
+        selectedRoles.filter(
+          (r) => r !== OFFICE_AI_AUTOMATION_ROLE && availableRoles.includes(r)
+        )
       );
     } else {
       onSelectedRolesChange(
@@ -71,7 +101,7 @@ export function OfficeWorkDailyForm({
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 역 작업 유무에 따라 공종 모드 전환
-  }, [hasStationWork]);
+  }, [hasStationWork, availableRoles]);
 
   function toggleRole(role: string) {
     if (activeTab === "ai") return;
@@ -137,7 +167,7 @@ export function OfficeWorkDailyForm({
               체크한 역사마다 공종별 작업 내용을 적습니다.
             </p>
             <div className="flex flex-wrap gap-2">
-              {OFFICE_STATION_ROLES.map((role) => {
+              {availableRoles.map((role) => {
                 const active = selectedRoles.includes(role);
                 return (
                   <button
