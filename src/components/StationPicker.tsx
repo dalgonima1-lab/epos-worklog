@@ -499,8 +499,9 @@ export function StationPicker({
             value={managementOffice}
             onChange={handleManagementOfficePick}
             disabled={disabled || (lockMaintenanceMode && Boolean(managementOffice))}
+            selectedOnly={lockMaintenanceMode && Boolean(managementOffice)}
           />
-          {managementOffice && selectedStations.length > 0 ? (
+          {managementOffice && selectedStations.length > 0 && !lockMaintenanceMode ? (
             <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
               <strong>{selectedStations.length}개 역</strong>이 이 관리소 소속으로
               자동 선택되었습니다. 아래 목록에서 확인·수정할 수 있습니다.

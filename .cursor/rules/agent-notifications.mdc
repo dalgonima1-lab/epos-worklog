@@ -1,16 +1,35 @@
 ---
-description: 작업 완료·승인 대기 시 Windows 알림음 재생
+description: 코드 작업 후 커밋·푸시·완료 알림음 (항상)
 alwaysApply: true
 ---
 
-# 에이전트 알림음 (Windows)
+# 작업 마무리 — 커밋 · 푸시 · 알림음 (필수)
 
-## 작업 완료 (커밋·푸시·빌드 등 마무리)
-사용자가 커밋·푸시를 요청했거나, 작업을 끝냈을 때 **완료 소리**를 재생한다:
+코드·설정을 **변경한 작업**을 끝내면 사용자가 다시 말하지 않아도 **반드시** 아래 순서를 따른다.  
+「커밋해줘」를 기다리지 않는다. (사용자가 **커밋하지 마**라고 한 경우만 예외)
+
+1. `git status` / `git diff`로 변경 확인
+2. **커밋** — 메시지는 변경 목적(why) 중심
+3. **`git push -u origin HEAD`** (또는 현재 브랜치 push)
+4. **완료 알림음** 재생 (아래 스크립트)
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".cursor/hooks/play-completion.ps1"
+```
+
+실패 시 대체:
 
 ```powershell
 [System.Media.SystemSounds]::Asterisk.Play(); [console]::beep(880, 200); Start-Sleep -Milliseconds 100; [console]::beep(1100, 250)
 ```
+
+5. 사용자에게 **커밋 해시·푸시 완료·알림음 재생**을 짧게 보고한다.
+
+커밋에서 제외: `tsconfig.tsbuildinfo`, 미요청 `.env`/비밀, 사용자가 명시한 untracked 임시 파일.
+
+---
+
+# 에이전트 알림음 (Windows)
 
 ## RUN / 허용 버튼이 필요할 때
 터미널·MCP·파일 쓰기 등으로 `required_permissions`가 필요하거나, 사용자 승인이 예상되면 **승인 대기 소리**(완료음과 다름)를 **해당 도구 호출 직전**에 재생한다:
