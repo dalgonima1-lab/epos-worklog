@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
+import { getEposProductForDisplayName } from "@/lib/eposProductStations";
 import {
   getProcessingRolesForFacilities,
   getProcessingRolesForFacility,
@@ -13,6 +14,7 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
   parseStationFacilityAreas,
+  STATION_FACILITY_AREAS,
   type StationFacilityArea,
   type WorkFacilityArea,
 } from "@/lib/stationFacility";
@@ -170,6 +172,21 @@ function DailyPageInner() {
     activeStations.length >= 2 &&
     !maintenanceMode;
 
+  const stationFacilitiesMap = useMemo(() => {
+    const map: Record<string, StationFacilityArea[]> = {};
+    for (const st of activeStations) {
+      const facilities = getEposProductForDisplayName(st).facilities;
+      map[st] = facilities.length > 0 ? facilities : [...STATION_FACILITY_AREAS];
+    }
+    return map;
+  }, [activeStations]);
+
+  const derivedFacilityAreas = useMemo(() => {
+    if (maintenanceMode) return [];
+    if (!activeStations.length) return [];
+    return activeStations.flatMap((s) => stationFacilitiesMap[s] ?? []);
+  }, [activeStations, maintenanceMode, stationFacilitiesMap]);
+
   const activeFacilityAreas = useMemo(() => {
     if (maintenanceMode && maintenanceSelections.length > 0) {
       return [...new Set(maintenanceSelections.map((t) => t.facility))];
@@ -182,6 +199,8 @@ function DailyPageInner() {
     }
     return facilityAreas.length > 0
       ? facilityAreas
+      : derivedFacilityAreas.length > 0
+        ? derivedFacilityAreas
       : facilityArea
         ? [facilityArea as StationFacilityArea]
         : [];
@@ -189,6 +208,7 @@ function DailyPageInner() {
     activeStations,
     facilityArea,
     facilityAreas,
+    derivedFacilityAreas,
     maintenanceMode,
     perStationFacilities,
     stationFacilityByStation,
@@ -198,9 +218,13 @@ function DailyPageInner() {
     (maintenanceMode && maintenanceSelections.length > 0) ||
     (perStationFacilities
       ? activeStations.every(
-          (s) => (stationFacilityByStation[s] ?? []).length > 0
+          (s) =>
+            (stationFacilityByStation[s] ?? []).length > 0 ||
+            (stationFacilitiesMap[s] ?? []).length > 0
         )
-      : facilityAreas.length > 0 || Boolean(facilityArea));
+      : facilityAreas.length > 0 ||
+        derivedFacilityAreas.length > 0 ||
+        Boolean(facilityArea));
 
   const effectiveRole =
     facilityArea === MANAGEMENT_OFFICE_FACILITY
@@ -209,14 +233,17 @@ function DailyPageInner() {
         ? customRole.trim()
         : processingRole;
 
-  const rolesForFacility =
-    activeFacilityAreas.length > 1
-      ? getProcessingRolesForFacilities(activeFacilityAreas)
-      : getProcessingRolesForFacility(
-          facilityArea === MANAGEMENT_OFFICE_FACILITY
-            ? MANAGEMENT_OFFICE_FACILITY
-            : facilityArea || undefined
-        );
+  const rolesForFacility = useMemo(() => {
+    if (maintenanceMode) return getProcessingRolesForFacility(MANAGEMENT_OFFICE_FACILITY);
+    // 역사 기반으로 가능한 공종을 합집합으로 노출
+    const union = new Set<string>();
+    for (const area of activeFacilityAreas) {
+      for (const role of getProcessingRolesForFacility(area)) {
+        union.add(role);
+      }
+    }
+    return union.size > 0 ? [...union] : getProcessingRolesForFacilities(activeFacilityAreas);
+  }, [activeFacilityAreas, maintenanceMode]);
 
   useEffect(() => {
     if (!officeWorkMode && !maintenanceMode && !maintenanceLocked) {
@@ -787,7 +814,11 @@ function DailyPageInner() {
     const facilityAreasForSave = maintenanceMode
       ? [...new Set(maintenanceSelections.map((t) => t.facility))]
       : perStationFacilities
-        ? activeStations.flatMap((st) => stationFacilityByStation[st] ?? [])
+        ? activeStations.flatMap(
+            (st) => stationFacilityByStation[st] ?? stationFacilitiesMap[st] ?? []
+          )
+        : derivedFacilityAreas.length > 0
+          ? derivedFacilityAreas
         : facilityAreas.length > 0
           ? facilityAreas
           : facilityArea
@@ -805,19 +836,18 @@ function DailyPageInner() {
       setStatus("\uacf5\uc885\uc744 \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.");
       return;
     }
-    if (
-      processingRole !== ROLE_OTHER &&
-      !isProcessingRoleAllowedForFacilities(
-        effectiveRole,
-        facilityAreasForSave
-      )
-    ) {
+    if (processingRole !== ROLE_OTHER) {
+      const hasAnyAllowed = facilityAreasForSave.some((f) =>
+        isProcessingRoleAllowedForFacility(effectiveRole, f)
+      );
+      if (!hasAnyAllowed) {
       setStatus(
         perStationFacilities || facilityAreasForSave.length > 1
-          ? "선택한 모든 작업 장소에 맞는 공종을 선택해 주세요."
+          ? "선택한 역사에 실제 있는 공종을 선택해 주세요."
           : `${facilityAreasForSave[0]}에서는 선택할 수 없는 공종입니다. 작업 장소에 맞는 공종을 선택해 주세요.`
       );
       return;
+      }
     }
     const maintenanceDeficiencyRows = maintenanceMode
       ? Object.entries(deficienciesByStation)
@@ -1037,13 +1067,13 @@ function DailyPageInner() {
           value={stationName}
           onChange={setStationName}
           facilityArea={facilityArea}
-          onFacilityChange={setFacilityArea}
+          onFacilityChange={maintenanceMode ? setFacilityArea : undefined}
           facilityAreas={facilityAreas}
           onFacilityAreasChange={(areas) => {
             setFacilityAreas(areas);
             setFacilityArea(areas[0] ?? "");
           }}
-          requireFacility={!maintenanceLocked && !officeWorkMode}
+          requireFacility={false}
           disabled={loading}
           enableMetroPicker={!maintenanceLocked}
           maintenanceMode={maintenanceMode}
@@ -1090,7 +1120,9 @@ function DailyPageInner() {
           onSelectedStationsChange={handleSelectedStationsChange}
           stationFacilityByStation={stationFacilityByStation}
           onStationFacilityByStationChange={
-            officeWorkMode ? undefined : setStationFacilityByStation
+            officeWorkMode || fieldVisitMode
+              ? undefined
+              : setStationFacilityByStation
           }
           maintenanceSelections={maintenanceSelections}
           onMaintenanceSelectionsChange={setMaintenanceSelections}
