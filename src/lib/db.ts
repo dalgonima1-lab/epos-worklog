@@ -353,6 +353,15 @@ function reportInvolvesStation(r: DailyReport, stationQuery: string): boolean {
   for (const add of r.additionalStationNames ?? []) {
     if (stationsMatch(add, stationQuery)) return true;
   }
+  for (const t of r.maintenanceVisitTargets ?? []) {
+    if (stationsMatch(t.station ?? "", stationQuery)) return true;
+  }
+  for (const t of r.maintenancePlannedTargets ?? []) {
+    if (stationsMatch(t.station ?? "", stationQuery)) return true;
+  }
+  for (const e of r.officeWorkEntries ?? []) {
+    if (stationsMatch(e.station ?? "", stationQuery)) return true;
+  }
   return false;
 }
 
