@@ -1,3 +1,6 @@
+import type { ScheduleEntry } from "@/lib/types";
+import { MANAGEMENT_OFFICE_FACILITY } from "@/lib/stationFacility";
+
 /** 일정 유형: 현장·사무 외 휴무 */
 export const ANNUAL_LEAVE_FACILITY = "연차" as const;
 export const PUBLIC_HOLIDAY_FACILITY = "공휴일" as const;
@@ -6,7 +9,15 @@ export type TimeOffFacility =
   | typeof ANNUAL_LEAVE_FACILITY
   | typeof PUBLIC_HOLIDAY_FACILITY;
 
-export type ScheduleFormKind = "field" | "annual_leave" | "public_holiday";
+export type ScheduleFormKind =
+  | "field_visit"
+  | "maintenance"
+  | "annual_leave"
+  | "public_holiday";
+
+export function isFieldVisitScheduleKind(kind: ScheduleFormKind): boolean {
+  return kind === "field_visit";
+}
 
 export function isAnnualLeaveFacility(area?: string): boolean {
   return area?.trim() === ANNUAL_LEAVE_FACILITY;
@@ -25,7 +36,14 @@ export function scheduleFormKindFromFacility(
 ): ScheduleFormKind {
   if (isAnnualLeaveFacility(area)) return "annual_leave";
   if (isPublicHolidayFacility(area)) return "public_holiday";
-  return "field";
+  if (area?.trim() === MANAGEMENT_OFFICE_FACILITY) return "maintenance";
+  return "field_visit";
+}
+
+export function scheduleFormKindFromEntry(
+  entry: ScheduleEntry
+): ScheduleFormKind {
+  return scheduleFormKindFromFacility(entry.facilityArea);
 }
 
 export function defaultTimeOffTitle(

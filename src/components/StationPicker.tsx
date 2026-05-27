@@ -84,6 +84,8 @@ interface StationPickerProps {
   hideMaintenanceVisitList?: boolean;
   /** 사무 작업: 역 다중 선택, 작업 장소·유지보수 UI 숨김 */
   officeWorkMode?: boolean;
+  /** 외근: 역 추가 시 목록에 쌓고 2역 이상이면 하루에 역별 방문 */
+  fieldVisitMode?: boolean;
   /** 역사 히스토리 등: 정기점검계획서 기능실에 (유지보수 용역) 표기 */
   showMaintenanceFacilityLabels?: boolean;
   /** 사무 작업: 오늘 실제 작업한 역 (체크) */
@@ -115,6 +117,7 @@ export function StationPicker({
   lockMaintenanceMode = false,
   hideMaintenanceVisitList = false,
   officeWorkMode = false,
+  fieldVisitMode = false,
   showMaintenanceFacilityLabels = false,
   officeVisitedStations = [],
   onOfficeVisitedStationsChange,
@@ -332,7 +335,7 @@ export function StationPicker({
       void registerStation(formatted);
       return;
     }
-    if ((multiStationMode || officeWorkMode) && onSelectedStationsChange) {
+    if ((multiStationMode || officeWorkMode || fieldVisitMode) && onSelectedStationsChange) {
       addStationToMultiList(line, stationName);
       return;
     }
@@ -450,7 +453,14 @@ export function StationPicker({
         </p>
       ) : null}
 
-      {onMultiStationModeChange && !maintenanceMode && !officeWorkMode ? (
+      {fieldVisitMode ? (
+        <p className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950">
+          <strong>외근</strong>: 호선·역사를 누르면 아래 목록에 추가됩니다.{" "}
+          <strong>2곳 이상</strong>이면 같은 날 역별 방문으로 등록됩니다.
+        </p>
+      ) : null}
+
+      {onMultiStationModeChange && !maintenanceMode && !officeWorkMode && !fieldVisitMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -474,7 +484,7 @@ export function StationPicker({
         </label>
       ) : null}
 
-      {onMaintenanceModeChange && !lockMaintenanceMode && !officeWorkMode ? (
+      {onMaintenanceModeChange && !lockMaintenanceMode && !officeWorkMode && !fieldVisitMode ? (
         <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2.5">
           <input
             type="checkbox"
@@ -908,7 +918,7 @@ export function StationPicker({
         </div>
       ) : null}
 
-      {(multiStationMode || maintenanceMode || officeWorkMode) &&
+      {(multiStationMode || maintenanceMode || officeWorkMode || fieldVisitMode) &&
       onSelectedStationsChange &&
       !maintenanceMode ? (
         <div className="mt-4">
@@ -935,7 +945,9 @@ export function StationPicker({
             <p className="muted mt-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-4 text-center text-xs">
               {maintenanceMode
                 ? "전기관리소를 선택하면 소속 역사가 여기에 표시됩니다."
-                : officeWorkMode
+                : fieldVisitMode
+                  ? "호선·역사를 누르면 아래에 추가됩니다. 2곳 이상이면 역별 방문입니다."
+                  : officeWorkMode
                   ? "호선을 고른 뒤 역사명을 누르면 여기에 추가됩니다."
                   : "호선을 고른 뒤 역사명을 누르면 여기에 순서대로 표시됩니다."}
               {perStationFacilityPick ? (

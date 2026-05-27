@@ -121,12 +121,15 @@ function DailyPageInner() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const fieldVisitMode =
+    !maintenanceLocked && !officeWorkMode && !maintenanceMode;
+
   const activeStations = useMemo(() => {
     if (maintenanceMode && maintenanceSelections.length > 0) {
       return uniqueStationsFromTargets(maintenanceSelections);
     }
     if (
-      (officeWorkMode || multiStationMode) &&
+      (fieldVisitMode || officeWorkMode || multiStationMode) &&
       selectedStations.length > 0
     ) {
       return selectedStations;
@@ -135,6 +138,7 @@ function DailyPageInner() {
   }, [
     maintenanceMode,
     maintenanceSelections,
+    fieldVisitMode,
     officeWorkMode,
     multiStationMode,
     selectedStations,
@@ -142,7 +146,9 @@ function DailyPageInner() {
   ]);
 
   const perStationFacilities =
-    multiStationMode && activeStations.length >= 2 && !maintenanceMode;
+    (fieldVisitMode || multiStationMode) &&
+    activeStations.length >= 2 &&
+    !maintenanceMode;
 
   const activeFacilityAreas = useMemo(() => {
     if (maintenanceMode && maintenanceSelections.length > 0) {
@@ -184,6 +190,26 @@ function DailyPageInner() {
             ? MANAGEMENT_OFFICE_FACILITY
             : facilityArea || undefined
         );
+
+  useEffect(() => {
+    if (!officeWorkMode && !maintenanceMode && !maintenanceLocked) {
+      if (selectedStations.length >= 2) {
+        setMultiStationMode(true);
+      }
+    }
+  }, [selectedStations.length, officeWorkMode, maintenanceMode, maintenanceLocked]);
+
+  function handleSelectedStationsChange(stations: string[]) {
+    setSelectedStations(stations);
+    if (
+      !officeWorkMode &&
+      !maintenanceMode &&
+      !maintenanceLocked &&
+      stations.length >= 2
+    ) {
+      setMultiStationMode(true);
+    }
+  }
 
   useEffect(() => {
     if (!officeWorkMode) return;
@@ -645,7 +671,7 @@ function DailyPageInner() {
     const stations =
       maintenanceMode && maintenanceSelections.length > 0
         ? uniqueStationsFromTargets(maintenanceSelections)
-        : multiStationMode && selectedStations.length > 0
+        : (fieldVisitMode || multiStationMode) && selectedStations.length > 0
           ? selectedStations
           : stationName.trim()
             ? [stationName.trim()]
@@ -814,42 +840,69 @@ function DailyPageInner() {
         </div>
 
         {!maintenanceLocked ? (
-          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2.5">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={officeWorkMode}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                fieldVisitMode
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-950"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
               disabled={loading || formLockedByCohort}
-              onChange={(e) => {
-                const enabled = e.target.checked;
-                setOfficeWorkMode(enabled);
-                if (enabled) {
-                  setMaintenanceMode(false);
-                  setFacilityArea(OFFICE_WORK_FACILITY);
-                  setMultiStationMode(true);
-                  setManagementOffice("");
-                  setMaintenanceSelections([]);
-                  setMaintenancePlannedTargets([]);
-                  setDeficienciesByStation({});
-                  setStationFacilityByStation({});
-                  setProcessingRole("");
-                  setCustomRole("");
-                } else {
-                  setFacilityArea("");
-                  setSelectedOfficeRoles([]);
-                  setOfficeWorkByKey({});
-                  setOfficeVisitedStations([]);
-                }
+              onClick={() => {
+                setOfficeWorkMode(false);
+                setMaintenanceMode(false);
+                setSelectedOfficeRoles([]);
+                setOfficeWorkByKey({});
+                setOfficeVisitedStations([]);
+                setFacilityArea("");
+                setManagementOffice("");
+                setMaintenanceSelections([]);
+                setMaintenancePlannedTargets([]);
+                setDeficienciesByStation({});
+                setProcessingRole("");
+                setCustomRole("");
               }}
-            />
-            <span className="text-sm">
-              <strong className="text-sky-950">사무 작업</strong>
-              <span className="mt-0.5 block text-xs font-normal text-sky-900/90">
-                역사를 고른 뒤 작업한 역만 체크(✓)하고 공종별로 적습니다. 역
-                작업이 없으면 AI 자동화로 기록합니다.
-              </span>
-            </span>
-          </label>
+            >
+              외근
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                officeWorkMode
+                  ? "border-sky-300 bg-sky-50 text-sky-950"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+              disabled={loading || formLockedByCohort}
+              onClick={() => {
+                setOfficeWorkMode(true);
+                setMaintenanceMode(false);
+                setFacilityArea(OFFICE_WORK_FACILITY);
+                setMultiStationMode(true);
+                setManagementOffice("");
+                setMaintenanceSelections([]);
+                setMaintenancePlannedTargets([]);
+                setDeficienciesByStation({});
+                setStationFacilityByStation({});
+                setProcessingRole("");
+                setCustomRole("");
+              }}
+            >
+              사무 작업
+            </button>
+          </div>
+        ) : null}
+        {!maintenanceLocked && fieldVisitMode ? (
+          <p className="muted text-xs">
+            역을 두 개 이상 고르면 같은 날 각 역에 외근한 것으로 자동
+            기록됩니다.
+          </p>
+        ) : null}
+        {!maintenanceLocked && officeWorkMode ? (
+          <p className="muted text-xs">
+            역사를 고른 뒤 작업한 역만 체크(✓)하고 공종별로 적습니다. 역
+            작업이 없으면 AI 자동화로 기록합니다.
+          </p>
         ) : null}
 
         <StationPicker
@@ -864,6 +917,7 @@ function DailyPageInner() {
           lockMaintenanceMode={maintenanceLocked}
           hideMaintenanceVisitList={maintenanceLocked}
           officeWorkMode={officeWorkMode}
+          fieldVisitMode={fieldVisitMode}
           officeVisitedStations={officeVisitedStations}
           onOfficeVisitedStationsChange={setOfficeVisitedStations}
           onMaintenanceModeChange={(enabled) => {
@@ -900,7 +954,7 @@ function DailyPageInner() {
           multiStationMode={officeWorkMode ? true : multiStationMode}
           onMultiStationModeChange={officeWorkMode ? undefined : setMultiStationMode}
           selectedStations={selectedStations}
-          onSelectedStationsChange={setSelectedStations}
+          onSelectedStationsChange={handleSelectedStationsChange}
           stationFacilityByStation={stationFacilityByStation}
           onStationFacilityByStationChange={
             officeWorkMode ? undefined : setStationFacilityByStation
