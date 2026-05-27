@@ -8,6 +8,7 @@ import {
   upsertReport,
   visitGroupIdFromSchedules,
 } from "@/lib/db";
+import { syncSchedulesFromReport } from "@/lib/syncSchedulesFromReport";
 import {
   filledOfficeWorkEntries,
   summarizeOfficeWorkRoles,
@@ -270,8 +271,8 @@ export async function POST(request: NextRequest) {
 
   const existing = await getReport(memberId, date);
 
-  const schedules = await getSchedulesInRange(date, date);
-  const scheduleGroupId = visitGroupIdFromSchedules(schedules, memberId, date);
+  const daySchedules = await getSchedulesInRange(date, date);
+  const scheduleGroupId = visitGroupIdFromSchedules(daySchedules, memberId, date);
   const groupId =
     (visitGroupId as string | undefined)?.trim() ||
     scheduleGroupId ||
@@ -311,5 +312,7 @@ export async function POST(request: NextRequest) {
       : (afterPhotoAt ?? existing?.afterPhotoAt),
   });
 
-  return NextResponse.json({ report });
+  const syncedSchedules = await syncSchedulesFromReport(memberId, date, report);
+
+  return NextResponse.json({ report, schedules: syncedSchedules });
 }

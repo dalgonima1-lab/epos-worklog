@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent } from "react";
+import { compressImageForUpload } from "@/lib/imageCompress";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 import { photoApiUrl } from "@/lib/photoUrl";
 
@@ -43,24 +44,49 @@ export function PhotoCapture({
       ? `${photoApiUrl(memberId, date, slot)}${cacheBust}`
       : null;
 
+  async function uploadWithRetry(form: FormData, attempts = 3): Promise<Response> {
+    let lastErr: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const res = await fetch("/api/reports/photo", {
+          method: "POST",
+          body: form,
+        });
+        if (res.ok || res.status < 500) return res;
+      } catch (e) {
+        lastErr = e;
+      }
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+      }
+    }
+    if (lastErr) throw lastErr;
+    throw new Error("upload failed");
+  }
+
   async function handleFile(file: File) {
     setError("");
     const capturedAt = new Date().toISOString();
-    setPreview(URL.createObjectURL(file));
     setUploading(true);
+
+    let uploadFile = file;
+    try {
+      uploadFile = await compressImageForUpload(file);
+    } catch {
+      uploadFile = file;
+    }
+
+    setPreview(URL.createObjectURL(uploadFile));
 
     const form = new FormData();
     form.append("memberId", memberId);
     form.append("date", date);
     form.append("slot", slot);
     form.append("recordedAt", capturedAt);
-    form.append("file", file);
+    form.append("file", uploadFile);
 
     try {
-      const res = await fetch("/api/reports/photo", {
-        method: "POST",
-        body: form,
-      });
+      const res = await uploadWithRetry(form);
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "업로드 실패");
@@ -72,7 +98,7 @@ export function PhotoCapture({
         photoUrl: data.photoUrl,
       });
     } catch {
-      setError("네트워크 오류로 업로드하지 못했습니다.");
+      setError("네트워크 오류로 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setUploading(false);
     }

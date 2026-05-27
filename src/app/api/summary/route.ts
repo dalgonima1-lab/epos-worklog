@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, getMembers, getReportsInRange, verifyManagerPin } from "@/lib/db";
-import { buildWeeklySummary, summaryToMarkdown } from "@/lib/summary";
+import {
+  getDb,
+  getMembers,
+  getReportsInRange,
+  getSchedulesInRange,
+  verifyManagerPin,
+} from "@/lib/db";
+import {
+  buildWeeklySummary,
+  summaryToCsv,
+  summaryToMarkdown,
+} from "@/lib/summary";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,7 +33,10 @@ export async function GET(request: NextRequest) {
 
   const db = await getDb();
   const members = await getMembers();
-  const reports = await getReportsInRange(start, end);
+  const [reports, schedules] = await Promise.all([
+    getReportsInRange(start, end),
+    getSchedulesInRange(start, end),
+  ]);
   const weekLabel = `${start} ~ ${end}`;
 
   const summary = buildWeeklySummary(
@@ -32,8 +45,19 @@ export async function GET(request: NextRequest) {
     start,
     end,
     members,
-    reports
+    reports,
+    schedules
   );
+
+  if (format === "csv") {
+    const csv = summaryToCsv(summary);
+    return new NextResponse(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="weekly_${start}.csv"`,
+      },
+    });
+  }
 
   if (format === "markdown") {
     const markdown = summaryToMarkdown(summary);

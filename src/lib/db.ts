@@ -37,6 +37,10 @@ import {
   type OfficeWorkEntry,
 } from "./officeWork";
 import {
+  ANNUAL_LEAVE_FACILITY,
+  PUBLIC_HOLIDAY_FACILITY,
+} from "./scheduleKinds";
+import {
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
@@ -684,6 +688,29 @@ export async function upsertSchedule(payload: {
 
   await saveDb(db);
   return entry;
+}
+
+/** 일일기록 동기화 대상(외근·유지보수) 일정만 제거 — 연차·공휴·사무 유지 */
+export async function deleteAutoSyncedSchedulesForMemberDate(
+  memberId: string,
+  date: string
+): Promise<number> {
+  const db = await ensureDb();
+  const before = db.schedules.length;
+  db.schedules = db.schedules.filter((s) => {
+    if (s.memberId !== memberId || s.date !== date) return true;
+    const area = s.facilityArea?.trim() ?? "";
+    if (area === OFFICE_WORK_FACILITY) return true;
+    if (area === ANNUAL_LEAVE_FACILITY || area === PUBLIC_HOLIDAY_FACILITY) {
+      return true;
+    }
+    if (area === MANAGEMENT_OFFICE_FACILITY) return false;
+    if (!area) return true;
+    return false;
+  });
+  const removed = before - db.schedules.length;
+  if (removed > 0) await saveDb(db);
+  return removed;
 }
 
 export async function deleteSchedulesForMemberDateFacility(

@@ -6,7 +6,10 @@ import { ManagerReportModal } from "@/components/ManagerReportModal";
 import { WeeklySummaryReport } from "@/components/WeeklySummaryReport";
 import { getWeekRange, shiftWeek } from "@/lib/dates";
 import type { WeeklySummary } from "@/lib/summary";
+import { isWeekSubmissionComplete } from "@/lib/weeklySubmission";
 import type { DailyReport } from "@/lib/types";
+
+const PIN_STORAGE_KEY = "epos-manager-pin";
 
 export default function ManagerPage() {
   const [teamName, setTeamName] = useState("EPOS 관리팀");
@@ -27,14 +30,29 @@ export default function ManagerPage() {
     fetch("/api/members")
       .then((r) => r.json())
       .then((d) => setTeamName(d.teamName));
+    const saved = sessionStorage.getItem(PIN_STORAGE_KEY);
+    if (saved) {
+      setPin(saved);
+      void fetch("/api/auth/manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: saved }),
+      })
+        .then((r) => r.json())
+        .then((data: { ok?: boolean }) => {
+          if (data.ok) setAuthed(true);
+          else sessionStorage.removeItem(PIN_STORAGE_KEY);
+        })
+        .catch(() => sessionStorage.removeItem(PIN_STORAGE_KEY));
+    }
   }, []);
 
   useEffect(() => {
-    if (authed) {
+    if (authed && pin) {
       loadSummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchor, authed]);
+  }, [anchor, authed, pin]);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +79,10 @@ export default function ManagerPage() {
       }
       setAuthed(Boolean(data.ok));
       setError(data.ok ? "" : (data.error ?? "PIN이 올바르지 않습니다."));
-      if (data.ok) loadSummary();
+      if (data.ok) {
+        sessionStorage.setItem(PIN_STORAGE_KEY, submitted);
+        loadSummary();
+      }
     } catch {
       setAuthed(false);
       setError("네트워크 오류입니다. 연결을 확인해주세요.");
@@ -96,6 +117,25 @@ export default function ManagerPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  async function downloadCsv() {
+    const res = await fetch(
+      `/api/summary?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}&format=csv`
+    );
+    if (!res.ok) return;
+    const text = await res.text();
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `주간요약_${week.start}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const submissionReadiness = summary
+    ? isWeekSubmissionComplete(summary)
+    : null;
 
   return (
     <>
@@ -164,6 +204,18 @@ export default function ManagerPage() {
             </div>
           </div>
 
+          {submissionReadiness ? (
+            <p
+              className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                submissionReadiness.complete
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                  : "border-amber-200 bg-amber-50 text-amber-950"
+              }`}
+            >
+              {submissionReadiness.reason}
+            </p>
+          ) : null}
+
           {summary && (
             <section className="card mt-4 overflow-hidden p-0">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
@@ -192,6 +244,13 @@ export default function ManagerPage() {
                     onClick={downloadMarkdown}
                   >
                     .md 다운로드
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary text-sm"
+                    onClick={() => void downloadCsv()}
+                  >
+                    .csv 다운로드
                   </button>
                 </div>
               </div>

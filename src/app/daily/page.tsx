@@ -45,6 +45,12 @@ import {
 } from "@/lib/maintenanceVisit";
 import { calcWorkMinutes } from "@/lib/workTime";
 import type { CohortCoverage } from "@/lib/visitCohort";
+import {
+  clearDailyDraft,
+  loadLastMemberId,
+  saveDailyDraft,
+  saveLastMemberId,
+} from "@/lib/dailyDraft";
 
 const ROLE_OTHER = "\uae30\ud0c0";
 
@@ -240,14 +246,71 @@ function DailyPageInner() {
   }, [selectedStations, officeWorkMode]);
 
   useEffect(() => {
+    if (memberId) saveLastMemberId(memberId);
+  }, [memberId]);
+
+  useEffect(() => {
+    if (!memberId || !date || formLockedByCohort) return;
+    const timer = setTimeout(() => {
+      saveDailyDraft(memberId, date, {
+        stationName,
+        facilityArea,
+        facilityAreas,
+        selectedStations,
+        stationFacilityByStation,
+        maintenanceSelections,
+        managementOffice,
+        processingRole,
+        customRole,
+        done,
+        plan,
+        issues,
+        deficiencies,
+        officeWorkMode,
+        maintenanceMode,
+        officeWorkByKey,
+        officeVisitedStations,
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [
+    memberId,
+    date,
+    formLockedByCohort,
+    stationName,
+    facilityArea,
+    facilityAreas,
+    selectedStations,
+    stationFacilityByStation,
+    maintenanceSelections,
+    managementOffice,
+    processingRole,
+    customRole,
+    done,
+    plan,
+    issues,
+    deficiencies,
+    officeWorkMode,
+    maintenanceMode,
+    officeWorkByKey,
+    officeVisitedStations,
+  ]);
+
+  useEffect(() => {
     fetch("/api/members")
       .then((r) => r.json())
       .then((data) => {
         const writers = data.members?.length ? data.members : DEFAULT_WRITERS;
         setTeamName(data.teamName ?? DEFAULT_TEAM_NAME);
         setMembers(writers);
-        if (!memberId && writers.length) {
-          setMemberId(writers[0].id);
+        const last = loadLastMemberId();
+        const pick =
+          (last && writers.some((w: { id: string }) => w.id === last)
+            ? last
+            : null) ??
+          writers[0]?.id;
+        if (!memberId && pick) {
+          setMemberId(pick);
         }
       })
       .catch(() => {
@@ -698,6 +761,7 @@ function DailyPageInner() {
         const data = await res.json();
         setDone(data.report?.done ?? "");
         setStatus("저장되었습니다. 일정에 자동 반영되었습니다.");
+        clearDailyDraft(memberId, date);
       } else {
         const err = await res.json();
         setStatus(err.error ?? "저장에 실패했습니다.");
@@ -832,7 +896,8 @@ function DailyPageInner() {
     if (res.ok) {
       const data = await res.json();
       setWorkMinutes(data.report?.workMinutes ?? workMinutes);
-      setStatus("\uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4.");
+      setStatus("\uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc77c\uc815\uc5d0 \uc790\ub3d9 \ubc18\uc601\ub418\uc5c8\uc2b5\ub2c8\ub2e4.");
+      clearDailyDraft(memberId, date);
     } else {
       const err = await res.json();
       setStatus(err.error ?? "\uc800\uc7a5\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4.");

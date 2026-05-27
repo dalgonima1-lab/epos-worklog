@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import type { DailyReport } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
-import { formatStationVisitLabel } from "@/lib/stationFacility";
+import {
+  formatStationVisitLabel,
+  MANAGEMENT_OFFICE_FACILITY,
+} from "@/lib/stationFacility";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 
 function photoSrc(
@@ -153,6 +156,39 @@ export function ManagerReportModal({
               </dd>
             </div>
           </dl>
+
+          {report.facilityArea === MANAGEMENT_OFFICE_FACILITY ? (
+            <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm">
+              <h3 className="font-bold text-amber-950">유지보수 방문</h3>
+              {report.maintenancePlannedTargets?.length ? (
+                <p className="mt-2 text-amber-900/90">
+                  계획 {report.maintenancePlannedTargets.length}건 · 방문{" "}
+                  {report.maintenanceVisitTargets?.length ?? 0}건
+                </p>
+              ) : null}
+              {report.maintenanceVisitTargets?.length ? (
+                <ul className="mt-2 list-inside list-disc text-amber-950">
+                  {report.maintenanceVisitTargets.map((t, i) => (
+                    <li key={`${t.station}-${t.facility}-${i}`}>
+                      {t.station} · {t.facility}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {report.maintenanceDeficienciesByStation?.length ? (
+                <div className="mt-3 border-t border-amber-200 pt-2">
+                  <p className="font-semibold text-amber-950">역별 미비</p>
+                  {report.maintenanceDeficienciesByStation.map((d) =>
+                    d.text?.trim() ? (
+                      <p key={d.station} className="mt-1 whitespace-pre-wrap">
+                        <strong>{d.station}:</strong> {d.text}
+                      </p>
+                    ) : null
+                  )}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           {(beforeSrc || afterSrc) && (
             <section className="mt-8">

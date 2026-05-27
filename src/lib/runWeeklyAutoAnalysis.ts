@@ -3,6 +3,7 @@ import {
   getDb,
   getMembers,
   getReportsInRange,
+  getSchedulesInRange,
   loadWeeklyAnalysis,
 } from "./db";
 import { generateAutoWeeklyAnalysis } from "./autoWeeklyAnalysis";
@@ -45,14 +46,18 @@ export async function runWeeklyAutoAnalysis(options?: {
 
   const db = await getDb();
   const members = await getMembers();
-  const reports = await getReportsInRange(start, end);
+  const [reports, schedules] = await Promise.all([
+    getReportsInRange(start, end),
+    getSchedulesInRange(start, end),
+  ]);
   const summary = buildWeeklySummary(
     db.teamName,
     label,
     start,
     end,
     members,
-    reports
+    reports,
+    schedules
   );
 
   const totalReports = summary.members.reduce((n, m) => n + m.reports.length, 0);

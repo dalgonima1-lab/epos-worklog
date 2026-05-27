@@ -75,6 +75,12 @@ export function WeeklySummaryReport({
                 </span>
               </div>
               <div className="px-4 py-3 sm:px-5">
+                {m.timeOffDates.length > 0 ? (
+                  <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <span className="font-semibold">휴무:</span>{" "}
+                    {m.timeOffDates.join(", ")}
+                  </p>
+                ) : null}
                 {m.missingDates.length > 0 ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
                     <span className="font-semibold">미제출일:</span>{" "}
