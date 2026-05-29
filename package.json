@@ -13,6 +13,7 @@
     "cron:weekly:sunday": "tsx scripts/run-weekly-auto.ts --sunday",
     "generate:cursor": "tsx scripts/generate-cursor-analysis.ts",
     "build:metro": "node scripts/build-seoul-metro-data.mjs",
+    "audit:metro": "node scripts/audit-metro-gaps.mjs",
     "seed:stations": "tsx scripts/seed-metro-stations-db.ts",
     "build:product": "node scripts/build-epos-product-stations.mjs"
   },

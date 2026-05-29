@@ -1,6 +1,8 @@
 node_modules
 .next
 data/*.json
+!data/seoul-metro-supplements.json
+!data/seoul-metro-line-order.json
 data/uploads/**
 data/analyses/**
 data/references/**

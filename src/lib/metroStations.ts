@@ -132,15 +132,44 @@ export function buildMetroStationCatalogNames(): string[] {
   });
 }
 
+/** 구·현행 역명 검색 별칭 (역 접미사 없이 키) */
+const METRO_STATION_SEARCH_ALIAS: Record<string, string[]> = {
+  당고개: ["불암산"],
+  불암산: ["당고개"],
+  총신대입구: ["이수"],
+  이수: ["총신대입구"],
+};
+
+function expandMetroSearchTerms(query: string): string[] {
+  const q = query.trim().toLowerCase().replace(/\s+/g, "");
+  if (!q) return [];
+  const terms = new Set<string>([q]);
+  const bare = q.replace(/역$/, "");
+  const forward = METRO_STATION_SEARCH_ALIAS[bare];
+  if (forward) {
+    for (const alt of forward) {
+      terms.add(alt);
+      terms.add(`${alt}역`);
+    }
+  }
+  for (const [key, alts] of Object.entries(METRO_STATION_SEARCH_ALIAS)) {
+    if (alts.some((a) => bare === a || q.includes(a))) {
+      terms.add(key);
+      terms.add(`${key}역`);
+    }
+  }
+  return [...terms];
+}
+
 export function filterMetroStations(
   line: number,
   query: string
 ): MetroStationInfo[] {
-  const q = query.trim().toLowerCase().replace(/\s+/g, "");
   const list = getMetroStationsForLine(line);
-  if (!q) return list;
+  const terms = expandMetroSearchTerms(query);
+  if (!terms.length) return list;
   return list.filter((s) => {
     const n = s.name.toLowerCase().replace(/\s+/g, "");
-    return n.includes(q);
+    return terms.some((t) => n.includes(t));
   });
 }

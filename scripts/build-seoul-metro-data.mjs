@@ -1,5 +1,5 @@
 /**
- * CC0 gist → 서울 1~9호선 역 목록 JSON 생성
+ * CC0 gist + 보정(supplements) + 노선 순서 → 서울 1~9호선 JSON
  * node scripts/build-seoul-metro-data.mjs
  */
 import { readFileSync, writeFileSync } from "fs";
@@ -9,6 +9,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const inputPath = path.join(root, "data", "korean-subway-station-list.json5");
+const supplementPath = path.join(root, "data", "seoul-metro-supplements.json");
+const orderPath = path.join(root, "data", "seoul-metro-line-order.json");
 const outputPath = path.join(root, "src", "data", "seoul-metro-1-9.json");
 
 const LINE_COLORS = {
@@ -29,43 +31,100 @@ function parseJson5Array(raw) {
   return JSON.parse(jsonLike);
 }
 
-function ensureStationSuffix(name) {
-  const t = name.trim();
-  if (!t) return t;
-  return t.endsWith("역") ? t : `${t}역`;
+/** 역명 공백·역 접미사 정규화 */
+function normalizeStationDisplayName(name) {
+  let t = String(name ?? "").trim().replace(/\s+/g, "");
+  if (!t) return "";
+  if (!t.endsWith("역")) t = `${t}역`;
+  return t;
+}
+
+function mergeAreas(a, b) {
+  const set = new Set([...(a ?? []), ...(b ?? [])]);
+  return [...set];
+}
+
+function ingestRow(byLine, row) {
+  const name = normalizeStationDisplayName(row.name);
+  if (!name) return;
+  const areas = row.areas ?? [];
+  for (const lineLabel of row.lines ?? []) {
+    const m = String(lineLabel).match(/^(\d)호선$/);
+    if (!m) continue;
+    const num = Number(m[1]);
+    if (num < 1 || num > 9) continue;
+    const map = byLine.get(num);
+    const prev = map.get(name);
+    if (prev) {
+      prev.areas = mergeAreas(prev.areas, areas);
+    } else {
+      map.set(name, { name, areas: [...areas] });
+    }
+  }
 }
 
 const raw = readFileSync(inputPath, "utf-8");
 const all = parseJson5Array(raw);
+const supplements = JSON.parse(readFileSync(supplementPath, "utf-8"));
+const lineOrderConfig = JSON.parse(readFileSync(orderPath, "utf-8"));
 
 const byLine = new Map();
-
 for (let n = 1; n <= 9; n++) {
   byLine.set(n, new Map());
 }
 
 for (const row of all) {
   if (row.city !== "서울" || !Array.isArray(row.lines)) continue;
-  const name = ensureStationSuffix(String(row.name ?? "").trim());
-  if (!name) continue;
+  ingestRow(byLine, {
+    name: row.name,
+    lines: row.lines,
+    areas: row.areas,
+  });
+}
 
-  for (const lineLabel of row.lines) {
-    const m = String(lineLabel).match(/^(\d)호선$/);
-    if (!m) continue;
-    const num = Number(m[1]);
-    if (num < 1 || num > 9) continue;
-    const map = byLine.get(num);
-    if (!map.has(name)) {
-      map.set(name, { name, areas: row.areas ?? [] });
+for (const row of supplements.stations ?? []) {
+  const lines = (row.lines ?? []).map((n) => `${n}호선`);
+  ingestRow(byLine, { name: row.name, lines, areas: row.areas });
+}
+
+for (const { from, to } of supplements.normalizeNames ?? []) {
+  const fromNorm = normalizeStationDisplayName(from);
+  const toNorm = normalizeStationDisplayName(to);
+  if (!fromNorm || !toNorm || fromNorm === toNorm) continue;
+  for (let n = 1; n <= 9; n++) {
+    const map = byLine.get(n);
+    const prev = map.get(fromNorm);
+    if (!prev) continue;
+    map.delete(fromNorm);
+    const existing = map.get(toNorm);
+    if (existing) {
+      existing.areas = mergeAreas(existing.areas, prev.areas);
+    } else {
+      map.set(toNorm, { name: toNorm, areas: prev.areas });
     }
   }
 }
 
+function sortStationsForLine(lineNum, stationMap) {
+  const orderList = (lineOrderConfig[String(lineNum)] ?? []).map(
+    normalizeStationDisplayName
+  );
+  const orderIndex = new Map(orderList.map((name, i) => [name, i]));
+  const stations = [...stationMap.values()];
+  stations.sort((a, b) => {
+    const ia = orderIndex.get(a.name);
+    const ib = orderIndex.get(b.name);
+    if (ia != null && ib != null) return ia - ib;
+    if (ia != null) return -1;
+    if (ib != null) return 1;
+    return a.name.localeCompare(b.name, "ko");
+  });
+  return stations;
+}
+
 const lines = [];
 for (let n = 1; n <= 9; n++) {
-  const stations = [...byLine.get(n).values()].sort((a, b) =>
-    a.name.localeCompare(b.name, "ko")
-  );
+  const stations = sortStationsForLine(n, byLine.get(n));
   lines.push({
     line: n,
     label: `${n}호선`,
@@ -76,8 +135,11 @@ for (let n = 1; n <= 9; n++) {
 }
 
 const out = {
-  source:
-    "nemorize/korean-subway-station-list (CC0-1.0) — 서울·1~9호선 필터",
+  source: [
+    "nemorize/korean-subway-station-list (CC0-1.0)",
+    "data/seoul-metro-supplements.json",
+    "data/seoul-metro-line-order.json",
+  ],
   generatedAt: new Date().toISOString().slice(0, 10),
   lines,
 };
@@ -85,5 +147,16 @@ const out = {
 writeFileSync(outputPath, JSON.stringify(out, null, 2), "utf-8");
 console.log(`✓ ${outputPath}`);
 for (const l of lines) {
-  console.log(`  ${l.label}: ${l.stationCount}개 역`);
+  const orderN = (lineOrderConfig[String(l.line)] ?? []).length;
+  console.log(`  ${l.label}: ${l.stationCount}개 역 (순서표 ${orderN}개)`);
+}
+
+const must4 = ["남태령역", "사당역", "불암산역"];
+const l4 = lines.find((l) => l.line === 4);
+const missing = must4.filter(
+  (n) => !l4.stations.some((s) => s.name === n)
+);
+if (missing.length) {
+  console.error("4호선 필수 역 누락:", missing.join(", "));
+  process.exit(1);
 }

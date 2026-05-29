@@ -1,0 +1,25 @@
+{
+  "note": "CC0 gist 누락·오타 보정 (서울 1~9호선)",
+  "stations": [
+    { "name": "남태령역", "lines": [4], "areas": ["서초구"] },
+    { "name": "사당역", "lines": [2, 4], "areas": ["동작구"] },
+    { "name": "불암산역", "lines": [4], "areas": ["노원구"] },
+    { "name": "총신대입구역", "lines": [4, 7], "areas": ["동작구"] },
+    { "name": "양재역", "lines": [3], "areas": ["서초구"] },
+    { "name": "경마공원역", "lines": [3, 4], "areas": ["과천시"] },
+    { "name": "청계산입구역", "lines": [6], "areas": ["서초구"] },
+    { "name": "신금호역", "lines": [6], "areas": ["성동구"] },
+    { "name": "행당역", "lines": [6], "areas": ["성동구"] },
+    { "name": "왕십리역", "lines": [6], "areas": ["성동구"] },
+    { "name": "응봉역", "lines": [6], "areas": ["성동구"] },
+    { "name": "금호역", "lines": [6], "areas": ["성동구"] },
+    { "name": "사가정역", "lines": [7], "areas": ["중랑구"] },
+    { "name": "뚝섬유원지역", "lines": [7], "areas": ["광진구"] },
+    { "name": "광명역", "lines": [7], "areas": ["광명시"] },
+    { "name": "중앙보훈병원역", "lines": [9], "areas": ["동작구"] }
+  ],
+  "normalizeNames": [
+    { "from": "영등포 구청역", "to": "영등포구청역" },
+    { "from": "당고개역", "to": "불암산역" }
+  ]
+}
