@@ -1097,7 +1097,7 @@ function DailyPageInner() {
           value={stationName}
           onChange={setStationName}
           facilityArea={facilityArea}
-          onFacilityChange={maintenanceMode ? setFacilityArea : undefined}
+          onFacilityChange={setFacilityArea}
           facilityAreas={facilityAreas}
           onFacilityAreasChange={(areas) => {
             setFacilityAreas(areas);

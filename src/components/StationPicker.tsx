@@ -355,12 +355,18 @@ export function StationPicker({
     }
   }
 
-  const perStationFacilityPick =
-    (multiStationMode || fieldVisitMode) &&
+  const showFacilityControls =
     !maintenanceMode &&
     !officeWorkMode &&
-    selectedStations.length >= 2 &&
-    Boolean(onStationFacilityByStationChange);
+    !effectiveMaintenanceMode &&
+    (Boolean(onFacilityChange) || Boolean(onFacilityAreasChange));
+
+  const perStationFacilityPick =
+    showFacilityControls &&
+    Boolean(onStationFacilityByStationChange) &&
+    selectedStations.length > 0 &&
+    (fieldVisitMode ||
+      (multiStationMode && selectedStations.length >= 2));
 
   function setFacilitiesForStation(
     station: string,
@@ -371,7 +377,7 @@ export function StationPicker({
       ...stationFacilityByStation,
       [station]: areas,
     });
-    if (station === selectedStations[0]) {
+    if (station === value.trim() || station === selectedStations[0]) {
       onFacilityAreasChange?.(areas);
       onFacilityChange?.(areas[0] ?? "");
     }
@@ -866,10 +872,9 @@ export function StationPicker({
       )}
 
       {enableDirectInput &&
-      !effectiveMaintenanceMode &&
-      !officeWorkMode &&
+      showFacilityControls &&
       !value.trim() &&
-      !maintenanceMode ? (
+      selectedStations.length === 0 ? (
         <CustomFacilityAddPanel
           stationName=""
           disabled={disabled}
@@ -1059,7 +1064,7 @@ export function StationPicker({
                           accentColor={lineColor}
                           availableFacilities={facilitiesForStation(name)}
                         />
-                        {enableDirectInput && !effectiveMaintenanceMode ? (
+                        {enableDirectInput && showFacilityControls ? (
                           <CustomFacilityAddPanel
                             stationName={name}
                             existingFacilities={
@@ -1092,9 +1097,7 @@ export function StationPicker({
       ) : null}
 
       {value.trim() &&
-      onFacilityChange &&
-      !maintenanceMode &&
-      !officeWorkMode &&
+      showFacilityControls &&
       !perStationFacilityPick ? (
         <div className="mt-4">
           <StationFacilityPicker
@@ -1111,7 +1114,7 @@ export function StationPicker({
                   : undefined
             }
           />
-          {enableDirectInput && !effectiveMaintenanceMode ? (
+          {enableDirectInput && showFacilityControls ? (
             <CustomFacilityAddPanel
               stationName={value.trim()}
               existingFacilities={productFacilitiesForValue}
