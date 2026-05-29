@@ -18,7 +18,7 @@ export default async function HomePage() {
     <>
       <Header
         teamName={teamName}
-        subtitle="주간 일정 · 일정 클릭으로 일일 기록"
+        subtitle="팀원별 주간 일정 · 칸을 눌러 일일 기록"
       />
       <HomeWeekCalendar teamName={teamName} />
     </>

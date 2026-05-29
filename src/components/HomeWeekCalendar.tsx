@@ -7,7 +7,6 @@ import {
   formatDate,
   getWeekRange,
   shiftWeek,
-  weekdayLabel,
   weekdaysBetween,
 } from "@/lib/dates";
 import { StationPicker } from "@/components/StationPicker";
@@ -45,7 +44,6 @@ import { createVisitGroupId } from "@/lib/visitGroup";
 import {
   cohortMemberIdsForVisit,
   fieldMembers,
-  findCohortCoverage,
   formatCohortMemberLabel,
   isScheduleDayComplete,
 } from "@/lib/visitCohort";
@@ -56,6 +54,7 @@ import {
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
+import { WeekTeamRoster } from "@/components/WeekTeamRoster";
 
 type WeekTab = -1 | 0 | 1;
 
@@ -67,26 +66,6 @@ const WEEK_TABS: { offset: WeekTab; label: string }[] = [
 
 interface HomeWeekCalendarProps {
   teamName: string;
-}
-
-function reportHasContent(r: DailyReport): boolean {
-  if (isSecurityTestPlaceholder(r.stationName ?? "")) {
-    return Boolean(
-      r.processingRole?.trim() ||
-        r.done?.trim() ||
-        r.plan?.trim() ||
-        r.hasBeforePhoto ||
-        r.hasAfterPhoto
-    );
-  }
-  return Boolean(
-    r.stationName?.trim() ||
-      r.processingRole?.trim() ||
-      r.done?.trim() ||
-      r.plan?.trim() ||
-      r.hasBeforePhoto ||
-      r.hasAfterPhoto
-  );
 }
 
 export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
@@ -216,6 +195,28 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     return m;
   }, [reports]);
 
+  const weekProgress = useMemo(() => {
+    const work = schedules.filter((s) => !isTimeOffFacility(s.facilityArea));
+    let done = 0;
+    for (const s of work) {
+      const report = reportByKey.get(`${s.memberId}:${s.date}`);
+      if (
+        isScheduleDayComplete(
+          s.memberId,
+          s.date,
+          report,
+          schedules,
+          reports,
+          memberNameById,
+          s
+        )
+      ) {
+        done += 1;
+      }
+    }
+    return { work: work.length, done, pending: work.length - done };
+  }, [schedules, reports, reportByKey, memberNameById]);
+
   const loadWeek = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -279,7 +280,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     }
   }
 
-  function openAdd(date: string) {
+  function openAdd(date: string, prefillMemberId?: string) {
     setEditing(null);
     setError("");
     setFormDate(date);
@@ -296,7 +297,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setStationFacilityByStation({});
     setMaintenanceSelections([]);
     const first =
-      writers[0]?.id ?? members.find((m) => m.role === "member")?.id ?? "";
+      prefillMemberId?.trim() ||
+      writers[0]?.id ||
+      members.find((m) => m.role === "member")?.id ||
+      "";
     if (first) {
       setFormMemberId(first);
       setSelectedMemberIds([first]);
@@ -683,7 +687,42 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
               오늘
             </button>
           </div>
-          <p className="muted mt-2 text-xs">{week.label}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="font-medium text-slate-700">{week.label}</span>
+            {weekProgress.work > 0 ? (
+              <span className="text-slate-600">
+                현장·유지보수 일정{" "}
+                <strong className="text-emerald-700">{weekProgress.done}</strong>
+                /{weekProgress.work}건 기록 완료
+                {weekProgress.pending > 0 ? (
+                  <span className="text-amber-700">
+                    {" "}
+                    · 미작성 {weekProgress.pending}건
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              <span className="text-slate-500">등록된 일정 없음</span>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-600">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              기록 완료
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              일일 기록 필요
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-violet-500" />
+              동행 기록
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-rose-400" />
+              휴무
+            </span>
+          </div>
         </div>
 
         {error && !modalOpen ? (
@@ -694,218 +733,43 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           <p className="muted px-4 py-8 text-center text-sm sm:px-5">
             불러오는 중…
           </p>
+        ) : writers.length === 0 ? (
+          <p className="muted px-4 py-8 text-center text-sm sm:px-5">
+            등록된 팀원이 없습니다.
+          </p>
         ) : (
-          <div className="grid gap-3 p-3 sm:grid-cols-5 sm:items-stretch sm:p-4">
-            {days.map((date) => {
-              const daySchedules = schedules.filter((s) => s.date === date);
-              const isToday = date === formatDate(new Date());
-              const holidayName = holidaysByDate.get(date);
-              const holidayDisplay = holidayName
-                ? formatCalendarHolidayDisplay(holidayName)
-                : null;
-              return (
-                <div
-                  key={date}
-                  className={`flex h-full min-h-[10rem] flex-col rounded-xl border p-2.5 sm:p-3 ${
-                    holidayName
-                      ? "border-rose-300 bg-rose-50/50 ring-1 ring-rose-200"
-                      : isToday
-                        ? "border-indigo-300 bg-indigo-50/50 ring-1 ring-indigo-200"
-                        : "border-slate-200 bg-slate-50/60"
-                  }`}
-                >
-                  <div className="mb-2 shrink-0">
-                    <div className="flex items-start gap-1">
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`text-xs font-bold leading-none ${
-                            holidayName ? "text-rose-700" : "text-indigo-600"
-                          }`}
-                        >
-                          {weekdayLabel(date)}
-                        </p>
-                        <p className="mt-0.5 text-sm font-semibold leading-none text-slate-900">
-                          {date.slice(5).replace("-", "/")}
-                        </p>
-                        <div
-                          className="mt-1.5 flex min-h-[2.25rem] items-start gap-0.5"
-                          title={holidayDisplay?.fullName}
-                        >
-                          {holidayDisplay ? (
-                            <>
-                              <span className="shrink-0 rounded bg-rose-200/90 px-1 py-px text-[9px] font-bold leading-tight text-rose-900">
-                                {holidayDisplay.isSubstitute ? "대체" : "공휴"}
-                              </span>
-                              <span className="min-w-0 line-clamp-2 text-[10px] font-semibold leading-snug text-rose-900">
-                                {holidayDisplay.shortLabel}
-                              </span>
-                            </>
-                          ) : (
-                            <span
-                              className="invisible text-[10px] leading-snug"
-                              aria-hidden
-                            >
-                              .
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-semibold leading-none text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50"
-                        onClick={() => openAdd(date)}
-                      >
-                        + 추가
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex min-h-0 flex-1 flex-col gap-2">
-                    {daySchedules.length === 0 ? (
-                      <p className="muted flex flex-1 items-center justify-center text-center text-xs">
-                        일정 없음
-                      </p>
-                    ) : (
-                      daySchedules.map((s) => {
-                        const timeOff = isTimeOffFacility(s.facilityArea);
-                        const report = reportByKey.get(
-                          `${s.memberId}:${s.date}`
-                        );
-                        const hasRecord = isScheduleDayComplete(
-                          s.memberId,
-                          s.date,
-                          report,
-                          schedules,
-                          reports,
-                          memberNameById,
-                          s
-                        );
-                        const cohortIds =
-                          s.visitGroupId && s.date
-                            ? cohortMemberIdsForVisit(
-                                schedules,
-                                s.date,
-                                s.visitGroupId
-                              )
-                            : [];
-                        const cohortLabel =
-                          cohortIds.length > 1
-                            ? formatCohortMemberLabel(
-                                cohortIds,
-                                memberNameById
-                              )
-                            : "";
-                        const coveredByPeer =
-                          report &&
-                          !reportHasContent(report) &&
-                          findCohortCoverage(
-                            s.memberId,
-                            s.date,
-                            schedules,
-                            reports,
-                            memberNameById
-                          );
-                        return (
-                          <div
-                            key={s.id}
-                            className={`rounded-lg border p-2 ${
-                              timeOff
-                                ? "border-rose-100 bg-rose-50/90"
-                                : "border-white bg-white"
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              className="w-full text-left"
-                              onClick={() => {
-                                if (timeOff) {
-                                  openEdit(s);
-                                  return;
-                                }
-                                goDaily(
-                                  s.date,
-                                  s.memberId,
-                                  s.stationName,
-                                  s.facilityArea,
-                                  s.managementOffice,
-                                  s.maintenanceStationNames,
-                                  s.maintenanceVisitTargets?.map((t) => ({
-                                    station: t.station,
-                                    facility: t.facility as StationFacilityArea,
-                                    fromPlan: t.fromPlan !== false,
-                                  }))
-                                );
-                              }}
-                            >
-                              <p className="line-clamp-2 text-xs font-bold text-slate-900">
-                                {s.title}
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-slate-600">
-                                {memberNameById.get(s.memberId) ?? s.memberId}
-                              </p>
-                              {timeOff ? (
-                                <p className="mt-0.5 text-[11px] font-medium text-rose-800">
-                                  {s.facilityArea}
-                                  {s.note?.trim() ? ` · ${s.note.trim()}` : ""}
-                                </p>
-                              ) : s.stationName &&
-                                !isSecurityTestPlaceholder(s.stationName) ? (
-                                <p className="mt-0.5 text-[11px] text-blue-700">
-                                  {formatStationVisitLabel(
-                                    s.stationName,
-                                    s.facilityArea
-                                  )}
-                                </p>
-                              ) : null}
-                              {cohortLabel ? (
-                                <p className="mt-0.5 text-[10px] font-medium text-violet-700">
-                                  동행 {cohortLabel}
-                                </p>
-                              ) : null}
-                              <span
-                                className={`mt-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  timeOff
-                                    ? "bg-rose-100 text-rose-900"
-                                    : hasRecord
-                                      ? coveredByPeer
-                                        ? "bg-violet-100 text-violet-900"
-                                        : "bg-emerald-100 text-emerald-800"
-                                      : "bg-slate-100 text-slate-600"
-                                }`}
-                              >
-                                {timeOff
-                                  ? "휴무"
-                                  : hasRecord
-                                    ? coveredByPeer
-                                      ? "동행 기록"
-                                      : "기록 있음"
-                                    : "기록 작성"}
-                              </span>
-                            </button>
-                            <div className="mt-1.5 flex gap-1 border-t border-slate-100 pt-1.5">
-                              <button
-                                type="button"
-                                className="text-[10px] font-medium text-slate-500 hover:text-indigo-600"
-                                onClick={() => openEdit(s)}
-                              >
-                                수정
-                              </button>
-                              <button
-                                type="button"
-                                className="text-[10px] font-medium text-red-600 hover:text-red-700"
-                                onClick={() => void removeSchedule(s.id)}
-                              >
-                                삭제
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="p-2 sm:p-4">
+            <WeekTeamRoster
+              members={writers}
+              days={days}
+              schedules={schedules}
+              reports={reports}
+              memberNameById={memberNameById}
+              holidaysByDate={holidaysByDate}
+              today={formatDate(new Date())}
+              onAdd={openAdd}
+              onScheduleClick={(s) => {
+                if (isTimeOffFacility(s.facilityArea)) {
+                  openEdit(s);
+                  return;
+                }
+                goDaily(
+                  s.date,
+                  s.memberId,
+                  s.stationName,
+                  s.facilityArea,
+                  s.managementOffice,
+                  s.maintenanceStationNames,
+                  s.maintenanceVisitTargets?.map((t) => ({
+                    station: t.station,
+                    facility: t.facility as StationFacilityArea,
+                    fromPlan: t.fromPlan !== false,
+                  }))
+                );
+              }}
+              onEdit={openEdit}
+              onDelete={removeSchedule}
+            />
           </div>
         )}
       </section>
