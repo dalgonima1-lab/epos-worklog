@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { CustomStationAddPanel } from "@/components/CustomStationAddPanel";
+import { CustomFacilityAddPanel } from "@/components/CustomFacilityAddPanel";
 import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
@@ -45,7 +45,6 @@ import {
 } from "@/lib/stationFacility";
 import {
   getStationFacilitiesForDisplayName,
-  listCustomRegisteredStations,
 } from "@/lib/stationFacilities";
 import type { StationRecord } from "@/lib/types";
 
@@ -390,11 +389,6 @@ export function StationPicker({
         ? [facilityArea as StationFacilityArea]
         : [];
 
-  const customRegisteredStations = useMemo(
-    () => listCustomRegisteredStations(stationRecords),
-    [stationRecords]
-  );
-
   function facilitiesForStation(station: string): StationFacilityArea[] | undefined {
     const facilities = getStationFacilitiesForDisplayName(
       station,
@@ -403,7 +397,19 @@ export function StationPicker({
     return facilities.length ? facilities : undefined;
   }
 
-  function applyCustomStation(station: string, areas: StationFacilityArea[]) {
+  function applyCustomStation(
+    station: string,
+    allFacilities: StationFacilityArea[],
+    addedFacilities: StationFacilityArea[] = allFacilities
+  ) {
+    const currentAreas =
+      station === value.trim()
+        ? effectiveFacilityAreas
+        : stationFacilityByStation[station] ?? [];
+    const nextAreas = [
+      ...new Set([...currentAreas, ...addedFacilities]),
+    ] as StationFacilityArea[];
+
     if (
       (multiStationMode || officeWorkMode || fieldVisitMode) &&
       onSelectedStationsChange
@@ -411,20 +417,22 @@ export function StationPicker({
       if (!selectedStations.some((s) => s === station)) {
         onSelectedStationsChange([...selectedStations, station]);
       }
-      if (onStationFacilityByStationChange && areas.length) {
+      if (onStationFacilityByStationChange) {
         onStationFacilityByStationChange({
           ...stationFacilityByStation,
-          [station]: areas,
+          [station]: nextAreas,
         });
       }
       if (!value.trim()) onChange(station);
-      onFacilityAreasChange?.(areas);
-      onFacilityChange?.(areas[0] ?? "");
+      if (station === value.trim() || station === selectedStations[0]) {
+        onFacilityAreasChange?.(nextAreas);
+        onFacilityChange?.(nextAreas[0] ?? "");
+      }
       return;
     }
 
-    onFacilityAreasChange?.(areas);
-    onFacilityChange?.(areas[0] ?? "");
+    onFacilityAreasChange?.(nextAreas);
+    onFacilityChange?.(nextAreas[0] ?? "");
     setStationValue(station);
   }
 
@@ -499,8 +507,8 @@ export function StationPicker({
 
       {fieldVisitMode ? (
         <p className="mb-3 text-xs text-indigo-900/90">
-          호선·역사 선택 → 작업 장소(복수 가능). 역 2곳 이상이면 역별 방문으로
-          기록됩니다.
+          호선·역사 선택 → 작업 장소(복수 가능). 없는 기능실은 역 선택 후「+
+          새 기능실 추가」. 역 2곳 이상이면 역별 방문으로 기록됩니다.
         </p>
       ) : null}
 
@@ -857,16 +865,17 @@ export function StationPicker({
         </div>
       )}
 
-      {enableDirectInput && !effectiveMaintenanceMode ? (
-        <CustomStationAddPanel
-          lines={lines}
+      {enableDirectInput &&
+      !effectiveMaintenanceMode &&
+      !officeWorkMode &&
+      !value.trim() &&
+      !maintenanceMode ? (
+        <CustomFacilityAddPanel
+          stationName=""
           disabled={disabled}
-          customStations={customRegisteredStations}
-          onAdded={(station, areas) => {
-            void fetch("/api/stations")
-              .then((r) => r.json())
-              .then((d) => setStationRecords(d.records ?? []));
-            applyCustomStation(station, areas);
+          onRecordsChange={setStationRecords}
+          onAdded={(station, allFacilities, addedFacilities) => {
+            applyCustomStation(station, allFacilities, addedFacilities);
           }}
         />
       ) : null}
@@ -1050,6 +1059,27 @@ export function StationPicker({
                           accentColor={lineColor}
                           availableFacilities={facilitiesForStation(name)}
                         />
+                        {enableDirectInput && !effectiveMaintenanceMode ? (
+                          <CustomFacilityAddPanel
+                            stationName={name}
+                            existingFacilities={
+                              facilitiesForStation(name) ?? []
+                            }
+                            disabled={disabled}
+                            onRecordsChange={setStationRecords}
+                            onAdded={(
+                              station,
+                              allFacilities,
+                              addedFacilities
+                            ) => {
+                              applyCustomStation(
+                                station,
+                                allFacilities,
+                                addedFacilities
+                              );
+                            }}
+                          />
+                        ) : null}
                       </div>
                     ) : null}
                   </li>
@@ -1081,6 +1111,17 @@ export function StationPicker({
                   : undefined
             }
           />
+          {enableDirectInput && !effectiveMaintenanceMode ? (
+            <CustomFacilityAddPanel
+              stationName={value.trim()}
+              existingFacilities={productFacilitiesForValue}
+              disabled={disabled}
+              onRecordsChange={setStationRecords}
+              onAdded={(station, allFacilities, addedFacilities) => {
+                applyCustomStation(station, allFacilities, addedFacilities);
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
 
