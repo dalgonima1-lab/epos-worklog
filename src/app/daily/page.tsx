@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
-import { getEposProductForDisplayName } from "@/lib/eposProductStations";
+import { getStationFacilitiesForDisplayName } from "@/lib/stationFacilities";
 import {
   getProcessingRolesForFacilities,
   getProcessingRolesForFacility,
@@ -47,6 +47,7 @@ import {
 } from "@/lib/maintenanceVisit";
 import { calcWorkMinutes } from "@/lib/workTime";
 import type { CohortCoverage } from "@/lib/visitCohort";
+import type { StationRecord } from "@/lib/types";
 import {
   clearDailyDraft,
   loadLastMemberId,
@@ -143,6 +144,14 @@ function DailyPageInner() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [extraMemoOpen, setExtraMemoOpen] = useState(false);
+  const [stationRecords, setStationRecords] = useState<StationRecord[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stations")
+      .then((r) => r.json())
+      .then((d) => setStationRecords(d.records ?? []))
+      .catch(() => {});
+  }, []);
 
   const fieldVisitMode =
     !maintenanceLocked && !officeWorkMode && !maintenanceMode;
@@ -176,11 +185,11 @@ function DailyPageInner() {
   const stationFacilitiesMap = useMemo(() => {
     const map: Record<string, StationFacilityArea[]> = {};
     for (const st of activeStations) {
-      const facilities = getEposProductForDisplayName(st).facilities;
+      const facilities = getStationFacilitiesForDisplayName(st, stationRecords);
       map[st] = facilities.length > 0 ? facilities : [...STATION_FACILITY_AREAS];
     }
     return map;
-  }, [activeStations]);
+  }, [activeStations, stationRecords]);
 
   const derivedFacilityAreas = useMemo(() => {
     if (maintenanceMode) return [];
@@ -1141,9 +1150,7 @@ function DailyPageInner() {
           onSelectedStationsChange={handleSelectedStationsChange}
           stationFacilityByStation={stationFacilityByStation}
           onStationFacilityByStationChange={
-            officeWorkMode || fieldVisitMode
-              ? undefined
-              : setStationFacilityByStation
+            officeWorkMode ? undefined : setStationFacilityByStation
           }
           maintenanceSelections={maintenanceSelections}
           onMaintenanceSelectionsChange={setMaintenanceSelections}
@@ -1153,6 +1160,7 @@ function DailyPageInner() {
           <OfficeWorkDailyForm
             stations={activeStations}
             visitedStations={officeVisitedStations}
+            stationRecords={stationRecords}
             selectedRolesByStation={selectedOfficeRolesByStation}
             onSelectedRolesByStationChange={setSelectedOfficeRolesByStation}
             workByKey={officeWorkByKey}

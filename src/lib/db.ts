@@ -311,13 +311,20 @@ export async function getStationHistory() {
   return db.stationHistory;
 }
 
-export async function registerStation(name: string): Promise<StationRecord[]> {
+export async function registerStation(
+  name: string,
+  options?: import("./stations").RegisterStationOptions
+): Promise<StationRecord[]> {
   if (isSecurityTestPlaceholder(name)) {
     const db = await ensureDb();
     return db.stationHistory;
   }
   const db = await ensureDb();
-  db.stationHistory = registerStationInHistory(db.stationHistory, name);
+  db.stationHistory = registerStationInHistory(
+    db.stationHistory,
+    name,
+    options
+  );
   await saveDb(db);
   return db.stationHistory;
 }

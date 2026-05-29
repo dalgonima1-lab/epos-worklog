@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { CustomStationAddPanel } from "@/components/CustomStationAddPanel";
 import { ManagementOfficePicker } from "@/components/ManagementOfficePicker";
 import { StationFacilityPicker } from "@/components/StationFacilityPicker";
 import {
@@ -28,8 +29,6 @@ import {
 } from "@/lib/maintenancePlan";
 import {
   formatEposFacilitiesLabel,
-  getEposProductFacilities,
-  getEposProductForDisplayName,
   hasEposProductAtStation,
   hasEposProductAtStationForMaintenance,
   isMaintenancePlanPrimaryStation,
@@ -44,7 +43,11 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
-import { shortStationLabel } from "@/lib/visitGroup";
+import {
+  getStationFacilitiesForDisplayName,
+  listCustomRegisteredStations,
+} from "@/lib/stationFacilities";
+import type { StationRecord } from "@/lib/types";
 
 interface StationPickerProps {
   value: string;
@@ -128,14 +131,12 @@ export function StationPicker({
 }: StationPickerProps) {
   const effectiveMaintenanceMode = lockMaintenanceMode || maintenanceMode;
   const [lines, setLines] = useState<MetroLineInfo[]>([]);
+  const [stationRecords, setStationRecords] = useState<StationRecord[]>([]);
   const [stationListOpen, setStationListOpen] = useState(false);
 
   const [selectedLine, setSelectedLine] = useState<number | "">("");
   const [selectedStation, setSelectedStation] = useState("");
   const [stationQuery, setStationQuery] = useState("");
-
-  const [useDirectInput, setUseDirectInput] = useState(false);
-  const [directValue, setDirectValue] = useState("");
 
   useEffect(() => {
     if (!enableMetroPicker) return;
@@ -145,24 +146,22 @@ export function StationPicker({
   }, [enableMetroPicker]);
 
   useEffect(() => {
+    fetch("/api/stations")
+      .then((r) => r.json())
+      .then((d) => setStationRecords(d.records ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const parsed = parseMetroStationValue(value);
     if (parsed.line != null && parsed.stationName) {
       setSelectedLine(parsed.line);
       setSelectedStation(parsed.stationName);
-      setUseDirectInput(false);
-      setDirectValue("");
       return;
     }
-    if (value.trim() && parsed.line == null) {
-      setUseDirectInput(true);
-      setDirectValue(value);
+    if (!value.trim()) {
       setSelectedLine("");
       setSelectedStation("");
-    } else if (!value.trim()) {
-      setSelectedLine("");
-      setSelectedStation("");
-      setUseDirectInput(false);
-      setDirectValue("");
     }
   }, [value]);
 
@@ -251,7 +250,6 @@ export function StationPicker({
 
     if (line != null) {
       setSelectedLine(line);
-      setUseDirectInput(false);
       setStationListOpen(true);
     }
 
@@ -274,14 +272,14 @@ export function StationPicker({
 
   const productFacilitiesForSelection = useMemo(() => {
     if (selectedLine === "" || !selectedStation) return [];
-    return getEposProductFacilities(selectedLine, selectedStation);
-  }, [selectedLine, selectedStation]);
+    const formatted = formatMetroStationValue(selectedLine, selectedStation);
+    return getStationFacilitiesForDisplayName(formatted, stationRecords);
+  }, [selectedLine, selectedStation, stationRecords]);
 
   const productFacilitiesForValue = useMemo(() => {
-    const parsed = parseMetroStationValue(value);
-    if (parsed.line == null || !parsed.stationName) return [];
-    return getEposProductFacilities(parsed.line, parsed.stationName);
-  }, [value]);
+    if (!value.trim()) return [];
+    return getStationFacilitiesForDisplayName(value, stationRecords);
+  }, [value, stationRecords]);
 
   function setStationValue(name: string) {
     if (name.trim() !== value.trim()) {
@@ -359,7 +357,7 @@ export function StationPicker({
   }
 
   const perStationFacilityPick =
-    multiStationMode &&
+    (multiStationMode || fieldVisitMode) &&
     !maintenanceMode &&
     !officeWorkMode &&
     selectedStations.length >= 2 &&
@@ -392,9 +390,42 @@ export function StationPicker({
         ? [facilityArea as StationFacilityArea]
         : [];
 
+  const customRegisteredStations = useMemo(
+    () => listCustomRegisteredStations(stationRecords),
+    [stationRecords]
+  );
+
   function facilitiesForStation(station: string): StationFacilityArea[] | undefined {
-    const { facilities } = getEposProductForDisplayName(station);
+    const facilities = getStationFacilitiesForDisplayName(
+      station,
+      stationRecords
+    );
     return facilities.length ? facilities : undefined;
+  }
+
+  function applyCustomStation(station: string, areas: StationFacilityArea[]) {
+    if (
+      (multiStationMode || officeWorkMode || fieldVisitMode) &&
+      onSelectedStationsChange
+    ) {
+      if (!selectedStations.some((s) => s === station)) {
+        onSelectedStationsChange([...selectedStations, station]);
+      }
+      if (onStationFacilityByStationChange && areas.length) {
+        onStationFacilityByStationChange({
+          ...stationFacilityByStation,
+          [station]: areas,
+        });
+      }
+      if (!value.trim()) onChange(station);
+      onFacilityAreasChange?.(areas);
+      onFacilityChange?.(areas[0] ?? "");
+      return;
+    }
+
+    onFacilityAreasChange?.(areas);
+    onFacilityChange?.(areas[0] ?? "");
+    setStationValue(station);
   }
 
   function handleLineChange(lineStr: string) {
@@ -424,18 +455,15 @@ export function StationPicker({
   async function registerStation(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
-    await fetch("/api/stations", {
+    const res = await fetch("/api/stations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
-  }
-
-  async function commitDirect() {
-    const trimmed = directValue.trim();
-    if (!trimmed) return;
-    setStationValue(trimmed);
-    await registerStation(trimmed);
+    if (res.ok) {
+      const data = await res.json();
+      setStationRecords(data.records ?? []);
+    }
   }
 
   const lineInfo = lines.find((l) => l.line === selectedLine);
@@ -549,7 +577,7 @@ export function StationPicker({
         역사명 <span className="text-red-600">*</span>
       </label>
 
-      {enableMetroPicker && !useDirectInput && (
+      {enableMetroPicker && (
         <div
           className={`metro-picker-steps${lineColor ? " metro-picker-steps--lined" : ""}`}
           style={metroLineStyle}
@@ -731,7 +759,10 @@ export function StationPicker({
                               );
                             const facilities =
                               lineNum != null
-                                ? getEposProductFacilities(lineNum, s.name)
+                                ? getStationFacilitiesForDisplayName(
+                                    formatMetroStationValue(lineNum, s.name),
+                                    stationRecords
+                                  )
                                 : [];
                             const planFacilities =
                               lineNum != null && managementOffice
@@ -760,7 +791,7 @@ export function StationPicker({
                             const faint =
                               maintenanceMode && managementOffice
                                 ? false
-                                : !hasProduct;
+                                : facilities.length === 0;
 
                             return (
                               <button
@@ -826,66 +857,19 @@ export function StationPicker({
         </div>
       )}
 
-      {enableDirectInput && (
-        <div className="mt-3">
-          {!useDirectInput ? (
-            <button
-              type="button"
-              className="text-xs text-blue-700 underline"
-              disabled={disabled}
-              onClick={() => setUseDirectInput(true)}
-            >
-              호선 목록에 없는 역은 직접 입력
-            </button>
-          ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-amber-900">
-                  직접 입력
-                </span>
-                <button
-                  type="button"
-                  className="text-xs text-blue-700 underline"
-                  disabled={disabled}
-                  onClick={() => {
-                    setUseDirectInput(false);
-                    setDirectValue("");
-                  }}
-                >
-                  호선 선택으로 돌아가기
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  className="input flex-1"
-                  placeholder="예: 2호선 강남역 또는 길음역"
-                  value={directValue}
-                  disabled={disabled}
-                  onChange={(e) => {
-                    setDirectValue(e.target.value);
-                    setStationValue(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void commitDirect();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary shrink-0"
-                  disabled={disabled || !directValue.trim()}
-                  onClick={() => void commitDirect()}
-                >
-                  등록
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {enableDirectInput && !effectiveMaintenanceMode ? (
+        <CustomStationAddPanel
+          lines={lines}
+          disabled={disabled}
+          customStations={customRegisteredStations}
+          onAdded={(station, areas) => {
+            void fetch("/api/stations")
+              .then((r) => r.json())
+              .then((d) => setStationRecords(d.records ?? []));
+            applyCustomStation(station, areas);
+          }}
+        />
+      ) : null}
         </>
       ) : null}
 

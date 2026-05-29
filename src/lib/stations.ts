@@ -8,6 +8,13 @@ import {
   canonicalStationDisplayName,
   normalizeStationName,
 } from "./metroStations";
+import type { StationFacilityArea } from "./stationFacility";
+import { mergeStationFacilityAreas } from "./stationFacilities";
+
+export interface RegisterStationOptions {
+  facilities?: StationFacilityArea[];
+  custom?: boolean;
+}
 
 export { canonicalStationDisplayName, normalizeStationName } from "./metroStations";
 
@@ -19,15 +26,26 @@ export function sortStations(records: StationRecord[]): StationRecord[] {
   });
 }
 
+function normalizeRegisterFacilities(
+  facilities?: StationFacilityArea[]
+): StationFacilityArea[] {
+  return mergeStationFacilityAreas(facilities ?? []);
+}
+
 export function registerStationInHistory(
   history: StationRecord[],
-  rawName: string
+  rawName: string,
+  options?: RegisterStationOptions
 ): StationRecord[] {
   if (isBundledStationName(rawName) || isSecurityTestPlaceholder(rawName)) {
     return history;
   }
   const name = canonicalStationDisplayName(rawName);
   if (!name) return history;
+
+  const facilities = normalizeRegisterFacilities(options?.facilities);
+  const markCustom =
+    options?.custom ?? (facilities.length > 0 ? true : undefined);
 
   const now = new Date().toISOString();
   const norm = normalizeStationName(name).toLowerCase();
@@ -36,14 +54,34 @@ export function registerStationInHistory(
   );
 
   if (idx >= 0) {
-    const updated = { ...history[idx], name };
-    updated.lastUsedAt = now;
-    updated.useCount += 1;
+    const prev = history[idx]!;
+    const updated: StationRecord = {
+      ...prev,
+      name,
+      lastUsedAt: now,
+      useCount: prev.useCount + 1,
+    };
+    if (facilities.length) {
+      updated.facilities = mergeStationFacilityAreas(
+        prev.facilities ?? [],
+        facilities
+      );
+      updated.custom = true;
+    } else if (markCustom) {
+      updated.custom = true;
+    }
     const rest = history.filter((_, i) => i !== idx);
     return sortStations([updated, ...rest]);
   }
 
-  return sortStations([{ name, lastUsedAt: now, useCount: 1 }, ...history]);
+  const created: StationRecord = { name, lastUsedAt: now, useCount: 1 };
+  if (facilities.length) {
+    created.facilities = facilities;
+    created.custom = true;
+  } else if (markCustom) {
+    created.custom = true;
+  }
+  return sortStations([created, ...history]);
 }
 
 export function seedStationHistory(): StationRecord[] {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { getEposProductForDisplayName } from "@/lib/eposProductStations";
+import { getStationFacilitiesForDisplayName } from "@/lib/stationFacilities";
+import type { StationRecord } from "@/lib/types";
 import {
   OFFICE_AI_AUTOMATION_ROLE,
   OFFICE_GENERAL_STATION,
@@ -16,6 +17,7 @@ interface OfficeWorkDailyFormProps {
   stations: string[];
   /** StationPicker에서 체크한 역 (작업한 역) */
   visitedStations: string[];
+  stationRecords?: StationRecord[];
   selectedRolesByStation: Record<string, string[]>;
   onSelectedRolesByStationChange: (next: Record<string, string[]>) => void;
   workByKey: Record<string, string>;
@@ -26,6 +28,7 @@ interface OfficeWorkDailyFormProps {
 export function OfficeWorkDailyForm({
   stations,
   visitedStations,
+  stationRecords = [],
   selectedRolesByStation,
   onSelectedRolesByStationChange,
   workByKey,
@@ -47,7 +50,10 @@ export function OfficeWorkDailyForm({
   const stationRoleMap = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const station of visitedStations) {
-      const facilities = getEposProductForDisplayName(station).facilities;
+      const facilities = getStationFacilitiesForDisplayName(
+        station,
+        stationRecords
+      );
       const roles = new Set<string>();
       for (const facility of facilities) {
         for (const role of getProcessingRolesForFacility(facility)) {
@@ -57,7 +63,7 @@ export function OfficeWorkDailyForm({
       map.set(station, [...roles]);
     }
     return map;
-  }, [visitedStations]);
+  }, [visitedStations, stationRecords]);
 
   const availableRoles = useMemo(() => {
     const map: Record<string, string[]> = {};

@@ -10,6 +10,10 @@ export interface StationRecord {
   name: string;
   lastUsedAt: string;
   useCount: number;
+  /** EPOS 납품 목록 외 사용자 등록 역사 */
+  custom?: boolean;
+  /** 사용자가 등록한 기능실 (납품·현황표와 병합) */
+  facilities?: string[];
 }
 
 export interface DailyReport {
