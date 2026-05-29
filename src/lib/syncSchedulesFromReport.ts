@@ -2,6 +2,7 @@ import { buildMaintenanceScheduleTitleFromTargets } from "@/lib/maintenanceSched
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import {
   deleteAutoSyncedSchedulesForMemberDate,
+  deleteAutoSyncedSchedulesForSlots,
   deleteSchedulesByVisitGroup,
   upsertSchedule,
 } from "@/lib/db";
@@ -17,10 +18,9 @@ import type { MaintenanceVisitTarget } from "@/lib/maintenanceVisit";
 import { createVisitGroupId } from "@/lib/visitGroup";
 import type { DailyReport, ScheduleEntry } from "@/lib/types";
 
-function visitSlotsFromReport(report: DailyReport): {
-  station: string;
-  facility: string;
-}[] {
+export type VisitSlot = { station: string; facility: string };
+
+export function visitSlotsFromReport(report: DailyReport): VisitSlot[] {
   const primary = report.stationName?.trim() ?? "";
   if (!primary) return [];
 
@@ -46,18 +46,36 @@ function visitSlotsFromReport(report: DailyReport): {
     .filter((s) => s.facility);
 }
 
+export interface SyncSchedulesOptions {
+  /** 지정 시 해당 역·장소 일정만 갱신 (다른 역 일정 유지) */
+  syncSlots?: VisitSlot[];
+  /** 일정에 묶을 방문 그룹 id (캘린더에서 넘어온 값) */
+  visitGroupId?: string;
+}
+
 /** 일일 기록 저장 후 외근·유지보수 일정 자동 반영 */
 export async function syncSchedulesFromReport(
   memberId: string,
   date: string,
-  report: DailyReport
+  report: DailyReport,
+  options?: SyncSchedulesOptions
 ): Promise<ScheduleEntry[]> {
   if (isTimeOffFacility(report.facilityArea)) return [];
   if (report.facilityArea === OFFICE_WORK_FACILITY) return [];
 
+  const allSlots = visitSlotsFromReport(report);
+  const slotsToSync =
+    options?.syncSlots?.length ? options.syncSlots : allSlots;
+
   const visitGroupId = report.visitGroupId?.trim() || undefined;
-  if (visitGroupId) {
+  const partialSync = Boolean(options?.syncSlots?.length);
+
+  if (partialSync) {
+    await deleteAutoSyncedSchedulesForSlots(memberId, date, slotsToSync);
+  } else if (visitGroupId) {
     await deleteSchedulesByVisitGroup(date, visitGroupId);
+  } else if (slotsToSync.length) {
+    await deleteAutoSyncedSchedulesForSlots(memberId, date, slotsToSync);
   } else {
     await deleteAutoSyncedSchedulesForMemberDate(memberId, date);
   }
@@ -88,13 +106,14 @@ export async function syncSchedulesFromReport(
     return [schedule];
   }
 
-  const slots = visitSlotsFromReport(report);
-  if (!slots.length) return [];
+  if (!slotsToSync.length) return [];
 
   const created: ScheduleEntry[] = [];
   const gid =
-    visitGroupId || (slots.length > 1 ? createVisitGroupId() : undefined);
-  for (const { station, facility } of slots) {
+    options?.visitGroupId?.trim() ||
+    visitGroupId ||
+    (slotsToSync.length > 1 && !partialSync ? createVisitGroupId() : undefined);
+  for (const { station, facility } of slotsToSync) {
     const schedule = await upsertSchedule({
       date,
       memberId,
@@ -102,7 +121,7 @@ export async function syncSchedulesFromReport(
       stationName: station,
       facilityArea: facility,
       note: note || undefined,
-      visitGroupId: gid,
+      visitGroupId: gid ?? createVisitGroupId(),
     });
     created.push(schedule);
   }

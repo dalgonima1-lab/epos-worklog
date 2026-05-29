@@ -182,9 +182,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ schedules, visitGroupId });
     }
 
-    const visitGroupId =
-      sharedVisitGroupId ??
-      (memberIds.length > 1 ? createVisitGroupId() : undefined);
+    const visitGroupId = sharedVisitGroupId ?? createVisitGroupId();
     const schedules: ScheduleEntry[] = [];
     for (const memberId of memberIds) {
       const schedule = await upsertSchedule({

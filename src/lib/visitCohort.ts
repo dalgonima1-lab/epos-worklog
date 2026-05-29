@@ -1,3 +1,5 @@
+import { stationsMatch } from "@/lib/metroStations";
+import { pickDoneForStation } from "@/lib/reportVisitMerge";
 import { isTimeOffFacility } from "@/lib/scheduleKinds";
 import { isSecurityTestPlaceholder } from "@/lib/sanitizeTestData";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
@@ -79,6 +81,23 @@ export function findCohortCoverage(
   };
 }
 
+export function reportHasContentForStation(
+  report: DailyReport,
+  schedule: ScheduleEntry
+): boolean {
+  const station = schedule.stationName?.trim();
+  if (!station) return reportHasMeaningfulContent(report);
+  if (pickDoneForStation(report.done ?? "", station).trim()) return true;
+  if (stationsMatch(report.stationName ?? "", station)) {
+    return Boolean(
+      report.processingRole?.trim() ||
+        report.hasBeforePhoto ||
+        report.hasAfterPhoto
+    );
+  }
+  return false;
+}
+
 export function isScheduleDayComplete(
   memberId: string,
   date: string,
@@ -89,7 +108,11 @@ export function isScheduleDayComplete(
   schedule?: ScheduleEntry
 ): boolean {
   if (schedule && isTimeOffFacility(schedule.facilityArea)) return true;
-  if (report && reportHasMeaningfulContent(report)) return true;
+  if (report && schedule?.stationName?.trim()) {
+    if (reportHasContentForStation(report, schedule)) return true;
+  } else if (report && reportHasMeaningfulContent(report)) {
+    return true;
+  }
   return findCohortCoverage(memberId, date, schedules, reports, memberNameById) !=
     null;
 }

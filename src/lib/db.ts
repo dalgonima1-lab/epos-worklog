@@ -729,6 +729,51 @@ export async function deleteAutoSyncedSchedulesForMemberDate(
   return removed;
 }
 
+function scheduleMatchesVisitSlot(
+  schedule: ScheduleEntry,
+  slot: { station: string; facility: string }
+): boolean {
+  const area = schedule.facilityArea?.trim() ?? "";
+  if (!area || area === OFFICE_WORK_FACILITY) return false;
+  if (area === ANNUAL_LEAVE_FACILITY || area === PUBLIC_HOLIDAY_FACILITY) {
+    return false;
+  }
+  const station = schedule.stationName?.trim() ?? "";
+  if (!stationsMatch(station, slot.station)) return false;
+  if (area === MANAGEMENT_OFFICE_FACILITY) {
+    return slot.facility === MANAGEMENT_OFFICE_FACILITY;
+  }
+  return area === slot.facility.trim();
+}
+
+/** 지정 역·장소 일정만 제거 (같은 날 다른 역 일정 유지) */
+export async function deleteAutoSyncedSchedulesForSlots(
+  memberId: string,
+  date: string,
+  slots: { station: string; facility: string }[]
+): Promise<number> {
+  if (!slots.length) return 0;
+  const db = await ensureDb();
+  const before = db.schedules.length;
+  db.schedules = db.schedules.filter((s) => {
+    if (s.memberId !== memberId || s.date !== date) return true;
+    const shouldRemove = slots.some((slot) =>
+      scheduleMatchesVisitSlot(s, slot)
+    );
+    return !shouldRemove;
+  });
+  const removed = before - db.schedules.length;
+  if (removed > 0) await saveDb(db);
+  return removed;
+}
+
+export async function getScheduleById(
+  id: string
+): Promise<ScheduleEntry | undefined> {
+  const db = await ensureDb();
+  return db.schedules.find((s) => s.id === id);
+}
+
 export async function deleteSchedulesForMemberDateFacility(
   memberId: string,
   date: string,

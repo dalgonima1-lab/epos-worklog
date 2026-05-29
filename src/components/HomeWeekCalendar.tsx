@@ -423,9 +423,16 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     facilityArea?: string,
     managementOfficeId?: string,
     maintenanceStations?: string[],
-    maintenanceTargets?: MaintenanceVisitTarget[]
+    maintenanceTargets?: MaintenanceVisitTarget[],
+    scheduleMeta?: { id?: string; visitGroupId?: string }
   ) {
     const q = new URLSearchParams({ date, memberId });
+    if (scheduleMeta?.id?.trim()) {
+      q.set("scheduleId", scheduleMeta.id.trim());
+    }
+    if (scheduleMeta?.visitGroupId?.trim()) {
+      q.set("visitGroupId", scheduleMeta.visitGroupId.trim());
+    }
     if (stationName?.trim()) {
       q.set("station", stationName.trim());
     }
@@ -595,10 +602,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     const visitSlots = stations.flatMap((st) =>
       facilitiesForStation(st).map((facility) => ({ station: st, facility }))
     );
-    const visitGroupId =
-      memberIds.length > 1 || visitSlots.length > 1
-        ? createVisitGroupId()
-        : undefined;
+    const visitGroupId = createVisitGroupId();
     const titles = visitSlots.map(({ station, facility }) =>
       buildScheduleTitle(station, facility, formWorkContent)
     );
@@ -764,7 +768,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     station: t.station,
                     facility: t.facility as StationFacilityArea,
                     fromPlan: t.fromPlan !== false,
-                  }))
+                  })),
+                  { id: s.id, visitGroupId: s.visitGroupId }
                 );
               }}
               onEdit={openEdit}

@@ -54,6 +54,10 @@ import {
   saveDailyDraft,
   saveLastMemberId,
 } from "@/lib/dailyDraft";
+import {
+  migrateLegacyDoneToPrimary,
+  pickDoneForStation,
+} from "@/lib/reportVisitMerge";
 
 const ROLE_OTHER = "\uae30\ud0c0";
 
@@ -450,7 +454,8 @@ function DailyPageInner() {
     const stationFromSchedule = searchParams.get("station")?.trim() ?? "";
     const facilityFromSchedule = searchParams.get("facility")?.trim() ?? "";
     setCohortCoverage(null);
-    setVisitGroupId(undefined);
+    const visitGroupFromUrl = searchParams.get("visitGroupId")?.trim() || undefined;
+    setVisitGroupId(visitGroupFromUrl);
     setLoading(true);
     setBeforePhotoAt(undefined);
     setAfterPhotoAt(undefined);
@@ -459,7 +464,11 @@ function DailyPageInner() {
     fetch(`/api/reports?memberId=${memberId}&date=${date}`)
       .then((r) => r.json())
       .then((data) => {
-        setVisitGroupId(data.visitGroupId?.trim() || undefined);
+        setVisitGroupId(
+          data.visitGroupId?.trim() ||
+            searchParams.get("visitGroupId")?.trim() ||
+            undefined
+        );
         setCohortCoverage(data.cohortCoverage ?? null);
         const report = data.report;
         const role = report?.processingRole ?? "";
@@ -588,8 +597,17 @@ function DailyPageInner() {
           setSelectedStations([]);
           setStationFacilityByStation({});
         }
-        setStationName(safeReportStation || stationFromSchedule);
         const area = report?.facilityArea?.trim() ?? "";
+        const preferScheduleStation =
+          Boolean(stationFromSchedule) &&
+          !scheduleIsMaintenance &&
+          area !== OFFICE_WORK_FACILITY &&
+          !report?.officeWorkEntries?.length;
+        setStationName(
+          preferScheduleStation
+            ? stationFromSchedule
+            : safeReportStation || stationFromSchedule
+        );
         if (
           area === MANAGEMENT_OFFICE_FACILITY ||
           scheduleIsMaintenance
@@ -686,7 +704,18 @@ function DailyPageInner() {
             body: JSON.stringify({ name: stationFromSchedule }),
           });
         }
-        setDone(report?.done ?? "");
+        const sliceStation = preferScheduleStation
+          ? stationFromSchedule
+          : safeReportStation;
+        const rawDone = report?.done ?? "";
+        setDone(
+          sliceStation && report
+            ? pickDoneForStation(
+                migrateLegacyDoneToPrimary(rawDone, report.stationName ?? ""),
+                sliceStation
+              )
+            : rawDone
+        );
         setPlan(report?.plan ?? "");
         setIssues(report?.issues ?? "");
         setDeficiencies(report?.deficiencies ?? "");
@@ -950,6 +979,7 @@ function DailyPageInner() {
         beforePhotoAt: maintenanceMode ? undefined : beforePhotoAt,
         afterPhotoAt: maintenanceMode ? undefined : afterPhotoAt,
         visitGroupId,
+        scheduleId: searchParams.get("scheduleId")?.trim() || undefined,
       }),
     });
     if (res.ok) {
@@ -977,6 +1007,11 @@ function DailyPageInner() {
           <span className="ml-2">
             · {searchParams.get("station")?.trim()}
           </span>
+          {!maintenanceMode && !officeWorkMode ? (
+            <span className="mt-1 block text-slate-500">
+              같은 날 다른 역 일정·기록은 유지되며, 이 역 내용만 추가·수정됩니다.
+            </span>
+          ) : null}
         </p>
       ) : (
         <p className="muted -mt-4 mb-4 text-sm">

@@ -3,12 +3,17 @@ import {
   getMembers,
   getReport,
   getReportsInRange,
+  getScheduleById,
   getSchedulesInRange,
   syncSchedulesFromOfficeWork,
   upsertReport,
   visitGroupIdFromSchedules,
 } from "@/lib/db";
-import { syncSchedulesFromReport } from "@/lib/syncSchedulesFromReport";
+import { mergeFieldVisitSave } from "@/lib/reportVisitMerge";
+import {
+  syncSchedulesFromReport,
+  type VisitSlot,
+} from "@/lib/syncSchedulesFromReport";
 import {
   filledOfficeWorkEntries,
   summarizeOfficeWorkRoles,
@@ -82,6 +87,7 @@ export async function POST(request: NextRequest) {
     stationName,
     stationNames,
     visitGroupId,
+    scheduleId,
     facilityArea,
     additionalFacilityAreas,
     maintenanceVisitTargets,
@@ -270,15 +276,22 @@ export async function POST(request: NextRequest) {
   }
 
   const existing = await getReport(memberId, date);
+  const linkedSchedule = String(scheduleId ?? "").trim()
+    ? await getScheduleById(String(scheduleId).trim())
+    : undefined;
 
   const daySchedules = await getSchedulesInRange(date, date);
   const scheduleGroupId = visitGroupIdFromSchedules(daySchedules, memberId, date);
+  const isSingleFieldVisit =
+    !isMaintenance && visitTargets.length === 0 && namesList.length <= 1;
   const groupId =
     (visitGroupId as string | undefined)?.trim() ||
+    linkedSchedule?.visitGroupId?.trim() ||
     scheduleGroupId ||
-    (namesList.length > 1 ? createVisitGroupId() : undefined);
+    (namesList.length > 1 ? createVisitGroupId() : undefined) ||
+    (isSingleFieldVisit ? createVisitGroupId() : undefined);
 
-  const report = await upsertReport(memberId, date, {
+  let upsertPayload = {
     stationName: primaryStation,
     stationNames: namesList.length > 1 ? namesList : undefined,
     visitGroupId: groupId,
@@ -310,9 +323,55 @@ export async function POST(request: NextRequest) {
     afterPhotoAt: isMaintenance
       ? undefined
       : (afterPhotoAt ?? existing?.afterPhotoAt),
-  });
+  };
 
-  const syncedSchedules = await syncSchedulesFromReport(memberId, date, report);
+  if (existing && isSingleFieldVisit && primaryStation) {
+    const merged = mergeFieldVisitSave(existing, {
+      stationName: primaryStation,
+      facilityArea: facility,
+      processingRole: role,
+      done: done ?? "",
+      plan: plan ?? "",
+      issues: issues ?? "",
+      deficiencies: deficiencies ?? "",
+      beforePhotoAt: upsertPayload.beforePhotoAt,
+      afterPhotoAt: upsertPayload.afterPhotoAt,
+      visitGroupId: groupId,
+    });
+    upsertPayload = {
+      ...upsertPayload,
+      stationName: merged.stationName,
+      stationNames: undefined,
+      facilityArea: merged.facilityArea as typeof facility,
+      additionalFacilityAreas: merged.additionalFacilityAreas as
+        | typeof upsertPayload.additionalFacilityAreas
+        | undefined,
+      done: merged.done,
+      plan: merged.plan ?? "",
+      issues: merged.issues ?? "",
+      deficiencies: merged.deficiencies ?? "",
+      beforePhotoAt: merged.beforePhotoAt,
+      afterPhotoAt: merged.afterPhotoAt,
+      visitGroupId: merged.visitGroupId,
+    };
+  }
+
+  const report = await upsertReport(memberId, date, upsertPayload);
+
+  const syncSlots: VisitSlot[] | undefined =
+    isSingleFieldVisit && primaryStation
+      ? [
+          {
+            station: primaryStation,
+            facility: allFacilities[0] ?? facility,
+          },
+        ]
+      : undefined;
+
+  const syncedSchedules = await syncSchedulesFromReport(memberId, date, report, {
+    syncSlots,
+    visitGroupId: linkedSchedule?.visitGroupId?.trim() || groupId,
+  });
 
   return NextResponse.json({ report, schedules: syncedSchedules });
 }
