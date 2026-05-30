@@ -383,11 +383,10 @@ export default function ManagerAnalysisPage() {
       {!authed ? (
         <form onSubmit={login} className="card max-w-md space-y-3 p-5">
           <p className="muted text-sm">
-            {"Gemini·Cursor가 「비교 기준 주」에 저장된 보고서와 「분석 대상 주」 일일 기록을 대조해 "}
+            {"① 지난주 비교본 → ② 이번 주 보고서 확인 → ③ 첨언·지시 작성 순서로 진행합니다. "}
             <strong>
-              {"\uc798\ud55c \uc810, \ubd80\uc871\ud55c \uc810, \ud300\uc7a5\u00b7\ub300\ud45c\ub2d8 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc\uc0ac\ud56d"}
+              {"Gemini가 잘한 점·부족한 점을 정리하고, ③에서 작성한 팀장·대표님 첨언을 반영합니다."}
             </strong>
-            {"\uc744 \uc815\ub9ac\ud569\ub2c8\ub2e4."}
           </p>
           <div>
             <label className="label" htmlFor="pin">
@@ -410,19 +409,22 @@ export default function ManagerAnalysisPage() {
         <>
           <AnalysisWeekScopeBanner scope={scope} />
 
+          <div className="card mb-4 space-y-3 p-4">
+            <div>
+              <p className="font-semibold">작업 순서</p>
+              <p className="muted text-sm">
+                <strong>① 비교 기준(지난주)</strong> →{" "}
+                <strong>② 이번 주 보고서 확인</strong> →{" "}
+                <strong>③ 첨언·지시 작성</strong> (필요 시 재생성)
+              </p>
+            </div>
+          </div>
+
           <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">주차 이동</p>
+              <p className="font-semibold">주차 · 분석 실행</p>
               <p className="muted text-sm">
-                「이전 주」「이번 주」로{" "}
-                <strong>분석 대상</strong>만 바뀝니다. 비교 기준은 항상 그
-                직전 주입니다.
-              </p>
-              <p className="mt-2 text-xs font-medium text-indigo-800">
-                <strong>토요일 09:00</strong> — 등록 일정 전원 제출 시 전체 분석 저장
-                <br />
-                <strong>일요일 09:00</strong> — 미완료 시 <strong>등록분만</strong>{" "}
-                분석 저장 · 수동 실행도 동일하게 등록된 일정·기록만 반영
+                상단 「①」에서 지난주 비교본을 맞춘 뒤, 「②」보고서를 생성·확인하고 「③」에서 첨언을 작성하세요.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -486,113 +488,77 @@ export default function ManagerAnalysisPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <section className="card space-y-3 p-4">
-              <h3 className="font-semibold">
-                1. 비교 기준 보고서 · {scopeText.compareCaption}
-              </h3>
-              <p className="muted text-xs">
-                {scopeText.targetRelative} 분석 시 참고하는{" "}
-                <strong>{scopeText.compareRelative}</strong> 저장본입니다.
-                붙여넣기/업로드하거나, 해당 주에 저장된 분석이 있으면 자동으로
-                채워집니다.
-              </p>
-              {previousAnalysisHint ? (
-                <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
-              ) : null}
-              {referenceSavedHint ? (
-                <p className="text-xs font-medium text-emerald-800">{referenceSavedHint}</p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn btn-secondary text-sm"
-                  onClick={() => void loadCompareReference()}
-                >
-                  저장된 지난주 불러오기
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary text-sm"
-                  onClick={loadSampleReference}
-                >
-                  {"\uc0d8\ud50c \ubd88\ub7ec\uc624\uae30 (5\uc6d4 2\uc8fc\ucc28)"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary text-sm"
-                  onClick={saveReference}
-                >
-                  비교 기준 보고서 저장
-                </button>
-                <label className="btn btn-secondary cursor-pointer text-sm">
-                  {".txt / .md \uc5c5\ub85c\ub4dc"}
-                  <input
-                    type="file"
-                    accept=".txt,.md,text/plain,text/markdown"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleReferenceFile(f);
-                    }}
-                  />
-                </label>
-              </div>
-              <textarea
-                className="textarea min-h-[200px] font-mono text-xs"
-                placeholder={`${scopeText.compareRelative}(${compareWeek.label}) 업무 분석·제언 보고서 전체를 붙여넣기…`}
-                value={previousAnalysis}
-                onChange={(e) => setPreviousAnalysis(e.target.value)}
-              />
-            </section>
-
-            <section className="card space-y-3 p-4">
-              <h3 className="font-semibold">
-                {"2. \ud300\uc7a5, \ub300\ud45c\ub2d8 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc\uc0ac\ud56d"}
-              </h3>
-              <div>
-                <label className="label">
-                  {`팀장, 대표님 첨언 및 지시사항 (${scopeText.targetRelative} 보고서에 반영)`}
-                </label>
-                <textarea
-                  className="textarea min-h-[120px]"
-                  placeholder={
-                    "\uc608: \ubd09\ucc9c\uc5ed DB \uc774\uc288 \uc7ac\ubc1c \ubc29\uc9c0\ub97c \uc704\ud574 \uba87\uc77c \ub0b4 \ub9e4\ub274\uc5bc \ud654..."
-                  }
-                  value={managerNotes}
-                  onChange={(e) => setManagerNotes(e.target.value)}
+          <section className="card mb-4 space-y-3 p-4">
+            <h3 className="font-semibold">
+              ① 비교 기준 보고서 · {scopeText.compareCaption}
+            </h3>
+            <p className="muted text-xs">
+              {scopeText.targetRelative} 분석 시 참고하는{" "}
+              <strong>{scopeText.compareRelative}</strong> 저장본입니다.
+              붙여넣기/업로드하거나, 해당 주에 저장된 분석이 있으면 자동으로
+              채워집니다.
+            </p>
+            {previousAnalysisHint ? (
+              <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
+            ) : null}
+            {referenceSavedHint ? (
+              <p className="text-xs font-medium text-emerald-800">{referenceSavedHint}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary text-sm"
+                onClick={() => void loadCompareReference()}
+              >
+                저장된 지난주 불러오기
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary text-sm"
+                onClick={loadSampleReference}
+              >
+                {"\uc0d8\ud50c \ubd88\ub7ec\uc624\uae30 (5\uc6d4 2\uc8fc\ucc28)"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary text-sm"
+                onClick={saveReference}
+              >
+                비교 기준 보고서 저장
+              </button>
+              <label className="btn btn-secondary cursor-pointer text-sm">
+                {".txt / .md \uc5c5\ub85c\ub4dc"}
+                <input
+                  type="file"
+                  accept=".txt,.md,text/plain,text/markdown"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleReferenceFile(f);
+                  }}
                 />
-              </div>
-              <div>
-                <label className="label">
-                  {
-                    "\uc9c0\ub09c\uc8fc \ud575\uc2ec \uc804\ub7b5 \uacfc\uc81c (\uccb4\ud06c\ub9ac\uc2a4\ud2b8\uc6a9, \uc120\ud0dd)"
-                  }
-                </label>
-                <textarea
-                  className="textarea min-h-[100px] text-sm"
-                  placeholder={
-                    "\uc608: [\ucd5c\uc6d0\uc81c] \ud604\uc7a5 \uc2e4\ubb34 \ucd95\uc18c\n[\ub178\ud76c\ucc2c] \ubc18\ubcf5 \uc5d0\ub7ec \ub9e4\ub274\uc5bc\ud654..."
-                  }
-                  value={strategicChecklist}
-                  onChange={(e) => setStrategicChecklist(e.target.value)}
-                />
-              </div>
-            </section>
-          </div>
+              </label>
+            </div>
+            <textarea
+              className="textarea min-h-[160px] font-mono text-xs"
+              placeholder={`${scopeText.compareRelative}(${compareWeek.label}) 업무 분석·제언 보고서 전체를 붙여넣기…`}
+              value={previousAnalysis}
+              onChange={(e) => setPreviousAnalysis(e.target.value)}
+            />
+          </section>
 
           {analysisNotice && (
-            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {analysisNotice}
             </p>
           )}
 
           {error && (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
+            <p className="mb-3 text-sm text-red-600">{error}</p>
           )}
 
           {meta && (
-            <p className="muted mt-3 text-sm">
+            <p className="muted mb-3 text-sm">
               {meta.scopeSummary ?? (
                 <>
                   분석 대상 {meta.targetWeek} 일일 기록 {meta.reportCount}건 ·
@@ -602,43 +568,120 @@ export default function ManagerAnalysisPage() {
             </p>
           )}
 
-          {analysis && (
-            <section className="mt-6 w-full min-w-0 print:mt-0">
-              <div className="no-print mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-medium text-slate-700">
-                  아래는 인쇄·공유용 보고서 화면입니다.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={printReport}
-                  >
-                    인쇄 / PDF 저장
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={downloadAnalysis}
-                  >
-                    Markdown 다운로드
-                  </button>
+          <section className="card mb-4 w-full min-w-0 space-y-4 p-4">
+            <div>
+              <h3 className="font-semibold">
+                ② 주간 분석 보고서 · {scopeText.targetCaption}
+              </h3>
+              <p className="muted mt-1 text-xs">
+                보고서를 먼저 확인한 뒤, 아래 「③ 첨언·지시」에 내용을 작성하세요.
+              </p>
+            </div>
+
+            {analysis ? (
+              <>
+                <div className="no-print flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-medium text-slate-700">
+                    인쇄·공유용 보고서 화면
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={printReport}
+                    >
+                      인쇄 / PDF 저장
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={downloadAnalysis}
+                    >
+                      Markdown 다운로드
+                    </button>
+                  </div>
                 </div>
+                <WeeklyAnalysisReport
+                  markdown={analysis}
+                  weekLabel={
+                    viewingCompareReport
+                      ? scopeText.compareCaption
+                      : scopeText.targetCaption
+                  }
+                  compareWeekLabel={
+                    viewingCompareReport ? undefined : scopeText.compareCaption
+                  }
+                  source={analysisSource}
+                />
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                <p className="text-sm text-slate-600">
+                  아직 표시할 보고서가 없습니다.
+                </p>
+                <p className="muted mt-1 text-xs">
+                  「자동 분석·저장」 또는 「분석 대상 주 보기」로 보고서를 불러오세요.
+                </p>
               </div>
-              <WeeklyAnalysisReport
-                markdown={analysis}
-                weekLabel={
-                  viewingCompareReport
-                    ? scopeText.compareCaption
-                    : scopeText.targetCaption
+            )}
+          </section>
+
+          <section className="card space-y-4 p-4">
+            <div>
+              <h3 className="font-semibold">
+                ③ 팀장, 대표님 첨언 및 지시사항
+              </h3>
+              <p className="muted mt-1 text-xs">
+                위 「②」 보고서를 본 뒤 작성합니다. 저장 후 「첨언 반영 재생성」으로
+                보고서 5번 섹션에 반영할 수 있습니다.
+              </p>
+            </div>
+            <div>
+              <label className="label">
+                {`첨언 및 지시사항 (${scopeText.targetRelative} 보고서)`}
+              </label>
+              <textarea
+                className="textarea min-h-[140px]"
+                placeholder={
+                  "예: 봉천역 DB 이슈 재발 방지를 위해 며칠 내 매뉴얼화…\n(보고서 확인 후 작성)"
                 }
-                compareWeekLabel={
-                  viewingCompareReport ? undefined : scopeText.compareCaption
-                }
-                source={analysisSource}
+                value={managerNotes}
+                onChange={(e) => setManagerNotes(e.target.value)}
               />
-            </section>
-          )}
+            </div>
+            <div>
+              <label className="label">
+                지난주 핵심 전략 과제 (체크리스트용, 선택)
+              </label>
+              <textarea
+                className="textarea min-h-[100px] text-sm"
+                placeholder={
+                  "\uc608: [\ucd5c\uc6d0\uc81c] \ud604\uc7a5 \uc2e4\ubb34 \ucd95\uc18c\n[\ub178\ud76c\ucc2c] \ubc18\ubcf5 \uc5d0\ub7ec \ub9e4\ub274\uc5bc\ud654..."
+                }
+                value={strategicChecklist}
+                onChange={(e) => setStrategicChecklist(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={generateAnalysis}
+                disabled={generating || !managerNotes.trim()}
+                title={!managerNotes.trim() ? "첨언·지시 내용을 입력하세요" : undefined}
+              >
+                {generating ? "재생성 중…" : "첨언 반영하여 Gemini 재생성"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={generateAnalysis}
+                disabled={generating}
+              >
+                {generating ? "생성 중…" : "첨언 없이 Gemini 생성"}
+              </button>
+            </div>
+          </section>
         </>
       )}
     </>
