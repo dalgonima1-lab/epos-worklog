@@ -110,6 +110,8 @@ function compressOutcome(report: DailyReport): string {
 
   const done = report.done?.trim();
   if (!done) {
+    const plan = report.plan?.trim();
+    if (plan) return summarizeText(plan, 96);
     if (report.workMinutes != null) {
       return `작업 ${formatWorkDuration(report.workMinutes)}`;
     }

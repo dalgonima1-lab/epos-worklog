@@ -249,11 +249,6 @@ function parseMembers(sectionBody: string): MemberEvaluation[] {
         flushTable();
         continue;
       }
-      if (/^#{1,4}\s/.test(line)) continue;
-      if (/^\*\*[^*]+\*\*\s*$/.test(line) && !line.startsWith("-")) {
-        flushTable();
-        continue;
-      }
       if (/👍|잘한\s*부분/.test(line)) {
         flushTable();
         mode = "pos";
@@ -264,6 +259,7 @@ function parseMembers(sectionBody: string): MemberEvaluation[] {
         mode = "neg";
         continue;
       }
+      if (/^#{1,6}\s/.test(line)) continue;
       if (line.startsWith("|")) {
         tableBuffer.push(line);
         continue;
@@ -396,11 +392,11 @@ function parseSummary(sectionBody: string): {
 }
 
 function classifySection(title: string): AnalysisSection["kind"] {
-  if (/구성원|멤버|평가/.test(title)) return "members";
+  if (/종합|Executive|요약/.test(title)) return "summary";
+  if (/구성원|팀원별|멤버별|성과.*보완|보완.*과제/.test(title)) return "members";
   if (/체크|전략|과제/.test(title)) return "checklist";
   if (/제언|권고|결론/.test(title)) return "numbered";
   if (/첨언|비고/.test(title)) return "bullets";
-  if (/종합|Executive|요약/.test(title)) return "summary";
   return "prose";
 }
 
