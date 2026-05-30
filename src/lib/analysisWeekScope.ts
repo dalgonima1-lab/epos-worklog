@@ -16,7 +16,7 @@ export interface AnalysisWeekScope {
 /** 화면 기준일(anchor)이 속한 주를 분석 대상으로, 그 직전 주를 비교 기준으로 */
 export function getAnalysisWeekScope(anchor: Date): AnalysisWeekScope {
   const targetWeek = getWeekRange(anchor);
-  const compareWeek = getWeekRange(shiftWeek(anchor, -1));
+  const compareWeek = getCompareWeekForTarget(targetWeek.end);
   return { targetWeek, compareWeek };
 }
 

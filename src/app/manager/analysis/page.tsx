@@ -13,8 +13,8 @@ import { getWeekRange, shiftWeek } from "@/lib/dates";
 
 export default function ManagerAnalysisPage() {
   const [teamName, setTeamName] = useState("epos \uad00\ub9ac\ud300");
-  /** 기본: 지난주 분석 (비교 = 지지난주 저장 보고서) */
-  const [anchor, setAnchor] = useState(() => shiftWeek(new Date(), -1));
+  /** 기본: 이번 주 분석 (비교 = 지난주 저장 보고서) */
+  const [anchor, setAnchor] = useState(() => new Date());
   const [pin, setPin] = useState("");
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState("");
@@ -30,6 +30,8 @@ export default function ManagerAnalysisPage() {
   >("");
   const [autoRunning, setAutoRunning] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [referenceSavedHint, setReferenceSavedHint] = useState("");
+  const [viewingCompareReport, setViewingCompareReport] = useState(false);
   const [meta, setMeta] = useState<{
     scopeSummary?: string;
     targetWeek: string;
@@ -40,6 +42,48 @@ export default function ManagerAnalysisPage() {
   const scope = useMemo(() => getAnalysisWeekScope(anchor), [anchor]);
   const { targetWeek: week, compareWeek } = scope;
   const scopeText = useMemo(() => formatScopeSummary(scope), [scope]);
+
+  async function loadCompareReference() {
+    if (!pin) return false;
+    const res = await fetch(
+      `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
+    );
+    const data = (await res.json().catch(() => ({}))) as {
+      text?: string;
+      source?: string;
+      error?: string;
+      weekLabel?: string;
+    };
+
+    if (!res.ok) {
+      setPreviousAnalysis("");
+      setPreviousAnalysisHint(
+        data.error ??
+          `비교 기준 주(${scopeText.compareCaption}) 불러오기 실패`
+      );
+      return false;
+    }
+
+    if (data.text?.trim()) {
+      setPreviousAnalysis(data.text);
+      setPreviousAnalysisHint(
+        data.source === "analysis"
+          ? `비교 기준(${scopeText.compareCaption}) — 저장된 주간 분석을 불러왔습니다.`
+          : data.source === "reference"
+            ? `비교 기준(${scopeText.compareCaption}) — 저장된 참고 보고서입니다.`
+            : `비교 기준(${scopeText.compareCaption}) — ${data.weekLabel ?? ""}`
+      );
+      return true;
+    }
+
+    setPreviousAnalysis("");
+    setPreviousAnalysisHint(
+      `비교 기준 주(${scopeText.compareCaption})에 저장된 분석이 없습니다. ` +
+        `「${compareWeek.label}」 주차에서 「자동 분석·저장」을 먼저 실행하거나, ` +
+        `아래에 지난주 보고서를 붙여넣은 뒤 「비교 기준 보고서 저장」을 눌러 주세요.`
+    );
+    return false;
+  }
 
   useEffect(() => {
     fetch("/api/members")
@@ -52,47 +96,6 @@ export default function ManagerAnalysisPage() {
 
     let cancelled = false;
 
-    async function loadCompareReference() {
-      const res = await fetch(
-        `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
-      );
-      const data = (await res.json().catch(() => ({}))) as {
-        text?: string;
-        source?: string;
-        error?: string;
-        weekLabel?: string;
-      };
-      if (cancelled) return;
-
-      if (!res.ok) {
-        setPreviousAnalysis("");
-        setPreviousAnalysisHint(
-          data.error ??
-            `비교 기준 주(${scopeText.compareCaption}) 불러오기 실패`
-        );
-        return;
-      }
-
-      if (data.text?.trim()) {
-        setPreviousAnalysis(data.text);
-        setPreviousAnalysisHint(
-          data.source === "analysis"
-            ? `비교 기준(${scopeText.compareCaption}) — 저장된 주간 분석을 불러왔습니다.`
-            : data.source === "reference"
-              ? `비교 기준(${scopeText.compareCaption}) — 직접 붙여넣은 참고 보고서입니다.`
-              : `비교 기준(${scopeText.compareCaption}) — ${data.weekLabel ?? ""}`
-        );
-        return;
-      }
-
-      setPreviousAnalysis("");
-      setPreviousAnalysisHint(
-        `비교 기준 주(${scopeText.compareCaption})에 저장된 분석이 없습니다. ` +
-          `「${compareWeek.label}」 주차에서 「자동 분석·저장」을 먼저 실행하거나, ` +
-          `아래에 지난주 보고서를 붙여넣은 뒤 「비교 기준 보고서 저장」을 눌러 주세요.`
-      );
-    }
-
     async function loadTargetAnalysis() {
       const res = await fetch(
         `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
@@ -102,6 +105,7 @@ export default function ManagerAnalysisPage() {
         source?: string;
       };
       if (cancelled) return;
+      setViewingCompareReport(false);
       if (data.markdown?.trim()) {
         setAnalysis(data.markdown);
         setAnalysisSource(
@@ -123,6 +127,7 @@ export default function ManagerAnalysisPage() {
 
     void loadCompareReference();
     void loadTargetAnalysis();
+    setReferenceSavedHint("");
 
     return () => {
       cancelled = true;
@@ -177,6 +182,10 @@ export default function ManagerAnalysisPage() {
   }
 
   async function saveReference() {
+    if (!previousAnalysis.trim()) {
+      setError("비교 기준 보고서 내용을 붙여넣은 뒤 저장해 주세요.");
+      return;
+    }
     const res = await fetch("/api/analysis/reference", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,10 +196,15 @@ export default function ManagerAnalysisPage() {
         text: previousAnalysis,
       }),
     });
-    if (res.ok) setError("");
-    else {
+    if (res.ok) {
+      setError("");
+      setReferenceSavedHint(
+        `✓ ${scopeText.compareCaption} 비교 기준 보고서를 저장했습니다. 이번 주 분석 시 자동으로 사용됩니다.`
+      );
+    } else {
       const d = await res.json();
-      setError(d.error ?? "\uc800\uc7a5 \uc2e4\ud328");
+      setError(d.error ?? "저장 실패");
+      setReferenceSavedHint("");
     }
   }
 
@@ -201,6 +215,7 @@ export default function ManagerAnalysisPage() {
 
   async function loadSavedAnalysis() {
     setError("");
+    setViewingCompareReport(false);
     setAnalysisNotice("");
     setAnalysis("");
     const res = await fetch(
@@ -213,8 +228,8 @@ export default function ManagerAnalysisPage() {
     }
     if (!data.markdown) {
       setError(
-        `${week.label} 주차에 저장된 분석이 없습니다. ` +
-          "상단에서 주차를 맞춘 뒤 다시 시도하세요. (예: 5월 3주차 = 2026-05-18 ~ 05-22)"
+        `분석 대상 주(${scopeText.targetCaption})에 저장된 분석이 없습니다. ` +
+          "「자동 분석·저장」을 실행하거나 Gemini로 생성해 주세요."
       );
       return;
     }
@@ -223,7 +238,40 @@ export default function ManagerAnalysisPage() {
     setAnalysisNotice(
       data.source === "cursor"
         ? "저장된 Cursor 주간 분석입니다."
-        : "저장된 주간 분석입니다."
+        : `분석 대상 주(${scopeText.targetCaption}) 저장본입니다.`
+    );
+  }
+
+  async function loadCompareReportView() {
+    setError("");
+    setViewingCompareReport(true);
+    const res = await fetch(
+      `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
+    );
+    const data = (await res.json().catch(() => ({}))) as {
+      text?: string;
+      source?: string;
+      error?: string;
+    };
+    if (!res.ok) {
+      setError(data.error ?? "비교 기준 보고서를 불러오지 못했습니다.");
+      return;
+    }
+    const text = data.text?.trim() || previousAnalysis.trim();
+    if (!text) {
+      setError(
+        `${scopeText.compareCaption}(지난주)에 저장된 분석이 없습니다. ` +
+          `왼쪽 칸에 붙여넣고 「비교 기준 보고서 저장」을 누르거나, ` +
+          `해당 주차로 이동해 「자동 분석·저장」을 실행해 주세요.`
+      );
+      return;
+    }
+    if (data.text?.trim()) setPreviousAnalysis(data.text);
+    setAnalysis(text);
+    setAnalysisSource(data.source === "analysis" ? "auto" : "file");
+    setAnalysisNotice(
+      `지난주·비교 기준(${scopeText.compareCaption}) 저장본 미리보기입니다. ` +
+        `이번 주 분석을 보려면 「분석 대상 주 보기」를 누르세요.`
     );
   }
 
@@ -415,7 +463,15 @@ export default function ManagerAnalysisPage() {
                 className="btn btn-secondary"
                 onClick={loadSavedAnalysis}
               >
-                저장된 분석 보기
+                분석 대상 주 보기
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={loadCompareReportView}
+                title={`비교 기준 ${compareWeek.label} 저장본 미리보기`}
+              >
+                지난주(비교) 보기
               </button>
               <button
                 type="button"
@@ -444,7 +500,17 @@ export default function ManagerAnalysisPage() {
               {previousAnalysisHint ? (
                 <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
               ) : null}
+              {referenceSavedHint ? (
+                <p className="text-xs font-medium text-emerald-800">{referenceSavedHint}</p>
+              ) : null}
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary text-sm"
+                  onClick={() => void loadCompareReference()}
+                >
+                  저장된 지난주 불러오기
+                </button>
                 <button
                   type="button"
                   className="btn btn-secondary text-sm"
@@ -561,8 +627,14 @@ export default function ManagerAnalysisPage() {
               </div>
               <WeeklyAnalysisReport
                 markdown={analysis}
-                weekLabel={scopeText.targetCaption}
-                compareWeekLabel={scopeText.compareCaption}
+                weekLabel={
+                  viewingCompareReport
+                    ? scopeText.compareCaption
+                    : scopeText.targetCaption
+                }
+                compareWeekLabel={
+                  viewingCompareReport ? undefined : scopeText.compareCaption
+                }
                 source={analysisSource}
               />
             </section>
