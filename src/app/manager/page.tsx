@@ -139,19 +139,19 @@ export default function ManagerPage() {
 
   return (
     <>
-      <Header teamName={teamName} subtitle="팀장 대시보드 · 주간 요약" />
+      <Header teamName={teamName} subtitle="관리자 대시보드 · 주간 요약" />
 
       {!authed ? (
         <form onSubmit={login} className="card max-w-md space-y-3 p-5">
           <p className="muted text-sm">
-            팀장 전용 화면입니다. 초기 PIN은 <strong>1234</strong>입니다. 변경은
+            관리자 전용 화면입니다. 초기 PIN은 <strong>1234</strong>입니다. 변경은
             로컬은 <code>data/store.json</code>, Vercel+Firebase는 Firestore
             문서 <code>epos-worklog/main</code>의 <code>managerPin</code>에서
             합니다.
           </p>
           <div>
             <label className="label" htmlFor="pin">
-              팀장 PIN
+              관리자 PIN
             </label>
             <input
               id="pin"

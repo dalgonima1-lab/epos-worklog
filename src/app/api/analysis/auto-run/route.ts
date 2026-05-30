@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!(await verifyManagerPin(String(pin)))) {
-    return NextResponse.json({ error: "팀장 PIN이 올바르지 않습니다." }, { status: 403 });
+    return NextResponse.json({ error: "관리자 PIN이 올바르지 않습니다." }, { status: 403 });
   }
 
   let anchorDate: Date | undefined;

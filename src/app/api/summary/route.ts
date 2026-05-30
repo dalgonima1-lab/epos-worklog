@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   const ok = await verifyManagerPin(pin);
   if (!ok) {
-    return NextResponse.json({ error: "팀장 PIN이 올바르지 않습니다." }, { status: 403 });
+    return NextResponse.json({ error: "관리자 PIN이 올바르지 않습니다." }, { status: 403 });
   }
 
   const db = await getDb();

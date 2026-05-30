@@ -206,15 +206,84 @@ function parseMembers(sectionBody: string): MemberEvaluation[] {
         continue;
       }
       const bullet = parseBullet(line);
+      if (bullet && typeof bullet === "object" && "name" in bullet) {
+        const entry = bullet.text.trim()
+          ? `**${bullet.name}**: ${bullet.text.trim()}`
+          : `**${bullet.name}**:`;
+        if (mode === "pos") positives.push(entry);
+        else if (mode === "neg") negatives.push(entry);
+        continue;
+      }
       if (typeof bullet === "string") {
         if (mode === "pos") positives.push(bullet);
         else if (mode === "neg") negatives.push(bullet);
+        continue;
+      }
+      if (mode && /^\s{2,}\S/.test(lines[i])) {
+        const cont = lines[i].trim();
+        if (!cont) continue;
+        if (mode === "pos" && positives.length > 0) {
+          positives[positives.length - 1] += `\n${cont}`;
+        } else if (mode === "neg" && negatives.length > 0) {
+          negatives[negatives.length - 1] += `\n${cont}`;
+        }
       }
     }
 
     members.push({ name, positives, negatives });
   }
   return members;
+}
+
+function parseSimpleBulletList(sectionBody: string): string[] {
+  const lines = sectionBody.split("\n");
+  const items: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const t = line.trim();
+    if (!t || t === "---") continue;
+
+    const bullet = parseBullet(t);
+    if (bullet && typeof bullet === "object" && "name" in bullet) {
+      const entry = bullet.text.trim()
+        ? `**${bullet.name}**: ${bullet.text.trim()}`
+        : `**${bullet.name}**:`;
+      items.push(entry);
+      continue;
+    }
+    if (typeof bullet === "string") {
+      items.push(bullet);
+      continue;
+    }
+    if (/^\s{2,}\S/.test(line) && items.length > 0) {
+      items[items.length - 1] += `\n${t}`;
+    }
+  }
+
+  return items;
+}
+
+function parseNumberedList(sectionBody: string): string[] {
+  const lines = sectionBody.split("\n");
+  const items: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const t = line.trim();
+    if (!t) continue;
+
+    const m = t.match(/^\d+\.\s+(.+)$/);
+    if (m) {
+      items.push(m[1].trim());
+      continue;
+    }
+    if (/^\s{2,}\S/.test(line) && items.length > 0) {
+      items[items.length - 1] += `\n${t}`;
+    }
+  }
+
+  return items;
 }
 
 function parseSummary(sectionBody: string): {
@@ -224,6 +293,7 @@ function parseSummary(sectionBody: string): {
   const paragraphs: string[] = [];
   const memberBullets: { name: string; text: string }[] = [];
   let buf = "";
+  const lines = sectionBody.split("\n");
 
   const flush = () => {
     const p = buf.trim();
@@ -231,7 +301,8 @@ function parseSummary(sectionBody: string): {
     buf = "";
   };
 
-  for (const line of sectionBody.split("\n")) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const t = line.trim();
     if (!t || t === "---") {
       flush();
@@ -240,13 +311,18 @@ function parseSummary(sectionBody: string): {
     const named = parseBullet(t);
     if (named && typeof named === "object" && "name" in named) {
       flush();
-      memberBullets.push(named);
+      memberBullets.push({ name: named.name, text: named.text });
       continue;
     }
     if (t.startsWith("- ") || t.startsWith("* ")) {
       flush();
       const item = parseBullet(t);
       if (typeof item === "string") memberBullets.push({ name: "", text: item });
+      continue;
+    }
+    if (/^\s{2,}\S/.test(line) && memberBullets.length > 0) {
+      const last = memberBullets[memberBullets.length - 1];
+      last.text += (last.text ? "\n" : "") + t;
       continue;
     }
     buf += (buf ? " " : "") + t;
@@ -312,20 +388,10 @@ export function parseAnalysisMarkdown(md: string): ParsedAnalysisReport {
       return { kind, title, rows: parseTable(body) };
     }
     if (kind === "numbered") {
-      const items: string[] = [];
-      for (const line of body.split("\n")) {
-        const m = line.match(/^\d+\.\s+(.+)$/);
-        if (m) items.push(m[1].trim());
-      }
-      return { kind, title, items };
+      return { kind, title, items: parseNumberedList(body) };
     }
     if (kind === "bullets") {
-      const items: string[] = [];
-      for (const line of body.split("\n")) {
-        const b = parseBullet(line.trim());
-        if (typeof b === "string") items.push(b);
-      }
-      return { kind, title, items };
+      return { kind, title, items: parseSimpleBulletList(body) };
     }
     if (kind === "summary") {
       const { paragraphs, memberBullets } = parseSummary(body);

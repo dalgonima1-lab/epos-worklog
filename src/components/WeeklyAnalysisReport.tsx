@@ -61,7 +61,7 @@ function BulletList({
           <span className="war-bullet-marker" aria-hidden>
             {marker === "num" ? i + 1 : "•"}
           </span>
-          <span className="war-bullet-body text-[0.9375rem] leading-[1.65] text-slate-700">
+          <span className="war-bullet-body whitespace-pre-wrap text-[0.9375rem] leading-[1.65] text-slate-700">
             <InlineText text={item} />
           </span>
         </li>
@@ -204,7 +204,7 @@ export function WeeklyAnalysisReport({
               <SectionCard key={idx} title={section.title} icon="📋" accent="indigo">
                 <div className="space-y-4">
                   {section.paragraphs.map((p, i) => (
-                    <p key={i} className="war-prose">
+                    <p key={i} className="war-prose whitespace-pre-wrap">
                       <InlineText text={p} />
                     </p>
                   ))}
@@ -215,7 +215,7 @@ export function WeeklyAnalysisReport({
                           {b.name ? (
                             <p className="war-summary-member-name">{b.name}</p>
                           ) : null}
-                          <p className="war-summary-member-text">
+                          <p className="war-summary-member-text whitespace-pre-wrap">
                             <InlineText text={b.text} />
                           </p>
                         </div>
@@ -268,7 +268,7 @@ export function WeeklyAnalysisReport({
                   {section.items.map((item, i) => (
                     <li key={i} className="war-numbered-item">
                       <span className="war-numbered-badge">{i + 1}</span>
-                      <span className="war-numbered-text">
+                      <span className="war-numbered-text whitespace-pre-wrap">
                         <InlineText text={item} />
                       </span>
                     </li>
@@ -290,7 +290,7 @@ export function WeeklyAnalysisReport({
             <SectionCard key={idx} title={section.title} accent="indigo">
               <div className="space-y-3">
                 {section.paragraphs.map((p, i) => (
-                  <p key={i} className="war-prose">
+                  <p key={i} className="war-prose whitespace-pre-wrap">
                     <InlineText text={p} />
                   </p>
                 ))}

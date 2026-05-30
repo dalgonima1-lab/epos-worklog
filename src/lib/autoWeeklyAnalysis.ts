@@ -4,20 +4,39 @@ import type { SubmissionReadiness } from "./weeklySubmission";
 import { weekdayLabel } from "./dates";
 import { getKoreanHolidayName } from "./koreanHolidays";
 
-function excerpt(text: string, max = 120): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max)}…`;
-}
-
 function collectIssues(reports: DailyReport[]): string[] {
   const items: string[] = [];
   for (const r of reports) {
-    if (r.issues?.trim()) items.push(`${r.date}: ${excerpt(r.issues, 80)}`);
-    if (r.deficiencies?.trim())
-      items.push(`${r.date} 미비: ${excerpt(r.deficiencies, 80)}`);
+    if (r.issues?.trim()) {
+      items.push(`${r.date} — ${r.issues.trim()}`);
+    }
+    if (r.deficiencies?.trim()) {
+      items.push(`${r.date} 미비 — ${r.deficiencies.trim()}`);
+    }
   }
   return items;
+}
+
+/** 일일기록 본문을 보고서 bullet(여러 줄)로 펼침 */
+function pushDoneBullets(
+  lines: string[],
+  report: DailyReport
+): void {
+  const done = report.done?.trim();
+  if (!done) return;
+  const station = report.stationName?.trim();
+  const label = station
+    ? `${weekdayLabel(report.date)} · ${station}`
+    : weekdayLabel(report.date);
+  if (!done.includes("\n")) {
+    lines.push(`- **${label}**: ${done}`);
+    return;
+  }
+  lines.push(`- **${label}**:`);
+  for (const row of done.split("\n")) {
+    const t = row.trim();
+    if (t) lines.push(`  ${t}`);
+  }
 }
 
 function stationsForReports(reports: DailyReport[]): string[] {
@@ -180,7 +199,7 @@ export function generateAutoWeeklyAnalysis(params: {
     if (partialSubmission && m.reports.length === 0) continue;
     const stations = stationsForReports(m.reports);
     lines.push(
-      `- **${m.member.name}**: 기록 ${m.reports.length}건 · 일정 ${m.expectedDays}일 중 ${m.submittedDays}일 제출 · 역사 ${stations.slice(0, 4).join(", ") || "—"}${stations.length > 4 ? " 외" : ""}`
+      `- **${m.member.name}**: 기록 ${m.reports.length}건 · 일정 ${m.expectedDays}일 중 ${m.submittedDays}일 제출 · 역사 ${stations.join(", ") || "—"}`
     );
   }
 
@@ -231,22 +250,26 @@ export function generateAutoWeeklyAnalysis(params: {
       lines.push(`- 제출 완료일: ${m.reports.map((r) => r.date).join(", ")}`);
     }
     if (stations.length) {
-      lines.push(`- **${stations.slice(0, 5).join(", ")}** 등 현장·역사 업무 수행`);
+      lines.push(`- **${stations.join(", ")}** 현장·역사 업무 수행`);
     }
-    const highlights = m.reports
-      .filter((r) => r.done?.trim())
-      .slice(0, 4)
-      .map((r) => `${weekdayLabel(r.date)}: ${excerpt(r.done, 100)}`);
-    for (const h of highlights) {
-      lines.push(`- ${h}`);
+    for (const r of m.reports) {
+      pushDoneBullets(lines, r);
     }
     lines.push(``, `**👎 보완이 필요한 부분**`);
     if (m.missingDates.length > 0) {
       lines.push(`- **일정 등록·미제출:** ${m.missingDates.join(", ")}`);
     }
     if (issues.length) {
-      for (const iss of issues.slice(0, 4)) {
-        lines.push(`- ${iss}`);
+      for (const iss of issues) {
+        if (iss.includes("\n")) {
+          lines.push(`- ${iss.split("\n")[0]}`);
+          for (const row of iss.split("\n").slice(1)) {
+            const t = row.trim();
+            if (t) lines.push(`  ${t}`);
+          }
+        } else {
+          lines.push(`- ${iss}`);
+        }
       }
     } else if (m.missingDates.length === 0) {
       lines.push(`- 특이 미비 기록 없음 — 역사명·차주 계획 구체화 권장`);
@@ -286,12 +309,12 @@ export function generateAutoWeeklyAnalysis(params: {
     `3. **DB·화면(이준명) – 현장 설치(유영준) – 연동·A/S(노희찬)** 역할을 홈 **주간 일정**에 등록하면 협업 품질이 향상됩니다.`
   );
 
-  lines.push(``, `---`, ``, `## 5. 팀장 첨언`, ``);
+  lines.push(``, `---`, ``, `## 5. 팀장, 대표님 첨언 및 지시사항`, ``);
   lines.push(
     `- **토요일 09:00** — 전원 월~금 제출 시 전체 분석 · **일요일 09:00** — 미완료 시 **제출분만** 부분 분석(자동 저장).`
   );
   lines.push(
-    `- 앱 **팀장 → AI 주간분석**에서 즉시 확인할 수 있습니다.`
+    `- 앱 **관리자 → AI 주간분석**에서 즉시 확인할 수 있습니다.`
   );
   lines.push(`- 생성 시각: ${now}`);
 

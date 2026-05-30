@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { href: "/", label: "홈", staffHidden: true },
   { href: "/daily", label: "일일 기록", staffHidden: false },
   { href: "/stations/history", label: "역사 히스토리", staffHidden: false },
-  { href: "/manager", label: "팀장 대시보드", staffHidden: true },
+  { href: "/manager", label: "관리자 대시보드", staffHidden: true },
   { href: "/manager/analysis", label: "AI 주간분석", staffHidden: true },
 ] as const;
 

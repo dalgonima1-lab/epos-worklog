@@ -785,7 +785,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           <p className="muted mt-2 text-sm">오늘 날짜로 업무 기록 작성</p>
         </Link>
         <Link href="/manager" className="card feature-card block">
-          <h2 className="text-base font-bold">팀장 대시보드</h2>
+          <h2 className="text-base font-bold">관리자 대시보드</h2>
           <p className="muted mt-2 text-sm">주간 제출 현황·요약 보고서</p>
         </Link>
       </div>

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   const ok = await verifyManagerPin(String(pin));
   if (!ok) {
-    return NextResponse.json({ error: "팀장 PIN이 올바르지 않습니다." }, { status: 403 });
+    return NextResponse.json({ error: "관리자 PIN이 올바르지 않습니다." }, { status: 403 });
   }
 
   const key = weekKey(start, end);

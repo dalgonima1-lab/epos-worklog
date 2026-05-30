@@ -328,7 +328,7 @@ export default function ManagerAnalysisPage() {
 
       <p className="muted mb-4 text-sm">
         <Link href="/manager" className="text-blue-700 underline">
-          {"\u2190 \ud300\uc7a5 \ub300\uc2dc\ubcf4\ub4dc"}
+          {"\u2190 \uad00\ub9ac\uc790 \ub300\uc2dc\ubcf4\ub4dc"}
         </Link>
       </p>
 
@@ -337,13 +337,13 @@ export default function ManagerAnalysisPage() {
           <p className="muted text-sm">
             {"Gemini·Cursor가 「비교 기준 주」에 저장된 보고서와 「분석 대상 주」 일일 기록을 대조해 "}
             <strong>
-              {"\uc798\ud55c \uc810, \ubd80\uc871\ud55c \uc810, \ud300\uc7a5 \ucca8\uc5b8"}
+              {"\uc798\ud55c \uc810, \ubd80\uc871\ud55c \uc810, \ud300\uc7a5\u00b7\ub300\ud45c\ub2d8 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc\uc0ac\ud56d"}
             </strong>
             {"\uc744 \uc815\ub9ac\ud569\ub2c8\ub2e4."}
           </p>
           <div>
             <label className="label" htmlFor="pin">
-              {"\ud300\uc7a5 PIN"}
+              {"\uad00\ub9ac\uc790 PIN"}
             </label>
             <input
               id="pin"
@@ -482,11 +482,11 @@ export default function ManagerAnalysisPage() {
 
             <section className="card space-y-3 p-4">
               <h3 className="font-semibold">
-                {"2. \ud300\uc7a5 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc \uc0ac\ud56d"}
+                {"2. \ud300\uc7a5, \ub300\ud45c\ub2d8 \ucca8\uc5b8 \ubc0f \uc9c0\uc2dc\uc0ac\ud56d"}
               </h3>
               <div>
                 <label className="label">
-                  {`첨언·추가 지시 (${scopeText.targetRelative} 보고서에 반영)`}
+                  {`팀장, 대표님 첨언 및 지시사항 (${scopeText.targetRelative} 보고서에 반영)`}
                 </label>
                 <textarea
                   className="textarea min-h-[120px]"
