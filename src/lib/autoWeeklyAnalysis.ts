@@ -3,6 +3,11 @@ import type { WeeklySummary } from "./summary";
 import type { SubmissionReadiness } from "./weeklySubmission";
 import { weekdayLabel } from "./dates";
 import { getKoreanHolidayName } from "./koreanHolidays";
+import {
+  buildMemberWeekDigest,
+  memberDigestToMarkdownNegative,
+  memberDigestToMarkdownPositive,
+} from "./memberWeekSummary";
 
 function collectIssues(reports: DailyReport[]): string[] {
   const items: string[] = [];
@@ -15,28 +20,6 @@ function collectIssues(reports: DailyReport[]): string[] {
     }
   }
   return items;
-}
-
-/** 일일기록 본문을 보고서 bullet(여러 줄)로 펼침 */
-function pushDoneBullets(
-  lines: string[],
-  report: DailyReport
-): void {
-  const done = report.done?.trim();
-  if (!done) return;
-  const station = report.stationName?.trim();
-  const label = station
-    ? `${weekdayLabel(report.date)} · ${station}`
-    : weekdayLabel(report.date);
-  if (!done.includes("\n")) {
-    lines.push(`- **${label}**: ${done}`);
-    return;
-  }
-  lines.push(`- **${label}**:`);
-  for (const row of done.split("\n")) {
-    const t = row.trim();
-    if (t) lines.push(`  ${t}`);
-  }
 }
 
 function stationsForReports(reports: DailyReport[]): string[] {
@@ -223,8 +206,6 @@ export function generateAutoWeeklyAnalysis(params: {
 
   for (const m of summary.members) {
     if (partialSubmission && m.reports.length === 0) continue;
-    const stations = stationsForReports(m.reports);
-    const issues = collectIssues(m.reports);
     lines.push(`### ${m.member.name}`, ``);
 
     if (m.reports.length === 0) {
@@ -239,43 +220,16 @@ export function generateAutoWeeklyAnalysis(params: {
       continue;
     }
 
+    const digest = buildMemberWeekDigest(m.reports, {
+      submittedDays: m.submittedDays,
+      expectedDays: m.expectedDays,
+      missingDates: m.missingDates,
+    });
+
     lines.push(`**👍 잘한 부분**`);
-    lines.push(`- **${m.reports.length}건** 일일 기록 (등록분 기준)`);
-    if (m.expectedDays > 0) {
-      lines.push(
-        `- 등록 일정 **${m.submittedDays}/${m.expectedDays}일** 제출`
-      );
-    }
-    if (m.missingDates.length > 0) {
-      lines.push(`- 제출 완료일: ${m.reports.map((r) => r.date).join(", ")}`);
-    }
-    if (stations.length) {
-      lines.push(`- **${stations.join(", ")}** 현장·역사 업무 수행`);
-    }
-    for (const r of m.reports) {
-      pushDoneBullets(lines, r);
-    }
+    lines.push(...memberDigestToMarkdownPositive(digest));
     lines.push(``, `**👎 보완이 필요한 부분**`);
-    if (m.missingDates.length > 0) {
-      lines.push(`- **일정 등록·미제출:** ${m.missingDates.join(", ")}`);
-    }
-    if (issues.length) {
-      for (const iss of issues) {
-        if (iss.includes("\n")) {
-          lines.push(`- ${iss.split("\n")[0]}`);
-          for (const row of iss.split("\n").slice(1)) {
-            const t = row.trim();
-            if (t) lines.push(`  ${t}`);
-          }
-        } else {
-          lines.push(`- ${iss}`);
-        }
-      }
-    } else if (m.missingDates.length === 0) {
-      lines.push(`- 특이 미비 기록 없음 — 역사명·차주 계획 구체화 권장`);
-    } else {
-      lines.push(`- 제출된 날 기준 미비·이슈는 위 실적 참고`);
-    }
+    lines.push(...memberDigestToMarkdownNegative(digest, m.missingDates));
     lines.push(``, `---`, ``);
   }
 

@@ -6,6 +6,8 @@ import {
   type ParsedAnalysisReport,
 } from "@/lib/parseAnalysisMarkdown";
 import { StrategicChecklistPanel } from "@/components/StrategicChecklistPanel";
+import { MemberActivityTable } from "@/components/MemberActivityTable";
+import type { MemberTable } from "@/lib/parseAnalysisMarkdown";
 
 interface WeeklyAnalysisReportProps {
   markdown: string;
@@ -157,12 +159,29 @@ function MemberEvalBlock({
   variant,
   title,
   items,
+  table,
+  tableCaption,
 }: {
   variant: "positive" | "negative";
   title: string;
   items: string[];
+  table?: MemberTable;
+  tableCaption?: string;
 }) {
   const isPos = variant === "positive";
+  let introItems: string[] = [];
+  let summaryBullets: string[] = items;
+
+  if (table) {
+    if (isPos) {
+      introItems = items.length > 0 ? [items[0]] : [];
+      summaryBullets = items.length > 1 ? items.slice(1) : [];
+    } else {
+      introItems = items.filter((i) => /미제출|등록/.test(i));
+      summaryBullets = items.filter((i) => !/미제출|등록/.test(i));
+    }
+  }
+
   return (
     <div
       className={
@@ -175,7 +194,28 @@ function MemberEvalBlock({
         </span>
         {title}
       </p>
-      <BulletList items={items} />
+      {introItems.length > 0 ? (
+        <div className="war-member-intro mb-3">
+          {introItems.map((item, i) => (
+            <p key={i} className="war-prose whitespace-pre-wrap text-sm">
+              <InlineText text={item} />
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {table ? <MemberActivityTable table={table} caption={tableCaption} /> : null}
+      {summaryBullets.length > 0 ? (
+        <div className={table ? "mt-3" : ""}>
+          {table ? (
+            <p className="war-member-table-caption mb-2">
+              {isPos ? "핵심 성과 요약" : "조치·리스크 요약"}
+            </p>
+          ) : null}
+          <BulletList items={summaryBullets} />
+        </div>
+      ) : !table ? (
+        <BulletList items={items} />
+      ) : null}
     </div>
   );
 }
@@ -239,11 +279,15 @@ export function WeeklyAnalysisReport({
                           variant="positive"
                           title="잘한 부분"
                           items={m.positives}
+                          table={m.positiveTable}
+                          tableCaption="주간 활동 요약"
                         />
                         <MemberEvalBlock
                           variant="negative"
                           title="보완이 필요한 부분"
                           items={m.negatives}
+                          table={m.negativeTable}
+                          tableCaption="미비·이슈 요약"
                         />
                       </div>
                     </div>

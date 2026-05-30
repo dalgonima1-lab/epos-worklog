@@ -5,10 +5,17 @@ export interface AnalysisMetaLine {
   value: string;
 }
 
+export interface MemberTable {
+  headers: string[];
+  rows: string[][];
+}
+
 export interface MemberEvaluation {
   name: string;
   positives: string[];
   negatives: string[];
+  positiveTable?: MemberTable;
+  negativeTable?: MemberTable;
 }
 
 export type ChecklistLevel = "ok" | "warn" | "bad" | "unknown";
@@ -181,30 +188,88 @@ export function summarizeChecklist(rows: ChecklistRow[]): ChecklistSummary {
   return { total, ok, warn, bad, unknown, completionRate };
 }
 
+function parseMarkdownTableLines(lines: string[]): MemberTable | null {
+  const tableLines = lines.filter((l) => l.trim().startsWith("|"));
+  if (tableLines.length < 2) return null;
+
+  const parsed = tableLines
+    .map((line) =>
+      line
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean)
+    )
+    .filter((cells) => cells.length > 0 && !/^[-:]+$/.test(cells.join("")));
+
+  if (parsed.length < 2) return null;
+
+  const headers = parsed[0].map((c) => stripBoldMarkers(c));
+  const rows = parsed.slice(1).map((cells) => cells.map((c) => stripBoldMarkers(c)));
+  if (rows.length === 0) return null;
+
+  return { headers, rows };
+}
+
 function parseMembers(sectionBody: string): MemberEvaluation[] {
   const members: MemberEvaluation[] = [];
   const chunks = sectionBody.split(/^###\s+/m).filter(Boolean);
 
   for (const chunk of chunks) {
     const lines = chunk.split("\n");
-    const name = lines[0]?.trim() ?? "";
+    const name = lines[0]?.trim().replace(/^■\s*/, "") ?? "";
     if (!name) continue;
 
     let mode: "pos" | "neg" | null = null;
     const positives: string[] = [];
     const negatives: string[] = [];
+    let tableBuffer: string[] = [];
+
+    const flushTable = () => {
+      if (tableBuffer.length === 0) return;
+      const table = parseMarkdownTableLines(tableBuffer);
+      tableBuffer = [];
+      if (!table) return;
+      if (mode === "pos" && !members[members.length - 1]?.positiveTable) {
+        members[members.length - 1].positiveTable = table;
+      } else if (mode === "neg") {
+        members[members.length - 1].negativeTable = table;
+      }
+    };
+
+    members.push({
+      name,
+      positives,
+      negatives,
+    });
 
     for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || line === "---") continue;
+      const raw = lines[i];
+      const line = raw.trim();
+      if (!line || line === "---") {
+        flushTable();
+        continue;
+      }
+      if (/^#{1,4}\s/.test(line)) continue;
+      if (/^\*\*[^*]+\*\*\s*$/.test(line) && !line.startsWith("-")) {
+        flushTable();
+        continue;
+      }
       if (/👍|잘한\s*부분/.test(line)) {
+        flushTable();
         mode = "pos";
         continue;
       }
       if (/👎|보완|부족/.test(line)) {
+        flushTable();
         mode = "neg";
         continue;
       }
+      if (line.startsWith("|")) {
+        tableBuffer.push(line);
+        continue;
+      }
+      flushTable();
+
       const bullet = parseBullet(line);
       if (bullet && typeof bullet === "object" && "name" in bullet) {
         const entry = bullet.text.trim()
@@ -219,8 +284,8 @@ function parseMembers(sectionBody: string): MemberEvaluation[] {
         else if (mode === "neg") negatives.push(bullet);
         continue;
       }
-      if (mode && /^\s{2,}\S/.test(lines[i])) {
-        const cont = lines[i].trim();
+      if (mode && /^\s{2,}\S/.test(raw)) {
+        const cont = raw.trim();
         if (!cont) continue;
         if (mode === "pos" && positives.length > 0) {
           positives[positives.length - 1] += `\n${cont}`;
@@ -229,8 +294,7 @@ function parseMembers(sectionBody: string): MemberEvaluation[] {
         }
       }
     }
-
-    members.push({ name, positives, negatives });
+    flushTable();
   }
   return members;
 }

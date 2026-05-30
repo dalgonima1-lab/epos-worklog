@@ -871,6 +871,61 @@ a {
   min-width: 0;
 }
 
+.war-member-table-wrap {
+  margin-top: 0.25rem;
+}
+
+.war-member-table-caption {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.war-member-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.war-member-table {
+  width: 100%;
+  min-width: 32rem;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.war-member-table thead th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  color: #334155;
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.war-member-table tbody td {
+  padding: 0.625rem 0.75rem;
+  vertical-align: top;
+  color: var(--text-secondary);
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.war-member-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.war-member-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.war-member-intro .war-prose {
+  margin: 0;
+}
+
 /* 전략 과제 체크리스트 (상세) */
 .war-checklist-panel {
   display: flex;
