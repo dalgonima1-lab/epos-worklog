@@ -11,6 +11,7 @@ import {
   saveGeneratedAnalysis,
   weekKey,
 } from "@/lib/references";
+import { mergeDirectiveIntoMarkdown } from "@/lib/managerDirective";
 
 export const maxDuration = 60;
 
@@ -184,6 +185,11 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json({
     markdown: saved.markdown,
+    displayMarkdown: mergeDirectiveIntoMarkdown(
+      saved.markdown,
+      saved.managerDirective
+    ),
+    managerDirective: saved.managerDirective ?? null,
     source: saved.source,
   });
 }

@@ -110,20 +110,29 @@ export async function loadGeneratedAnalysis(
   weekKey: string,
   weekStart?: string,
   weekEnd?: string
-): Promise<{ markdown: string; source: WeeklyAnalysisRecord["source"] } | null> {
+): Promise<{
+  markdown: string;
+  source: WeeklyAnalysisRecord["source"];
+  managerDirective?: WeeklyAnalysisRecord["managerDirective"];
+} | null> {
   if (weekStart && weekEnd) {
     const resolved = await resolveWeeklyAnalysis(weekStart, weekEnd);
     if (resolved?.record.markdown?.trim()) {
       return {
         markdown: resolved.record.markdown,
         source: resolved.record.source,
+        managerDirective: resolved.record.managerDirective,
       };
     }
   }
 
   const fromDb = await loadWeeklyAnalysis(weekKey);
   if (fromDb?.markdown?.trim()) {
-    return { markdown: fromDb.markdown, source: fromDb.source };
+    return {
+      markdown: fromDb.markdown,
+      source: fromDb.source,
+      managerDirective: fromDb.managerDirective,
+    };
   }
 
   if (!shouldMirrorAnalysisToDisk()) {

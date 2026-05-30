@@ -95,11 +95,19 @@ export interface ScheduleEntry {
   updatedAt: string;
 }
 
+/** 팀장·대표 첨언 및 지시사항 */
+export interface ManagerDirective {
+  author: string;
+  text: string;
+  updatedAt: string;
+}
+
 /** 주간 팀장 분석 (Gemini 또는 Cursor 등) */
 export interface WeeklyAnalysisRecord {
   markdown: string;
   source: "gemini" | "cursor" | "file" | "auto";
   updatedAt: string;
+  managerDirective?: ManagerDirective;
 }
 
 export interface Database {

@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnalysisWeekScopeBanner } from "@/components/AnalysisWeekScopeBanner";
 import { Header } from "@/components/Header";
+import { ManagerDirectivePanel } from "@/components/ManagerDirectivePanel";
 import { WeeklyAnalysisReport } from "@/components/WeeklyAnalysisReport";
 import {
   formatScopeSummary,
   getAnalysisWeekScope,
 } from "@/lib/analysisWeekScope";
-import { getWeekRange, shiftWeek } from "@/lib/dates";
+import { shiftWeek } from "@/lib/dates";
+import { mergeDirectiveIntoMarkdown, formatDirectiveTimestamp } from "@/lib/managerDirective";
+import type { ManagerDirective } from "@/lib/types";
 
 export default function ManagerAnalysisPage() {
   const [teamName, setTeamName] = useState("epos \uad00\ub9ac\ud300");
@@ -23,7 +26,10 @@ export default function ManagerAnalysisPage() {
   const [previousAnalysisHint, setPreviousAnalysisHint] = useState("");
   const [strategicChecklist, setStrategicChecklist] = useState("");
   const [managerNotes, setManagerNotes] = useState("");
-  const [analysis, setAnalysis] = useState("");
+  const [baseAnalysis, setBaseAnalysis] = useState("");
+  const [managerDirective, setManagerDirective] =
+    useState<ManagerDirective | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const [analysisNotice, setAnalysisNotice] = useState("");
   const [analysisSource, setAnalysisSource] = useState<
     "gemini" | "cursor" | "file" | "auto" | ""
@@ -42,6 +48,11 @@ export default function ManagerAnalysisPage() {
   const scope = useMemo(() => getAnalysisWeekScope(anchor), [anchor]);
   const { targetWeek: week, compareWeek } = scope;
   const scopeText = useMemo(() => formatScopeSummary(scope), [scope]);
+  const displayAnalysis = useMemo(
+    () => mergeDirectiveIntoMarkdown(baseAnalysis, managerDirective),
+    [baseAnalysis, managerDirective]
+  );
+  const hasReport = Boolean(baseAnalysis.trim());
 
   async function loadCompareReference() {
     if (!pin) return false;
@@ -103,11 +114,13 @@ export default function ManagerAnalysisPage() {
       const data = (await res.json().catch(() => ({}))) as {
         markdown?: string;
         source?: string;
+        managerDirective?: ManagerDirective | null;
       };
       if (cancelled) return;
       setViewingCompareReport(false);
       if (data.markdown?.trim()) {
-        setAnalysis(data.markdown);
+        setBaseAnalysis(data.markdown);
+        setManagerDirective(data.managerDirective ?? null);
         setAnalysisSource(
           (data.source as typeof analysisSource) || "file"
         );
@@ -119,7 +132,8 @@ export default function ManagerAnalysisPage() {
               : ""
         );
       } else {
-        setAnalysis("");
+        setBaseAnalysis("");
+        setManagerDirective(null);
         setAnalysisSource("");
         setAnalysisNotice("");
       }
@@ -128,6 +142,7 @@ export default function ManagerAnalysisPage() {
     void loadCompareReference();
     void loadTargetAnalysis();
     setReferenceSavedHint("");
+    setEditMode(false);
 
     return () => {
       cancelled = true;
@@ -213,33 +228,32 @@ export default function ManagerAnalysisPage() {
     setPreviousAnalysis(text);
   }
 
-  async function loadSavedAnalysis() {
+  async function loadSavedAnalysis(): Promise<boolean> {
     setError("");
     setViewingCompareReport(false);
     setAnalysisNotice("");
-    setAnalysis("");
     const res = await fetch(
       `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
     );
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? "저장된 분석을 불러오지 못했습니다.");
-      return;
+      return false;
     }
     if (!data.markdown) {
-      setError(
-        `분석 대상 주(${scopeText.targetCaption})에 저장된 분석이 없습니다. ` +
-          "「자동 분석·저장」을 실행하거나 Gemini로 생성해 주세요."
-      );
-      return;
+      setBaseAnalysis("");
+      setManagerDirective(null);
+      return false;
     }
-    setAnalysis(data.markdown);
+    setBaseAnalysis(data.markdown);
+    setManagerDirective(data.managerDirective ?? null);
     setAnalysisSource(data.source ?? "file");
     setAnalysisNotice(
       data.source === "cursor"
         ? "저장된 Cursor 주간 분석입니다."
         : `분석 대상 주(${scopeText.targetCaption}) 저장본입니다.`
     );
+    return true;
   }
 
   async function loadCompareReportView() {
@@ -267,7 +281,7 @@ export default function ManagerAnalysisPage() {
       return;
     }
     if (data.text?.trim()) setPreviousAnalysis(data.text);
-    setAnalysis(text);
+    setBaseAnalysis(text);
     setAnalysisSource(data.source === "analysis" ? "auto" : "file");
     setAnalysisNotice(
       `지난주·비교 기준(${scopeText.compareCaption}) 저장본 미리보기입니다. ` +
@@ -298,7 +312,7 @@ export default function ManagerAnalysisPage() {
         setError(data.error ?? "분석 생성 실패");
         return;
       }
-      setAnalysis(data.markdown);
+      setBaseAnalysis(data.markdown);
       setMeta(data.meta ?? null);
       setAnalysisSource(data.source ?? (data.fromCache ? "cursor" : "gemini"));
       if (data.notice) setAnalysisNotice(data.notice);
@@ -307,6 +321,8 @@ export default function ManagerAnalysisPage() {
           "Gemini 대신 저장해 둔 주간 분석을 표시했습니다."
         );
       }
+      setEditMode(false);
+      await loadSavedAnalysis();
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -315,7 +331,7 @@ export default function ManagerAnalysisPage() {
   }
 
   function downloadAnalysis() {
-    const blob = new Blob([analysis], {
+    const blob = new Blob([displayAnalysis], {
       type: "text/markdown;charset=utf-8",
     });
     const a = document.createElement("a");
@@ -349,6 +365,7 @@ export default function ManagerAnalysisPage() {
         return;
       }
       if (data.ok) {
+        setEditMode(false);
         await loadSavedAnalysis();
         setAnalysisNotice(
           data.message ??
@@ -383,9 +400,9 @@ export default function ManagerAnalysisPage() {
       {!authed ? (
         <form onSubmit={login} className="card max-w-md space-y-3 p-5">
           <p className="muted text-sm">
-            {"① 지난주 비교본 → ② 이번 주 보고서 확인 → ③ 첨언·지시 작성 순서로 진행합니다. "}
+            {"로그인 후 해당 주의 저장된 보고서가 먼저 표시됩니다. "}
             <strong>
-              {"Gemini가 잘한 점·부족한 점을 정리하고, ③에서 작성한 팀장·대표님 첨언을 반영합니다."}
+              {"첨언·지시는 보고서 화면에서 저장하고, 보고서 갱신은 「다시 분석하기」에서 진행합니다."}
             </strong>
           </p>
           <div>
@@ -405,29 +422,28 @@ export default function ManagerAnalysisPage() {
             {"\uc785\uc7a5"}
           </button>
         </form>
-      ) : (
+      ) : editMode ? (
         <>
           <AnalysisWeekScopeBanner scope={scope} />
 
-          <div className="card mb-4 space-y-3 p-4">
-            <div>
-              <p className="font-semibold">작업 순서</p>
-              <p className="muted text-sm">
-                <strong>① 비교 기준(지난주)</strong> →{" "}
-                <strong>② 이번 주 보고서 확인</strong> →{" "}
-                <strong>③ 첨언·지시 작성</strong> (필요 시 재생성)
-              </p>
-            </div>
-          </div>
-
           <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">주차 · 분석 실행</p>
+              <p className="font-semibold">보고서 다시 분석하기</p>
               <p className="muted text-sm">
-                상단 「①」에서 지난주 비교본을 맞춘 뒤, 「②」보고서를 생성·확인하고 「③」에서 첨언을 작성하세요.
+                비교 기준(지난주)을 맞춘 뒤 자동 분석·Gemini로 보고서를 생성·갱신합니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setEditMode(false);
+                  setError("");
+                }}
+              >
+                ← 보고서 보기
+              </button>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -447,7 +463,6 @@ export default function ManagerAnalysisPage() {
                 className="btn btn-secondary"
                 onClick={() => runAutoAnalysis(false, true)}
                 disabled={autoRunning}
-                title="등록된 일정·일일 기록만 반영 (공휴·미등록일 제외)"
               >
                 {autoRunning ? "분석 중…" : "자동 분석·저장 (등록분)"}
               </button>
@@ -456,14 +471,13 @@ export default function ManagerAnalysisPage() {
                 className="btn btn-secondary"
                 onClick={() => runAutoAnalysis(true, true)}
                 disabled={autoRunning}
-                title="기존 분석을 덮어쓰고 등록분만 다시 저장"
               >
                 {autoRunning ? "분석 중…" : "다시 저장 (등록분)"}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={loadSavedAnalysis}
+                onClick={() => void loadSavedAnalysis()}
               >
                 분석 대상 주 보기
               </button>
@@ -471,7 +485,6 @@ export default function ManagerAnalysisPage() {
                 type="button"
                 className="btn btn-secondary"
                 onClick={loadCompareReportView}
-                title={`비교 기준 ${compareWeek.label} 저장본 미리보기`}
               >
                 지난주(비교) 보기
               </button>
@@ -495,8 +508,6 @@ export default function ManagerAnalysisPage() {
             <p className="muted text-xs">
               {scopeText.targetRelative} 분석 시 참고하는{" "}
               <strong>{scopeText.compareRelative}</strong> 저장본입니다.
-              붙여넣기/업로드하거나, 해당 주에 저장된 분석이 있으면 자동으로
-              채워집니다.
             </p>
             {previousAnalysisHint ? (
               <p className="text-xs text-violet-800">{previousAnalysisHint}</p>
@@ -569,16 +580,123 @@ export default function ManagerAnalysisPage() {
           )}
 
           <section className="card mb-4 w-full min-w-0 space-y-4 p-4">
+            <h3 className="font-semibold">
+              ② 생성 미리보기 · {viewingCompareReport ? scopeText.compareCaption : scopeText.targetCaption}
+            </h3>
+            {baseAnalysis ? (
+              <WeeklyAnalysisReport
+                markdown={baseAnalysis}
+                weekLabel={
+                  viewingCompareReport
+                    ? scopeText.compareCaption
+                    : scopeText.targetCaption
+                }
+                compareWeekLabel={
+                  viewingCompareReport ? undefined : scopeText.compareCaption
+                }
+                source={analysisSource}
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                <p className="text-sm text-slate-600">
+                  아직 생성된 보고서가 없습니다.
+                </p>
+              </div>
+            )}
+          </section>
+
+          <section className="card space-y-4 p-4">
+            <h3 className="font-semibold">Gemini 생성 옵션 (선택)</h3>
+            <p className="muted text-xs">
+              Gemini 재생성 시 아래 내용을 프롬프트에 포함합니다. 첨언·지시는
+              보고서 화면에서 별도 저장하는 것을 권장합니다.
+            </p>
             <div>
-              <h3 className="font-semibold">
-                ② 주간 분석 보고서 · {scopeText.targetCaption}
-              </h3>
-              <p className="muted mt-1 text-xs">
-                보고서를 먼저 확인한 뒤, 아래 「③ 첨언·지시」에 내용을 작성하세요.
+              <label className="label">첨언 및 지시사항 (프롬프트용)</label>
+              <textarea
+                className="textarea min-h-[100px]"
+                value={managerNotes}
+                onChange={(e) => setManagerNotes(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">지난주 핵심 전략 과제 (선택)</label>
+              <textarea
+                className="textarea min-h-[100px] text-sm"
+                value={strategicChecklist}
+                onChange={(e) => setStrategicChecklist(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={generateAnalysis}
+                disabled={generating}
+              >
+                {generating ? "생성 중…" : "Gemini로 생성·저장"}
+              </button>
+            </div>
+          </section>
+        </>
+      ) : (
+        <>
+          <AnalysisWeekScopeBanner scope={scope} />
+
+          <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="font-semibold">
+                {scopeText.targetCaption} 주간 분석 보고서
+              </p>
+              <p className="muted text-sm">
+                저장된 보고서를 확인하고, 아래에서 첨언·지시를 작성하세요.
               </p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAnchor(shiftWeek(anchor, -1))}
+              >
+                {"\uc774\uc804 \uc8fc"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAnchor(new Date())}
+              >
+                {"\uc774\ubc88 \uc8fc"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setEditMode(true)}
+              >
+                {hasReport ? "보고서 다시 분석하기" : "보고서 생성하기"}
+              </button>
+            </div>
+          </div>
 
-            {analysis ? (
+          {managerDirective?.text?.trim() ? (
+            <p className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <strong>첨언·지시사항이 반영된 보고서입니다.</strong>{" "}
+              {managerDirective.author} ·{" "}
+              {formatDirectiveTimestamp(managerDirective.updatedAt)} 저장
+            </p>
+          ) : null}
+
+          {analysisNotice && (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {analysisNotice}
+            </p>
+          )}
+
+          {error && (
+            <p className="mb-3 text-sm text-red-600">{error}</p>
+          )}
+
+          <section className="card mb-4 w-full min-w-0 space-y-4 p-4">
+            {hasReport ? (
               <>
                 <div className="no-print flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-medium text-slate-700">
@@ -602,86 +720,43 @@ export default function ManagerAnalysisPage() {
                   </div>
                 </div>
                 <WeeklyAnalysisReport
-                  markdown={analysis}
-                  weekLabel={
-                    viewingCompareReport
-                      ? scopeText.compareCaption
-                      : scopeText.targetCaption
-                  }
-                  compareWeekLabel={
-                    viewingCompareReport ? undefined : scopeText.compareCaption
-                  }
+                  markdown={displayAnalysis}
+                  weekLabel={scopeText.targetCaption}
+                  compareWeekLabel={scopeText.compareCaption}
                   source={analysisSource}
                 />
               </>
             ) : (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
                 <p className="text-sm text-slate-600">
-                  아직 표시할 보고서가 없습니다.
+                  {scopeText.targetCaption}에 저장된 보고서가 없습니다.
                 </p>
                 <p className="muted mt-1 text-xs">
-                  「자동 분석·저장」 또는 「분석 대상 주 보기」로 보고서를 불러오세요.
+                  「보고서 생성하기」로 분석·저장을 진행해 주세요.
                 </p>
+                <button
+                  type="button"
+                  className="btn btn-primary mt-4"
+                  onClick={() => setEditMode(true)}
+                >
+                  보고서 생성하기
+                </button>
               </div>
             )}
           </section>
 
-          <section className="card space-y-4 p-4">
-            <div>
-              <h3 className="font-semibold">
-                ③ 팀장, 대표님 첨언 및 지시사항
-              </h3>
-              <p className="muted mt-1 text-xs">
-                위 「②」 보고서를 본 뒤 작성합니다. 저장 후 「첨언 반영 재생성」으로
-                보고서 5번 섹션에 반영할 수 있습니다.
-              </p>
-            </div>
-            <div>
-              <label className="label">
-                {`첨언 및 지시사항 (${scopeText.targetRelative} 보고서)`}
-              </label>
-              <textarea
-                className="textarea min-h-[140px]"
-                placeholder={
-                  "예: 봉천역 DB 이슈 재발 방지를 위해 며칠 내 매뉴얼화…\n(보고서 확인 후 작성)"
-                }
-                value={managerNotes}
-                onChange={(e) => setManagerNotes(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">
-                지난주 핵심 전략 과제 (체크리스트용, 선택)
-              </label>
-              <textarea
-                className="textarea min-h-[100px] text-sm"
-                placeholder={
-                  "\uc608: [\ucd5c\uc6d0\uc81c] \ud604\uc7a5 \uc2e4\ubb34 \ucd95\uc18c\n[\ub178\ud76c\ucc2c] \ubc18\ubcf5 \uc5d0\ub7ec \ub9e4\ub274\uc5bc\ud654..."
-                }
-                value={strategicChecklist}
-                onChange={(e) => setStrategicChecklist(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={generateAnalysis}
-                disabled={generating || !managerNotes.trim()}
-                title={!managerNotes.trim() ? "첨언·지시 내용을 입력하세요" : undefined}
-              >
-                {generating ? "재생성 중…" : "첨언 반영하여 Gemini 재생성"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={generateAnalysis}
-                disabled={generating}
-              >
-                {generating ? "생성 중…" : "첨언 없이 Gemini 생성"}
-              </button>
-            </div>
-          </section>
+          {hasReport ? (
+            <ManagerDirectivePanel
+              pin={pin}
+              weekStart={week.start}
+              weekEnd={week.end}
+              weekCaption={scopeText.targetCaption}
+              directive={managerDirective}
+              onSaved={(saved) => {
+                setManagerDirective(saved);
+              }}
+            />
+          ) : null}
         </>
       )}
     </>

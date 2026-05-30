@@ -3,6 +3,7 @@ import path from "path";
 import type {
   Database,
   DailyReport,
+  ManagerDirective,
   Member,
   ScheduleEntry,
   StationRecord,
@@ -862,13 +863,38 @@ export function visitGroupIdFromSchedules(
 export async function saveWeeklyAnalysis(
   key: string,
   markdown: string,
-  source: WeeklyAnalysisRecord["source"]
+  source: WeeklyAnalysisRecord["source"],
+  options?: { preserveDirective?: boolean; managerDirective?: ManagerDirective }
 ): Promise<void> {
   const db = await ensureDb();
   db.weeklyAnalyses = db.weeklyAnalyses ?? {};
+  const prev = db.weeklyAnalyses[key];
   db.weeklyAnalyses[key] = {
     markdown,
     source,
+    updatedAt: new Date().toISOString(),
+    managerDirective:
+      options?.managerDirective ??
+      (options?.preserveDirective !== false ? prev?.managerDirective : undefined),
+  };
+  await saveDb(db);
+}
+
+export async function saveWeeklyAnalysisDirective(
+  key: string,
+  directive: ManagerDirective
+): Promise<void> {
+  const db = await ensureDb();
+  db.weeklyAnalyses = db.weeklyAnalyses ?? {};
+  const prev = db.weeklyAnalyses[key];
+  if (!prev?.markdown?.trim()) {
+    throw new Error(
+      "저장된 보고서가 없습니다. 먼저 주간 분석을 생성해 주세요."
+    );
+  }
+  db.weeklyAnalyses[key] = {
+    ...prev,
+    managerDirective: directive,
     updatedAt: new Date().toISOString(),
   };
   await saveDb(db);
