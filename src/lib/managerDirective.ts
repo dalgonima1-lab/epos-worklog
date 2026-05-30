@@ -16,10 +16,11 @@ export function formatDirectiveTimestamp(iso: string): string {
 
 /** 보고서 5번 섹션에 첨언·지시를 반영한 표시용 Markdown */
 export function mergeDirectiveIntoMarkdown(
-  markdown: string,
+  markdown: string | null | undefined,
   directive?: ManagerDirective | null
 ): string {
-  if (!directive?.text?.trim()) return markdown;
+  const base = String(markdown ?? "");
+  if (!directive?.text?.trim()) return base;
 
   const when = formatDirectiveTimestamp(directive.updatedAt);
   const textLines = directive.text
@@ -35,11 +36,11 @@ export function mergeDirectiveIntoMarkdown(
   ].join("\n");
 
   const re = /##\s*5\.\s*[^\n]*[\s\S]*?(?=\n##\s+\d+\.|\n---\s*\n##|$)/i;
-  if (re.test(markdown)) {
-    return markdown.replace(re, section);
+  if (re.test(base)) {
+    return base.replace(re, section);
   }
 
-  const trimmed = markdown.trimEnd();
+  const trimmed = base.trimEnd();
   const sep = trimmed.endsWith("---") ? "\n\n" : "\n\n---\n\n";
   return `${trimmed}${sep}${section}\n`;
 }

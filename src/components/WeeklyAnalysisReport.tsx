@@ -17,7 +17,8 @@ interface WeeklyAnalysisReportProps {
 }
 
 function InlineText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  const safe = String(text ?? "");
+  const parts = safe.split(/(\*\*[^*]+\*\*)/g);
   return (
     <span className="war-inline break-keep [overflow-wrap:anywhere]">
       {parts.map((part, i) => {
@@ -226,7 +227,10 @@ export function WeeklyAnalysisReport({
   compareWeekLabel,
   source,
 }: WeeklyAnalysisReportProps) {
-  const report = useMemo(() => parseAnalysisMarkdown(markdown), [markdown]);
+  const report = useMemo(
+    () => parseAnalysisMarkdown(String(markdown ?? "")),
+    [markdown]
+  );
 
   return (
     <article className="weekly-analysis-report w-full min-w-0">

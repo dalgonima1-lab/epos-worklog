@@ -3,7 +3,8 @@
 import type { MemberTable } from "@/lib/parseAnalysisMarkdown";
 
 function InlineBold({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  const safe = String(text ?? "");
+  const parts = safe.split(/(\*\*[^*]+\*\*)/g);
   return (
     <>
       {parts.map((part, i) => {
@@ -46,7 +47,7 @@ export function MemberActivityTable({
               <tr key={ri}>
                 {row.map((cell, ci) => (
                   <td key={ci} className="whitespace-pre-wrap">
-                    <InlineBold text={cell} />
+                    <InlineBold text={String(cell ?? "")} />
                   </td>
                 ))}
               </tr>

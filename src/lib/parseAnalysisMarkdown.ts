@@ -325,7 +325,7 @@ function parseSimpleBulletList(sectionBody: string): string[] {
     }
   }
 
-  return items;
+  return items.filter((item): item is string => typeof item === "string" && item.length > 0);
 }
 
 function parseNumberedList(sectionBody: string): string[] {
@@ -404,8 +404,8 @@ function classifySection(title: string): AnalysisSection["kind"] {
   return "prose";
 }
 
-export function parseAnalysisMarkdown(md: string): ParsedAnalysisReport {
-  const normalized = md.replace(/\r\n/g, "\n").trim();
+export function parseAnalysisMarkdown(md: string | null | undefined): ParsedAnalysisReport {
+  const normalized = String(md ?? "").replace(/\r\n/g, "\n").trim();
   const lines = normalized.split("\n");
 
   let title = "주간 업무 분석 및 제언 보고서";

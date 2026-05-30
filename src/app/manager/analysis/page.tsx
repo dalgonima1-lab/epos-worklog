@@ -119,7 +119,7 @@ export default function ManagerAnalysisPage() {
       if (cancelled) return;
       setViewingCompareReport(false);
       if (data.markdown?.trim()) {
-        setBaseAnalysis(data.markdown);
+        setBaseAnalysis(String(data.markdown));
         setManagerDirective(data.managerDirective ?? null);
         setAnalysisSource(
           (data.source as typeof analysisSource) || "file"
@@ -245,7 +245,7 @@ export default function ManagerAnalysisPage() {
       setManagerDirective(null);
       return false;
     }
-    setBaseAnalysis(data.markdown);
+    setBaseAnalysis(String(data.markdown ?? ""));
     setManagerDirective(data.managerDirective ?? null);
     setAnalysisSource(data.source ?? "file");
     setAnalysisNotice(
@@ -312,7 +312,11 @@ export default function ManagerAnalysisPage() {
         setError(data.error ?? "분석 생성 실패");
         return;
       }
-      setBaseAnalysis(data.markdown);
+      if (!data.markdown?.trim()) {
+        setError("분석 결과가 비어 있습니다. 다시 시도해 주세요.");
+        return;
+      }
+      setBaseAnalysis(String(data.markdown));
       setMeta(data.meta ?? null);
       setAnalysisSource(data.source ?? (data.fromCache ? "cursor" : "gemini"));
       if (data.notice) setAnalysisNotice(data.notice);
