@@ -880,3 +880,42 @@ export async function loadWeeklyAnalysis(
   const db = await ensureDb();
   return db.weeklyAnalyses?.[key] ?? null;
 }
+
+/** exact key → 같은 주 시작일 키 순으로 저장된 주간 분석 탐색 */
+export async function resolveWeeklyAnalysis(
+  start: string,
+  end: string
+): Promise<{ key: string; record: WeeklyAnalysisRecord } | null> {
+  const db = await ensureDb();
+  const analyses = db.weeklyAnalyses ?? {};
+  const exactKey = `${start}_${end}`;
+  const exact = analyses[exactKey];
+  if (exact?.markdown?.trim()) {
+    return { key: exactKey, record: exact };
+  }
+
+  const prefix = `${start}_`;
+  const byStart = Object.entries(analyses)
+    .filter(([k, v]) => k.startsWith(prefix) && v.markdown?.trim())
+    .sort((a, b) => {
+      const ta = a[1].updatedAt ?? "";
+      const tb = b[1].updatedAt ?? "";
+      return tb.localeCompare(ta);
+    });
+  if (byStart.length > 0) {
+    const [key, record] = byStart[0]!;
+    return { key, record };
+  }
+
+  const suffix = `_${end}`;
+  const byEnd = Object.entries(analyses)
+    .filter(([k, v]) => k.endsWith(suffix) && v.markdown?.trim())
+    .sort((a, b) => {
+      const ta = a[1].updatedAt ?? "";
+      const tb = b[1].updatedAt ?? "";
+      return tb.localeCompare(ta);
+    });
+  if (byEnd.length === 0) return null;
+  const [key, record] = byEnd[0]!;
+  return { key, record };
+}

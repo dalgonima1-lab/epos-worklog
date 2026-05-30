@@ -174,7 +174,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "PIN 오류" }, { status: 403 });
   }
 
-  const saved = await loadGeneratedAnalysis(weekKey(start, end));
+  const saved = await loadGeneratedAnalysis(
+    weekKey(start, end),
+    start,
+    end
+  );
   if (!saved) {
     return NextResponse.json({ markdown: null });
   }
@@ -197,6 +201,10 @@ async function loadReferenceForWeek(
   end: string
 ): Promise<string | null> {
   const { loadPriorWeekAnalysisText } = await import("@/lib/references");
-  const { text } = await loadPriorWeekAnalysisText(weekKey(start, end));
+  const { text } = await loadPriorWeekAnalysisText(
+    weekKey(start, end),
+    start,
+    end
+  );
   return text || null;
 }

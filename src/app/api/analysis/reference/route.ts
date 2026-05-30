@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "PIN 오류" }, { status: 403 });
   }
 
-  const { text, source } = await loadPriorWeekAnalysisText(weekKey(start, end));
+  const { text, source } = await loadPriorWeekAnalysisText(
+    weekKey(start, end),
+    start,
+    end
+  );
   return NextResponse.json({
     text,
     source,

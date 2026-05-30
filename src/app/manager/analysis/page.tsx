@@ -49,49 +49,84 @@ export default function ManagerAnalysisPage() {
 
   useEffect(() => {
     if (!authed || !pin) return;
-    fetch(
-      `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
-    )
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.text) {
-          setPreviousAnalysis(d.text);
-          setPreviousAnalysisHint(
-            d.source === "analysis"
-              ? `비교 기준(${scopeText.compareCaption}) — 저장된 주간 분석을 불러왔습니다.`
-              : d.source === "reference"
-                ? `비교 기준(${scopeText.compareCaption}) — 직접 붙여넣은 참고 보고서입니다.`
-                : ""
-          );
-        } else {
-          setPreviousAnalysis("");
-          setPreviousAnalysisHint(
-            `비교 기준 주(${scopeText.compareCaption})에 저장된 분석이 없습니다. ` +
-              `아래에 PDF·txt를 붙여넣거나, 그 주차 분석을 먼저 만든 뒤 이용하세요.`
-          );
-        }
-      });
-    fetch(
-      `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
-    )
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.markdown) {
-          setAnalysis(d.markdown);
-          setAnalysisSource(d.source ?? "file");
-          setAnalysisNotice(
-            d.source === "auto"
-              ? "매주 토요일 자동 저장된 주간 분석입니다."
-              : d.source === "cursor"
-                ? "저장된 Cursor 주간 분석입니다."
-                : ""
-          );
-        } else {
-          setAnalysis("");
-          setAnalysisSource("");
-          setAnalysisNotice("");
-        }
-      });
+
+    let cancelled = false;
+
+    async function loadCompareReference() {
+      const res = await fetch(
+        `/api/analysis/reference?start=${compareWeek.start}&end=${compareWeek.end}&pin=${encodeURIComponent(pin)}`
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        text?: string;
+        source?: string;
+        error?: string;
+        weekLabel?: string;
+      };
+      if (cancelled) return;
+
+      if (!res.ok) {
+        setPreviousAnalysis("");
+        setPreviousAnalysisHint(
+          data.error ??
+            `비교 기준 주(${scopeText.compareCaption}) 불러오기 실패`
+        );
+        return;
+      }
+
+      if (data.text?.trim()) {
+        setPreviousAnalysis(data.text);
+        setPreviousAnalysisHint(
+          data.source === "analysis"
+            ? `비교 기준(${scopeText.compareCaption}) — 저장된 주간 분석을 불러왔습니다.`
+            : data.source === "reference"
+              ? `비교 기준(${scopeText.compareCaption}) — 직접 붙여넣은 참고 보고서입니다.`
+              : `비교 기준(${scopeText.compareCaption}) — ${data.weekLabel ?? ""}`
+        );
+        return;
+      }
+
+      setPreviousAnalysis("");
+      setPreviousAnalysisHint(
+        `비교 기준 주(${scopeText.compareCaption})에 저장된 분석이 없습니다. ` +
+          `「${compareWeek.label}」 주차에서 「자동 분석·저장」을 먼저 실행하거나, ` +
+          `아래에 지난주 보고서를 붙여넣은 뒤 「비교 기준 보고서 저장」을 눌러 주세요.`
+      );
+    }
+
+    async function loadTargetAnalysis() {
+      const res = await fetch(
+        `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        markdown?: string;
+        source?: string;
+      };
+      if (cancelled) return;
+      if (data.markdown?.trim()) {
+        setAnalysis(data.markdown);
+        setAnalysisSource(
+          (data.source as typeof analysisSource) || "file"
+        );
+        setAnalysisNotice(
+          data.source === "auto"
+            ? "매주 토요일 자동 저장된 주간 분석입니다."
+            : data.source === "cursor"
+              ? "저장된 Cursor 주간 분석입니다."
+              : ""
+        );
+      } else {
+        setAnalysis("");
+        setAnalysisSource("");
+        setAnalysisNotice("");
+      }
+    }
+
+    void loadCompareReference();
+    void loadTargetAnalysis();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     authed,
     pin,
@@ -99,6 +134,7 @@ export default function ManagerAnalysisPage() {
     week.end,
     compareWeek.start,
     compareWeek.end,
+    compareWeek.label,
     scopeText.compareCaption,
   ]);
 

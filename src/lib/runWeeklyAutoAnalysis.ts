@@ -126,7 +126,11 @@ export async function runWeeklyAutoAnalysis(options?: {
   const prevAnchor = shiftWeek(anchor, -1);
   const prevWeek = getWeekRange(prevAnchor);
   const prevKey = weekKey(prevWeek.start, prevWeek.end);
-  const prevAnalysis = await loadPriorWeekAnalysisText(prevKey);
+  const prevAnalysis = await loadPriorWeekAnalysisText(
+    prevKey,
+    prevWeek.start,
+    prevWeek.end
+  );
 
   const partialSubmission = allowPartial || !readiness.complete;
 
