@@ -22,12 +22,16 @@ export function mergeDirectiveIntoMarkdown(
   if (!directive?.text?.trim()) return markdown;
 
   const when = formatDirectiveTimestamp(directive.updatedAt);
+  const textLines = directive.text
+    .trim()
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   const section = [
     `## 5. 팀장, 대표님 첨언 및 지시사항`,
     ``,
-    `**작성:** ${directive.author} · ${when}`,
-    ``,
-    directive.text.trim(),
+    `- **작성자:** ${directive.author} · ${when}`,
+    ...textLines.map((line) => `- ${line}`),
   ].join("\n");
 
   const re = /##\s*5\.\s*[^\n]*[\s\S]*?(?=\n##\s+\d+\.|\n---\s*\n##|$)/i;

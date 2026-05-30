@@ -316,6 +316,10 @@ function parseSimpleBulletList(sectionBody: string): string[] {
       items.push(bullet);
       continue;
     }
+    if (/^\*\*작성/.test(t) || (!/^#{1,6}\s/.test(t) && !t.startsWith("|"))) {
+      items.push(t);
+      continue;
+    }
     if (/^\s{2,}\S/.test(line) && items.length > 0) {
       items[items.length - 1] += `\n${t}`;
     }
