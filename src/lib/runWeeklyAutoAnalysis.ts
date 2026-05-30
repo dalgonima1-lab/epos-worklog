@@ -39,7 +39,7 @@ export async function runWeeklyAutoAnalysis(options?: {
   tryGemini?: boolean;
 }): Promise<AutoAnalysisResult> {
   const schedule = options?.schedule ?? "manual";
-  const allowPartial = schedule === "sunday";
+  const allowPartial = schedule === "sunday" || schedule === "manual";
   const anchor = options?.anchorDate ?? new Date();
   const { start, end, label } = getWeekRange(anchor);
   const key = weekKey(start, end);
@@ -128,7 +128,7 @@ export async function runWeeklyAutoAnalysis(options?: {
   const prevKey = weekKey(prevWeek.start, prevWeek.end);
   const prevAnalysis = await loadPriorWeekAnalysisText(prevKey);
 
-  const partialSubmission = allowPartial && !readiness.complete;
+  const partialSubmission = allowPartial || !readiness.complete;
 
   let markdown = generateAutoWeeklyAnalysis({
     summary,
@@ -163,8 +163,8 @@ export async function runWeeklyAutoAnalysis(options?: {
       const weekOfMonth = Math.ceil(day / 7);
 
       const managerNotes = partialSubmission
-        ? `일요일 부분 제출 분석입니다. 제출된 ${totalReports}건만 반영하고, 미제출 일자는 보고서에 명시하세요. 미제출: ${readiness.reason}`
-        : "매주 토요일 자동 생성 분석입니다. 일일 기록 전원 제출이 확인된 주입니다.";
+        ? `등록된 일일 기록 ${totalReports}건만 반영하는 부분 분석입니다. 법정 공휴일·일정 미등록일·연차는 제출 의무에서 제외하세요. 일정 등록 후 미제출: ${readiness.reason}`
+        : "매주 토요일 자동 생성 분석입니다. 등록 일정 기준 전원 제출이 확인된 주입니다.";
 
       const prompt = buildAnalysisPrompt({
         teamName: db.teamName,

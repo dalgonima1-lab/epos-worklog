@@ -43,15 +43,28 @@ export function WeeklySummaryReport({
           기간 <span className="font-semibold text-white">{summary.weekLabel}</span>
         </p>
         <p className="relative mt-1 text-xs text-indigo-200/90">
-          생성 {generated} · 근무일 {summary.expectedDays}일 기준
+          생성 {generated} · 등록 일정 {summary.expectedDays}건 기준
+          {summary.publicHolidayDates.length > 0
+            ? ` · 공휴 ${summary.publicHolidayDates.length}일 제외`
+            : ""}
         </p>
       </header>
 
+      {summary.publicHolidayDates.length > 0 ? (
+        <p className="mt-4 rounded-lg border border-rose-100 bg-rose-50 px-4 py-2 text-sm text-rose-900">
+          <span className="font-semibold">법정 공휴일(제출 제외):</span>{" "}
+          {summary.publicHolidayDates.join(", ")}
+        </p>
+      ) : null}
+
       <div className="mt-8 space-y-8">
         {summary.members.map((m) => {
-          const rate = Math.round(
-            (m.submittedDays / Math.max(1, m.expectedDays)) * 100
-          );
+          const rate =
+            m.expectedDays > 0
+              ? Math.round((m.submittedDays / m.expectedDays) * 100)
+              : m.submittedDays > 0
+                ? 100
+                : 0;
           const badgeClass =
             rate >= 100
               ? "bg-emerald-100 text-emerald-900 ring-emerald-200"
@@ -71,7 +84,8 @@ export function WeeklySummaryReport({
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${badgeClass}`}
                 >
-                  제출 {m.submittedDays}/{m.expectedDays}일 · {rate}%
+                  제출 {m.submittedDays}/{m.expectedDays}일
+                  {m.expectedDays > 0 ? ` · ${rate}%` : " · 일정 없음"}
                 </span>
               </div>
               <div className="px-4 py-3 sm:px-5">
@@ -83,12 +97,20 @@ export function WeeklySummaryReport({
                 ) : null}
                 {m.missingDates.length > 0 ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                    <span className="font-semibold">미제출일:</span>{" "}
+                    <span className="font-semibold">일정 등록·미제출:</span>{" "}
                     {m.missingDates.join(", ")}
                   </p>
-                ) : (
+                ) : m.expectedDays > 0 ? (
                   <p className="text-sm font-medium text-emerald-800">
-                    이번 주 근무일 모두 제출되었습니다.
+                    등록된 현장 일정 기준 모두 제출되었습니다.
+                  </p>
+                ) : m.reports.length > 0 ? (
+                  <p className="text-sm font-medium text-emerald-800">
+                    등록 일정 없이 {m.reports.length}건 기록됨
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-600">
+                    이번 주 등록된 현장 일정·기록 없음 (공휴·미등록일 제외)
                   </p>
                 )}
               </div>

@@ -50,7 +50,10 @@ export function isWeekSubmissionComplete(
 
   return {
     complete: true,
-    reason: `전원 ${summary.expectedDays}일 제출 완료`,
+    reason:
+      summary.expectedDays > 0
+        ? `등록된 현장·사무 일정 ${summary.expectedDays}건 기준 제출 확인`
+        : `공휴일·미등록 일 제외 — 제출 대상 일정 없음`,
     members,
   };
 }

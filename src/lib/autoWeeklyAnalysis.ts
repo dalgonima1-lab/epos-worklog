@@ -2,6 +2,7 @@ import type { DailyReport } from "./types";
 import type { WeeklySummary } from "./summary";
 import type { SubmissionReadiness } from "./weeklySubmission";
 import { weekdayLabel } from "./dates";
+import { getKoreanHolidayName } from "./koreanHolidays";
 
 function excerpt(text: string, max = 120): string {
   const t = text.replace(/\s+/g, " ").trim();
@@ -118,12 +119,12 @@ export function generateAutoWeeklyAnalysis(params: {
   } = params;
   const now = new Date().toLocaleString("ko-KR");
   const totalReports = summary.members.reduce((n, m) => n + m.reports.length, 0);
-  const maxExpected = summary.members.length * summary.expectedDays;
+  const maxExpected = summary.members.reduce((n, m) => n + m.expectedDays, 0);
   const allIssues = summary.members.flatMap((m) => collectIssues(m.reports));
   const checklist = inferChecklistRows(summary);
   const scheduleLabel = partialSubmission
-    ? "매주 일요일 · **제출분만 반영(부분 분석)**"
-    : "매주 토요일 · 전원 제출 기준";
+    ? "등록된 일정·기록 기준 (공휴·미등록일 제외)"
+    : "등록 일정 전원 제출 기준";
 
   const lines: string[] = [
     `# ${summary.teamName} 업무 분석 및 제언 보고서`,
@@ -139,20 +140,31 @@ export function generateAutoWeeklyAnalysis(params: {
     ``,
   ];
 
-  if (partialSubmission) {
+  if (summary.publicHolidayDates.length > 0) {
+    const labels = summary.publicHolidayDates.map(
+      (d) => `${d}(${getKoreanHolidayName(d) ?? weekdayLabel(d)})`
+    );
     lines.push(
-      `이번 주(${summary.weekLabel}) **제출된 일일 기록 ${totalReports}건**만 반영한 **부분 분석**입니다 (가능 ${maxExpected}건 중).`,
-      `토요일까지 전원 제출이 완료되지 않아, **입력된 날짜·팀원만** 분석했습니다.`,
+      `**법정 공휴일(제출 제외):** ${labels.join(", ")}`,
       ``
     );
-    if (submissionStatus && !submissionStatus.complete) {
-      lines.push(`**제출 현황:** ${submissionStatus.reason}`, ``);
+  }
+
+  if (partialSubmission) {
+    lines.push(
+      `이번 주(${summary.weekLabel}) **등록된 일일 기록 ${totalReports}건**을 반영한 분석입니다.`,
+      `**공휴일·연차·일정 미등록일**은 업무 보고 대상에서 제외했습니다.`,
+      ``
+    );
+    if (submissionStatus && !submissionStatus.complete && maxExpected > 0) {
+      lines.push(
+        `**일정 등록 후 미제출:** ${submissionStatus.reason}`,
+        ``
+      );
       for (const m of submissionStatus.members) {
         if (m.missingDates.length > 0) {
-          lines.push(`- **${m.name}** 미제출: ${m.missingDates.join(", ")}`);
-        } else if (m.submittedDays < m.expectedDays) {
           lines.push(
-            `- **${m.name}** ${m.submittedDays}/${m.expectedDays}일 (일부만 제출)`
+            `- **${m.name}** 일정 등록·미제출: ${m.missingDates.join(", ")}`
           );
         }
       }
@@ -160,14 +172,15 @@ export function generateAutoWeeklyAnalysis(params: {
     }
   } else {
     lines.push(
-      `이번 주(${summary.weekLabel}) **팀원 ${summary.members.length}명 전원**이 근무일 **${summary.expectedDays}일** 일일 기록을 제출했습니다(총 ${totalReports}건).`
+      `이번 주(${summary.weekLabel}) **등록 일정 기준** 팀원 ${summary.members.length}명의 일일 기록 제출이 확인되었습니다(총 ${totalReports}건).`
     );
   }
 
   for (const m of summary.members) {
+    if (partialSubmission && m.reports.length === 0) continue;
     const stations = stationsForReports(m.reports);
     lines.push(
-      `- **${m.member.name}**: ${m.submittedDays}/${m.expectedDays}일 제출 · 역사 ${stations.slice(0, 4).join(", ") || "—"}${stations.length > 4 ? " 외" : ""}`
+      `- **${m.member.name}**: 기록 ${m.reports.length}건 · 일정 ${m.expectedDays}일 중 ${m.submittedDays}일 제출 · 역사 ${stations.slice(0, 4).join(", ") || "—"}${stations.length > 4 ? " 외" : ""}`
     );
   }
 
@@ -190,15 +203,16 @@ export function generateAutoWeeklyAnalysis(params: {
   lines.push(``, `---`, ``, `## 2. 구성원별 평가`, ``);
 
   for (const m of summary.members) {
+    if (partialSubmission && m.reports.length === 0) continue;
     const stations = stationsForReports(m.reports);
     const issues = collectIssues(m.reports);
     lines.push(`### ${m.member.name}`, ``);
 
     if (m.reports.length === 0) {
-      lines.push(`**👍 잘한 부분**`, `- 이번 주 제출된 일일 기록 없음`, ``);
+      lines.push(`**👍 잘한 부분**`, `- 이번 주 등록된 일일 기록 없음`, ``);
       lines.push(
         `**👎 보완이 필요한 부분**`,
-        `- ${summary.expectedDays}일 중 **전부 미제출** — 차주 월요일까지 소급 입력 또는 사유 기록 필요`,
+        `- 등록된 현장 일정 대비 기록 없음 — 일정·기록을 맞춰 주세요`,
         ``,
         `---`,
         ``
@@ -207,9 +221,12 @@ export function generateAutoWeeklyAnalysis(params: {
     }
 
     lines.push(`**👍 잘한 부분**`);
-    lines.push(
-      `- **${m.submittedDays}/${m.expectedDays}일** 제출 (제출된 날만 분석에 반영)`
-    );
+    lines.push(`- **${m.reports.length}건** 일일 기록 (등록분 기준)`);
+    if (m.expectedDays > 0) {
+      lines.push(
+        `- 등록 일정 **${m.submittedDays}/${m.expectedDays}일** 제출`
+      );
+    }
     if (m.missingDates.length > 0) {
       lines.push(`- 제출 완료일: ${m.reports.map((r) => r.date).join(", ")}`);
     }
@@ -225,7 +242,7 @@ export function generateAutoWeeklyAnalysis(params: {
     }
     lines.push(``, `**👎 보완이 필요한 부분**`);
     if (m.missingDates.length > 0) {
-      lines.push(`- **미제출일:** ${m.missingDates.join(", ")}`);
+      lines.push(`- **일정 등록·미제출:** ${m.missingDates.join(", ")}`);
     }
     if (issues.length) {
       for (const iss of issues.slice(0, 4)) {
@@ -253,7 +270,7 @@ export function generateAutoWeeklyAnalysis(params: {
   lines.push(``, `---`, ``, `## 4. 대표님 의사결정용 최종 제언`, ``);
   if (partialSubmission) {
     lines.push(
-      `1. **미제출 일자**는 차주 월요일 오전까지 보완하고, 토요일 전원 제출 루틴을 맞추는 것을 권장합니다.`
+      `1. **등록된 일정·기록**만 이번 분석에 반영했습니다. 공휴일·미등록일은 보고 의무에서 제외됩니다.`
     );
   } else {
     lines.push(

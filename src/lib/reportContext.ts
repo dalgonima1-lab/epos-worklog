@@ -1,6 +1,7 @@
 import type { DailyReport, Member } from "./types";
 import { formatWorkDuration } from "./workTime";
 import { MANAGEMENT_OFFICE_FACILITY, OFFICE_WORK_FACILITY } from "./stationFacility";
+import { reportHasMeaningfulContent } from "./visitCohort";
 
 export function buildWeeklyReportsContext(
   teamName: string,
@@ -16,7 +17,7 @@ export function buildWeeklyReportsContext(
 
   for (const member of members) {
     const memberReports = reports
-      .filter((r) => r.memberId === member.id)
+      .filter((r) => r.memberId === member.id && reportHasMeaningfulContent(r))
       .sort((a, b) => a.date.localeCompare(b.date));
 
     lines.push(`## ${member.name}`);

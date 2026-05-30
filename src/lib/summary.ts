@@ -5,6 +5,7 @@ import { photoApiUrl } from "./photoUrl";
 import { reportHasMeaningfulContent } from "./visitCohort";
 import { isTimeOffFacility } from "./scheduleKinds";
 import { MANAGEMENT_OFFICE_FACILITY } from "./stationFacility";
+import { getKoreanHolidayName, isKoreanPublicHoliday } from "./koreanHolidays";
 
 export interface MemberWeekSummary {
   member: Member;
@@ -12,6 +13,8 @@ export interface MemberWeekSummary {
   expectedDays: number;
   missingDates: string[];
   timeOffDates: string[];
+  /** 해당 주 법정 공휴일 (월~금) */
+  publicHolidayDates: string[];
   reports: DailyReport[];
 }
 
@@ -20,6 +23,8 @@ export interface WeeklySummary {
   weekLabel: string;
   start: string;
   end: string;
+  /** 이번 주 월~금 중 법정 공휴일 */
+  publicHolidayDates: string[];
   expectedDays: number;
   members: MemberWeekSummary[];
   generatedAt: string;
@@ -39,6 +44,26 @@ function timeOffDatesForMember(
   return set;
 }
 
+/** 연차·공휴일 일정 외 현장·사무·유지보수 일정이 있는 날 */
+function scheduledWorkDatesForMember(
+  memberId: string,
+  workdays: string[],
+  schedules: ScheduleEntry[]
+): Set<string> {
+  const set = new Set<string>();
+  for (const s of schedules) {
+    if (s.memberId !== memberId || !workdays.includes(s.date)) continue;
+    const area = s.facilityArea?.trim() ?? "";
+    if (!area || isTimeOffFacility(area)) continue;
+    set.add(s.date);
+  }
+  return set;
+}
+
+function publicHolidayDatesIn(workdays: string[]): string[] {
+  return workdays.filter((d) => isKoreanPublicHoliday(d));
+}
+
 export function buildWeeklySummary(
   teamName: string,
   weekLabel: string,
@@ -49,34 +74,59 @@ export function buildWeeklySummary(
   schedules: ScheduleEntry[] = []
 ): WeeklySummary {
   const workdays = weekdaysBetween(start, end);
+  const publicHolidayDates = publicHolidayDatesIn(workdays);
+  const publicHolidaySet = new Set(publicHolidayDates);
 
   const memberSummaries: MemberWeekSummary[] = members.map((member) => {
     const timeOff = timeOffDatesForMember(member.id, workdays, schedules);
-    const expected = workdays.filter((d) => !timeOff.has(d));
+    const scheduledWork = scheduledWorkDatesForMember(
+      member.id,
+      workdays,
+      schedules
+    );
 
     const memberReports = reports
       .filter((r) => r.memberId === member.id && reportHasMeaningfulContent(r))
       .sort((a, b) => a.date.localeCompare(b.date));
     const submittedDates = new Set(memberReports.map((r) => r.date));
-    const missingDates = expected.filter((d) => !submittedDates.has(d));
+
+    /** 일정 등록일만 제출 대상 (공휴·연차·미등록일 제외) */
+    const requiringReport = workdays.filter(
+      (d) =>
+        !timeOff.has(d) &&
+        !publicHolidaySet.has(d) &&
+        scheduledWork.has(d)
+    );
+
+    const missingDates = requiringReport.filter((d) => !submittedDates.has(d));
+    const countableDays = workdays.filter(
+      (d) => !timeOff.has(d) && !publicHolidaySet.has(d)
+    );
 
     return {
       member,
-      submittedDays: memberReports.filter((r) => expected.includes(r.date))
+      submittedDays: memberReports.filter((r) => countableDays.includes(r.date))
         .length,
-      expectedDays: expected.length,
+      expectedDays: requiringReport.length,
       missingDates,
       timeOffDates: [...timeOff].sort(),
+      publicHolidayDates,
       reports: memberReports,
     };
   });
+
+  const teamExpectedDays = memberSummaries.reduce(
+    (n, m) => n + m.expectedDays,
+    0
+  );
 
   return {
     teamName,
     weekLabel,
     start,
     end,
-    expectedDays: workdays.length,
+    publicHolidayDates,
+    expectedDays: teamExpectedDays,
     members: memberSummaries,
     generatedAt: new Date().toISOString(),
   };
@@ -112,20 +162,23 @@ export function summaryToMarkdown(summary: WeeklySummary): string {
     ``,
   ];
 
+  if (summary.publicHolidayDates.length > 0) {
+    const labels = summary.publicHolidayDates.map(
+      (d) => `${d}(${getKoreanHolidayName(d) ?? "공휴일"})`
+    );
+    lines.push(`**법정 공휴일(제출 제외):** ${labels.join(", ")}`, ``);
+  }
+
   for (const m of summary.members) {
-    const rate =
-      m.expectedDays > 0
-        ? Math.round((m.submittedDays / m.expectedDays) * 100)
-        : 100;
     lines.push(`## ${m.member.name}`);
     lines.push(
-      `- 제출: ${m.submittedDays}/${m.expectedDays}일 (${rate}%)`
+      `- 제출: ${m.submittedDays}/${m.expectedDays}일 (등록 일정 기준${m.expectedDays === 0 ? " · 이번 주 현장 일정 없음" : ""})`
     );
     if (m.timeOffDates.length > 0) {
-      lines.push(`- 휴무(연차·공휴): ${m.timeOffDates.join(", ")}`);
+      lines.push(`- 휴무(연차·공휴 일정): ${m.timeOffDates.join(", ")}`);
     }
     if (m.missingDates.length > 0) {
-      lines.push(`- 미제출: ${m.missingDates.join(", ")}`);
+      lines.push(`- 미제출(일정 등록일): ${m.missingDates.join(", ")}`);
     }
     lines.push("");
 

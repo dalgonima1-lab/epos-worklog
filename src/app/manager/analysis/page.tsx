@@ -273,9 +273,7 @@ export default function ManagerAnalysisPage() {
       } else {
         setError(
           data.reason ??
-            (partial
-              ? "제출된 기록이 없거나 이미 전원 분석이 저장되어 있습니다."
-              : "아직 전원 제출이 완료되지 않았습니다.")
+            "등록된 일일 기록이 없거나 이미 저장된 분석이 있습니다."
         );
       }
     } catch {
@@ -337,10 +335,10 @@ export default function ManagerAnalysisPage() {
                 직전 주입니다.
               </p>
               <p className="mt-2 text-xs font-medium text-indigo-800">
-                <strong>토요일 09:00</strong> — 전원 월~금 제출 완료 시 전체 분석 저장
+                <strong>토요일 09:00</strong> — 등록 일정 전원 제출 시 전체 분석 저장
                 <br />
-                <strong>일요일 09:00</strong> — 미완료 시 <strong>제출된 기록만</strong>{" "}
-                부분 분석 저장 (토요일에 이미 전원 분석됐으면 생략)
+                <strong>일요일 09:00</strong> — 미완료 시 <strong>등록분만</strong>{" "}
+                분석 저장 · 수동 실행도 동일하게 등록된 일정·기록만 반영
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -361,19 +359,20 @@ export default function ManagerAnalysisPage() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => runAutoAnalysis(false)}
+                onClick={() => runAutoAnalysis(false, true)}
                 disabled={autoRunning}
+                title="등록된 일정·일일 기록만 반영 (공휴·미등록일 제외)"
               >
-                {autoRunning ? "자동 분석 중…" : "지금 자동 분석·저장 (전원)"}
+                {autoRunning ? "분석 중…" : "자동 분석·저장 (등록분)"}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => runAutoAnalysis(true, true)}
                 disabled={autoRunning}
-                title="일요일 루틴과 동일 — 제출된 일일 기록만 반영"
+                title="기존 분석을 덮어쓰고 등록분만 다시 저장"
               >
-                {autoRunning ? "분석 중…" : "부분 분석·저장 (제출분)"}
+                {autoRunning ? "분석 중…" : "다시 저장 (등록분)"}
               </button>
               <button
                 type="button"
