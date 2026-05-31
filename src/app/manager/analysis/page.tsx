@@ -345,6 +345,14 @@ export default function ManagerAnalysisPage() {
   }
 
   function printReport() {
+    document.documentElement.classList.add("printing-weekly-report");
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.documentElement.classList.remove("printing-weekly-report");
+      },
+      { once: true }
+    );
     window.print();
   }
 
@@ -395,7 +403,7 @@ export default function ManagerAnalysisPage() {
         subtitle="주간 업무 분석 및 제언 (Gemini 또는 Cursor 저장본)"
       />
 
-      <p className="muted mb-4 text-sm">
+      <p className="no-print muted mb-4 text-sm">
         <Link href="/manager" className="text-blue-700 underline">
           {"\u2190 \uad00\ub9ac\uc790 \ub300\uc2dc\ubcf4\ub4dc"}
         </Link>
@@ -645,9 +653,11 @@ export default function ManagerAnalysisPage() {
         </>
       ) : (
         <>
-          <AnalysisWeekScopeBanner scope={scope} />
+          <div className="no-print">
+            <AnalysisWeekScopeBanner scope={scope} />
+          </div>
 
-          <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="no-print card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <p className="font-semibold">
                 {scopeText.targetCaption} 주간 분석 보고서
@@ -682,7 +692,7 @@ export default function ManagerAnalysisPage() {
           </div>
 
           {managerDirective?.text?.trim() ? (
-            <p className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            <p className="no-print mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
               <strong>첨언·지시사항이 반영된 보고서입니다.</strong>{" "}
               {managerDirective.author} ·{" "}
               {formatDirectiveTimestamp(managerDirective.updatedAt)} 저장
@@ -690,16 +700,16 @@ export default function ManagerAnalysisPage() {
           ) : null}
 
           {analysisNotice && (
-            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="no-print mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {analysisNotice}
             </p>
           )}
 
           {error && (
-            <p className="mb-3 text-sm text-red-600">{error}</p>
+            <p className="no-print mb-3 text-sm text-red-600">{error}</p>
           )}
 
-          <section className="card mb-4 w-full min-w-0 space-y-4 p-4">
+          <section className="weekly-report-print-area card mb-4 w-full min-w-0 space-y-4 p-4">
             {hasReport ? (
               <>
                 <div className="no-print flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -750,16 +760,18 @@ export default function ManagerAnalysisPage() {
           </section>
 
           {hasReport ? (
-            <ManagerDirectivePanel
-              pin={pin}
-              weekStart={week.start}
-              weekEnd={week.end}
-              weekCaption={scopeText.targetCaption}
-              directive={managerDirective}
-              onSaved={(saved) => {
-                setManagerDirective(saved);
-              }}
-            />
+            <div className="no-print">
+              <ManagerDirectivePanel
+                pin={pin}
+                weekStart={week.start}
+                weekEnd={week.end}
+                weekCaption={scopeText.targetCaption}
+                directive={managerDirective}
+                onSaved={(saved) => {
+                  setManagerDirective(saved);
+                }}
+              />
+            </div>
           ) : null}
         </>
       )}

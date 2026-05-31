@@ -1721,20 +1721,448 @@ a {
   background: #fff1f2;
 }
 
+/* —— A4 PDF / 인쇄 (주간 분석 보고서) —— */
+@page {
+  size: A4 portrait;
+  margin: 12mm 11mm 14mm;
+}
+
 @media print {
-  body {
-    background: white;
+  html {
+    font-size: 10pt;
   }
+
+  body {
+    background: #fff !important;
+    color: #0f172a;
+  }
+
+  .app-shell {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   .site-header,
   .site-nav,
-  .no-print {
+  .no-print,
+  .analysis-scope-banner {
     display: none !important;
   }
+
+  html.printing-weekly-report .card:not(.weekly-report-print-area) {
+    display: none !important;
+  }
+
+  .weekly-report-print-area {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .weekly-report-print-area.card {
+    break-before: auto;
+  }
+
   .weekly-analysis-report {
     max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
-  .card {
+
+  /* 표지 */
+  .war-report-header {
+    padding: 10mm 0 6mm;
+    margin: 0 0 4mm;
+    border-radius: 0;
     box-shadow: none;
+    background: none !important;
+    color: #0f172a !important;
+    border-bottom: 2pt solid #312e81;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .war-report-eyebrow {
+    color: #4338ca !important;
+    font-size: 7pt;
+    margin-bottom: 2mm;
+  }
+
+  .war-report-title {
+    font-size: 16pt;
+    line-height: 1.25;
+    color: #0f172a !important;
+    margin: 0 0 3mm;
+  }
+
+  .war-report-period {
+    font-size: 9pt;
+    margin: 1mm 0;
+    color: #334155 !important;
+  }
+
+  .war-report-period-label {
+    color: #64748b !important;
+    min-width: 4.5em;
+  }
+
+  .war-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2mm 4mm;
+    margin-top: 3mm;
+    font-size: 8.5pt;
+  }
+
+  .war-meta-item {
     border: none;
+    padding: 0;
+    background: none !important;
+  }
+
+  .war-meta-item dt {
+    font-size: 7pt;
+    color: #64748b !important;
+  }
+
+  .war-meta-item dd {
+    color: #0f172a !important;
+  }
+
+  .war-source-badge {
+    display: inline-block;
+    margin-top: 2mm;
+    padding: 0.5mm 2mm;
+    font-size: 7pt;
+    border: 0.5pt solid #cbd5e1;
+    background: #f8fafc !important;
+    color: #475569 !important;
+  }
+
+  /* 섹션 */
+  .war-sections {
+    gap: 3mm;
+  }
+
+  .war-section {
+    break-inside: auto;
+    page-break-inside: auto;
+    border: 0.5pt solid #cbd5e1;
+    border-radius: 0;
+    box-shadow: none !important;
+    margin: 0 0 3mm;
+    overflow: visible;
+  }
+
+  .war-section-head {
+    padding: 2mm 3mm;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .war-section--indigo .war-section-head {
+    background: #eef2ff !important;
+    border-bottom: 0.5pt solid #c7d2fe;
+  }
+
+  .war-section--emerald .war-section-head {
+    background: #ecfdf5 !important;
+    border-bottom: 0.5pt solid #a7f3d0;
+  }
+
+  .war-section--amber .war-section-head {
+    background: #fffbeb !important;
+    border-bottom: 0.5pt solid #fde68a;
+  }
+
+  .war-section--slate .war-section-head {
+    background: #f8fafc !important;
+    border-bottom: 0.5pt solid #e2e8f0;
+  }
+
+  .war-section-icon {
+    font-size: 9pt;
+  }
+
+  .war-section-title {
+    font-size: 10.5pt;
+    line-height: 1.3;
+  }
+
+  .war-section-body {
+    padding: 2.5mm 3mm 3mm;
+  }
+
+  .war-prose,
+  .war-bullet-body,
+  .war-numbered-text,
+  .war-summary-member-text {
+    font-size: 9pt !important;
+    line-height: 1.45 !important;
+    color: #1e293b !important;
+  }
+
+  /* 종합 평가 */
+  .war-summary-members {
+    gap: 2mm;
+    margin-top: 2mm;
+  }
+
+  .war-summary-member-card {
+    padding: 2mm 2.5mm;
+    border: 0.5pt solid #e2e8f0;
+    background: #fafafa !important;
+    break-inside: avoid;
+  }
+
+  .war-summary-member-name {
+    font-size: 8.5pt;
+    margin-bottom: 1mm;
+  }
+
+  /* 구성원별 */
+  .war-members-stack {
+    gap: 3mm;
+  }
+
+  .war-member-card {
+    border: 0.5pt solid #e2e8f0;
+    padding: 2.5mm 3mm;
+    break-inside: auto;
+    page-break-inside: auto;
+    background: #fff !important;
+  }
+
+  .war-member-name {
+    font-size: 10pt;
+    margin: 0 0 2mm;
+    padding-bottom: 1.5mm;
+    border-bottom: 0.5pt solid #e2e8f0;
+    break-after: avoid;
+  }
+
+  .war-member-eval-stack {
+    gap: 2mm;
+  }
+
+  .war-member-block {
+    padding: 2mm 0 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .war-member-block--pos,
+  .war-member-block--neg {
+    background: none !important;
+    border: none;
+    padding-left: 0;
+  }
+
+  .war-member-block-title {
+    font-size: 9pt;
+    margin-bottom: 1.5mm;
+  }
+
+  .war-member-block-emoji {
+    font-size: 9pt;
+  }
+
+  .war-bullet-list {
+    gap: 1mm;
+    margin: 0;
+  }
+
+  .war-bullet-row {
+    gap: 2mm;
+  }
+
+  .war-bullet-marker {
+    font-size: 8pt;
+    min-width: 3mm;
+  }
+
+  /* 표 */
+  .war-member-table-wrap,
+  .war-checklist-detail-table-wrap {
+    margin: 1.5mm 0;
+  }
+
+  .war-member-table-scroll {
+    overflow: visible !important;
+  }
+
+  .war-member-table-caption,
+  .war-member-table-caption.mb-2 {
+    font-size: 8pt;
+    font-weight: 700;
+    margin: 1.5mm 0 1mm !important;
+    color: #475569 !important;
+  }
+
+  .war-member-table,
+  .war-checklist-detail-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+    font-size: 7.5pt;
+    border-collapse: collapse;
+  }
+
+  .war-member-table thead th,
+  .war-checklist-detail-table thead th {
+    padding: 1.5mm 1.5mm;
+    font-size: 7pt;
+    background: #f1f5f9 !important;
+    border: 0.5pt solid #cbd5e1;
+    color: #475569 !important;
+  }
+
+  .war-member-table tbody td,
+  .war-checklist-detail-table td {
+    padding: 1.5mm 1.5mm;
+    border: 0.5pt solid #e2e8f0;
+    vertical-align: top;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+
+  .war-member-table tbody tr:nth-child(even) {
+    background: #fafafa !important;
+  }
+
+  .war-member-table th:nth-child(1),
+  .war-member-table td:nth-child(1) {
+    width: 9%;
+  }
+
+  .war-member-table th:nth-child(2),
+  .war-member-table td:nth-child(2) {
+    width: 24%;
+  }
+
+  .war-member-table th:nth-child(3),
+  .war-member-table td:nth-child(3) {
+    width: 14%;
+  }
+
+  /* 체크리스트 — 인쇄 시 표 형식 */
+  .war-checklist-panel {
+    gap: 2mm;
+  }
+
+  .war-checklist-summary {
+    padding: 2mm 2.5mm;
+    border: 0.5pt solid #e2e8f0;
+    background: #f8fafc !important;
+  }
+
+  .war-checklist-summary-title {
+    font-size: 9pt;
+  }
+
+  .war-checklist-summary-sub {
+    font-size: 8pt;
+  }
+
+  .war-checklist-stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2mm;
+    margin-top: 2mm;
+  }
+
+  .war-checklist-stat {
+    padding: 1.5mm;
+  }
+
+  .war-checklist-stat-num {
+    font-size: 12pt;
+  }
+
+  .war-checklist-stat-label {
+    font-size: 7pt;
+  }
+
+  .war-checklist-progress,
+  .war-checklist-legend {
+    display: none !important;
+  }
+
+  .war-checklist-detail-cards {
+    display: none !important;
+  }
+
+  .war-checklist-detail-table-wrap {
+    display: block !important;
+    overflow: visible !important;
+    border: none;
+  }
+
+  .war-checklist-detail-table th:first-child,
+  .war-checklist-detail-table td:first-child {
+    width: 6%;
+  }
+
+  .war-status-pill {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.5mm;
+    padding: 0;
+    border: none;
+    background: none !important;
+  }
+
+  .war-status-pill-symbol {
+    width: 4mm;
+    height: 4mm;
+    font-size: 7pt;
+    border: 0.5pt solid currentColor;
+  }
+
+  .war-status-pill-label {
+    font-size: 7.5pt;
+  }
+
+  .war-status-pill-desc {
+    display: none;
+  }
+
+  .war-checklist-detail-row--ok,
+  .war-checklist-detail-row--warn,
+  .war-checklist-detail-row--bad {
+    background: #fff !important;
+  }
+
+  /* 번호 제언 */
+  .war-numbered-list {
+    gap: 1.5mm;
+  }
+
+  .war-numbered-item {
+    padding: 2mm 2.5mm;
+    border: 0.5pt solid #fde68a;
+    background: #fffbeb !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .war-numbered-badge {
+    width: 5mm;
+    height: 5mm;
+    font-size: 8pt;
+  }
+
+  /* 기타 */
+  .card {
+    box-shadow: none !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
   }
 }
