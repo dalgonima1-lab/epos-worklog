@@ -203,7 +203,7 @@ async function generateAnalysis(
         currentWeekData: currentContext,
         previousWeekData: compareContext,
         previousAnalysisText: priorText,
-        managerNotes:
+        generationNotes:
           "5월 3주차(2026-05-18~22) 주간업무보고서 엑셀(팀 통합·개인별) 반영분. 조명제어 관제·DB·현장 A/S 중심.",
         strategicChecklist: "",
       });

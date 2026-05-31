@@ -157,7 +157,7 @@ export async function runWeeklyAutoAnalysis(options?: {
       const day = new Date(end + "T12:00:00").getDate();
       const weekOfMonth = Math.ceil(day / 7);
 
-      const managerNotes = partialSubmission
+      const generationNotes = partialSubmission
         ? `등록된 일일 기록 ${totalReports}건만 반영하는 부분 분석입니다. 법정 공휴일·일정 미등록일·연차는 제출 의무에서 제외하세요. 일정 등록 후 미제출: ${readiness.reason}`
         : "매주 토요일 자동 생성 분석입니다. 등록 일정 기준 전원 제출이 확인된 주입니다.";
 
@@ -169,7 +169,7 @@ export async function runWeeklyAutoAnalysis(options?: {
         currentWeekData,
         previousWeekData,
         previousAnalysisText: prevAnalysis.text,
-        managerNotes,
+        generationNotes,
         strategicChecklist: "",
       });
       markdown = await generateWithGemini(prompt);

@@ -25,7 +25,6 @@ export default function ManagerAnalysisPage() {
   const [previousAnalysis, setPreviousAnalysis] = useState("");
   const [previousAnalysisHint, setPreviousAnalysisHint] = useState("");
   const [strategicChecklist, setStrategicChecklist] = useState("");
-  const [managerNotes, setManagerNotes] = useState("");
   const [baseAnalysis, setBaseAnalysis] = useState("");
   const [managerDirective, setManagerDirective] =
     useState<ManagerDirective | null>(null);
@@ -303,7 +302,6 @@ export default function ManagerAnalysisPage() {
           end: week.end,
           anchorDate: week.end,
           previousAnalysisText: previousAnalysis,
-          managerNotes,
           strategicChecklist,
         }),
       });
@@ -403,7 +401,7 @@ export default function ManagerAnalysisPage() {
     <>
       <Header
         teamName={teamName}
-        subtitle="주간 업무 분석 및 제언 (Gemini 또는 Cursor 저장본)"
+        subtitle="주간 업무 분석 및 제언 (Cursor·자동 저장본 · Gemini는 추후)"
       />
 
       <p className="no-print muted mb-4 text-sm">
@@ -415,9 +413,9 @@ export default function ManagerAnalysisPage() {
       {!authed ? (
         <form onSubmit={login} className="card max-w-md space-y-3 p-5">
           <p className="muted text-sm">
-            {"로그인 후 해당 주의 저장된 보고서가 먼저 표시됩니다. "}
+            {"로그인 후 해당 주의 저장된 보고서(1~4장)가 먼저 표시됩니다. "}
             <strong>
-              {"첨언·지시는 보고서 화면에서 저장하고, 보고서 갱신은 「다시 분석하기」에서 진행합니다."}
+              {"첨언·지시는 보고서를 확인한 뒤 아래에서 직접 작성·저장하세요. 보고서 갱신은 「다시 분석하기」에서 진행합니다."}
             </strong>
           </p>
           <div>
@@ -445,7 +443,7 @@ export default function ManagerAnalysisPage() {
             <div>
               <p className="font-semibold">보고서 다시 분석하기</p>
               <p className="muted text-sm">
-                비교 기준(지난주)을 맞춘 뒤 자동 분석·Gemini로 보고서를 생성·갱신합니다.
+                비교 기준(지난주)을 맞춘 뒤 자동 분석·(추후 Gemini)로 1~4장 보고서를 생성·갱신합니다.
                 「자동 분석·저장」은 마지막 분석 이후 일정·기록이 바뀐 경우에만 다시 저장합니다.
               </p>
             </div>
@@ -622,19 +620,12 @@ export default function ManagerAnalysisPage() {
           </section>
 
           <section className="card space-y-4 p-4">
-            <h3 className="font-semibold">Gemini 생성 옵션 (선택)</h3>
+            <h3 className="font-semibold">Gemini 생성 옵션 (선택 · API 연동 후)</h3>
             <p className="muted text-xs">
-              Gemini 재생성 시 아래 내용을 프롬프트에 포함합니다. 첨언·지시는
-              보고서 화면에서 별도 저장하는 것을 권장합니다.
+              Gemini로 1~4장을 재생성할 때 참고할 전략 과제 메모입니다.
+              <strong> 첨언·지시사항은 AI가 작성하지 않으며</strong>, 보고서 확인 후
+              메인 화면에서 팀장·대표님이 직접 저장합니다.
             </p>
-            <div>
-              <label className="label">첨언 및 지시사항 (프롬프트용)</label>
-              <textarea
-                className="textarea min-h-[100px]"
-                value={managerNotes}
-                onChange={(e) => setManagerNotes(e.target.value)}
-              />
-            </div>
             <div>
               <label className="label">지난주 핵심 전략 과제 (선택)</label>
               <textarea
@@ -650,7 +641,7 @@ export default function ManagerAnalysisPage() {
                 onClick={generateAnalysis}
                 disabled={generating}
               >
-                {generating ? "생성 중…" : "Gemini로 생성·저장"}
+                {generating ? "생성 중…" : "Gemini로 보고서 생성·저장"}
               </button>
             </div>
           </section>
@@ -667,7 +658,8 @@ export default function ManagerAnalysisPage() {
                 {scopeText.targetCaption} 주간 분석 보고서
               </p>
               <p className="muted text-sm">
-                저장된 보고서를 확인하고, 아래에서 첨언·지시를 작성하세요.
+                1~4장 분석 보고서를 확인한 뒤, 아래에서 팀장·대표님 첨언·지시를
+                작성·저장하세요. (Cursor·자동·Gemini 등 어떤 방식으로 생성했든 동일)
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -773,6 +765,7 @@ export default function ManagerAnalysisPage() {
                 directive={managerDirective}
                 onSaved={(saved) => {
                   setManagerDirective(saved);
+                  void loadSavedAnalysis();
                 }}
               />
             </div>

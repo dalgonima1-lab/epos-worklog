@@ -136,7 +136,7 @@ async function generateWeeklyAnalysis() {
       currentWeekData: currentContext,
       previousWeekData: compareContext,
       previousAnalysisText: prior.text,
-      managerNotes:
+      generationNotes:
         "5월 3주차 주간업무보고서 엑셀 반영분. 조명제어 관제·DB·A/S 중심.",
       strategicChecklist: "",
     });

@@ -12,7 +12,7 @@ import {
   saveGeneratedAnalysis,
   weekKey,
 } from "@/lib/references";
-import { mergeDirectiveIntoMarkdown } from "@/lib/managerDirective";
+import { mergeDirectiveIntoMarkdown, stripDirectiveSection } from "@/lib/managerDirective";
 
 export const maxDuration = 60;
 
@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
     end,
     anchorDate,
     previousAnalysisText,
-    managerNotes,
     strategicChecklist,
   } = body;
 
@@ -108,7 +107,6 @@ export async function POST(request: NextRequest) {
       currentWeekData,
       previousWeekData,
       previousAnalysisText: prevAnalysis,
-      managerNotes: String(managerNotes ?? ""),
       strategicChecklist: String(strategicChecklist ?? ""),
     });
 
@@ -189,10 +187,11 @@ export async function GET(request: NextRequest) {
   if (!saved) {
     return NextResponse.json({ markdown: null });
   }
+  const baseMarkdown = stripDirectiveSection(saved.markdown);
   return NextResponse.json({
-    markdown: saved.markdown,
+    markdown: baseMarkdown,
     displayMarkdown: mergeDirectiveIntoMarkdown(
-      saved.markdown,
+      baseMarkdown,
       saved.managerDirective
     ),
     managerDirective: saved.managerDirective ?? null,

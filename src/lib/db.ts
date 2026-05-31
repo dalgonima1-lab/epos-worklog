@@ -43,6 +43,11 @@ import {
   PUBLIC_HOLIDAY_FACILITY,
 } from "./scheduleKinds";
 import {
+  mergeDirectiveIntoMarkdown,
+  prepareAnalysisMarkdownForSave,
+  stripDirectiveSection,
+} from "./managerDirective";
+import {
   isWorkFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
@@ -870,18 +875,28 @@ export async function saveWeeklyAnalysis(
     managerDirective?: ManagerDirective;
     dataSignature?: WeekAnalysisDataSignature;
     updatedAt?: string;
+    /** false면 5번 섹션 placeholder 처리 생략 (첨언 병합본 등) */
+    normalizeDirectiveSection?: boolean;
   }
 ): Promise<void> {
   const db = await ensureDb();
   db.weeklyAnalyses = db.weeklyAnalyses ?? {};
   const prev = db.weeklyAnalyses[key];
+  const prevDirective =
+    options?.managerDirective ??
+    (options?.preserveDirective !== false ? prev?.managerDirective : undefined);
+  const bodyMarkdown =
+    options?.normalizeDirectiveSection === false
+      ? markdown
+      : prepareAnalysisMarkdownForSave(markdown);
+  const storedMarkdown = prevDirective?.text?.trim()
+    ? mergeDirectiveIntoMarkdown(bodyMarkdown, prevDirective)
+    : bodyMarkdown;
   db.weeklyAnalyses[key] = {
-    markdown,
+    markdown: storedMarkdown,
     source,
     updatedAt: options?.updatedAt ?? new Date().toISOString(),
-    managerDirective:
-      options?.managerDirective ??
-      (options?.preserveDirective !== false ? prev?.managerDirective : undefined),
+    managerDirective: prevDirective,
     dataSignature: options?.dataSignature ?? prev?.dataSignature,
   };
   await saveDb(db);
@@ -899,8 +914,11 @@ export async function saveWeeklyAnalysisDirective(
       "저장된 보고서가 없습니다. 먼저 주간 분석을 생성해 주세요."
     );
   }
+  const baseMarkdown = stripDirectiveSection(prev.markdown);
+  const markdown = mergeDirectiveIntoMarkdown(baseMarkdown, directive);
   db.weeklyAnalyses[key] = {
     ...prev,
+    markdown,
     managerDirective: directive,
   };
   await saveDb(db);

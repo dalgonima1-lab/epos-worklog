@@ -110,7 +110,8 @@ export async function saveGeneratedAnalysis(
   }
   await fs.mkdir(ANALYSIS_DIR, { recursive: true });
   const filePath = path.join(ANALYSIS_DIR, `${weekKey}.md`);
-  await fs.writeFile(filePath, markdown, "utf-8");
+  const stored = await loadWeeklyAnalysis(weekKey);
+  await fs.writeFile(filePath, stored?.markdown ?? markdown, "utf-8");
   return filePath;
 }
 

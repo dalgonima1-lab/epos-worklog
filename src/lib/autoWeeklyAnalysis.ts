@@ -8,6 +8,10 @@ import {
   memberDigestToMarkdownNegative,
   memberDigestToMarkdownPositive,
 } from "./memberWeekSummary";
+import {
+  DIRECTIVE_PLACEHOLDER_LINE,
+  DIRECTIVE_SECTION_TITLE,
+} from "./managerDirective";
 
 function collectIssues(reports: DailyReport[]): string[] {
   const items: string[] = [];
@@ -263,14 +267,8 @@ export function generateAutoWeeklyAnalysis(params: {
     `3. **DB·화면(이준명) – 현장 설치(유영준) – 연동·A/S(노희찬)** 역할을 홈 **주간 일정**에 등록하면 협업 품질이 향상됩니다.`
   );
 
-  lines.push(``, `---`, ``, `## 5. 팀장, 대표님 첨언 및 지시사항`, ``);
-  lines.push(
-    `- **토요일 09:00** — 전원 월~금 제출 시 전체 분석 · **일요일 09:00** — 미완료 시 **제출분만** 부분 분석(자동 저장).`
-  );
-  lines.push(
-    `- 앱 **관리자 → AI 주간분석**에서 즉시 확인할 수 있습니다.`
-  );
-  lines.push(`- 생성 시각: ${now}`);
+  lines.push(``, `---`, ``, `## ${DIRECTIVE_SECTION_TITLE}`, ``);
+  lines.push(DIRECTIVE_PLACEHOLDER_LINE);
 
   return lines.join("\n");
 }

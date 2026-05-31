@@ -1,3 +1,5 @@
+import { DIRECTIVE_PLACEHOLDER_LINE } from "./managerDirective";
+
 export function buildAnalysisPrompt(params: {
   teamName: string;
   weekTitle: string;
@@ -6,7 +8,8 @@ export function buildAnalysisPrompt(params: {
   currentWeekData: string;
   previousWeekData: string;
   previousAnalysisText: string;
-  managerNotes: string;
+  /** 분석 생성 시 참고할 내부 메모 (보고서 본문·5번 섹션에 넣지 말 것) */
+  generationNotes?: string;
   strategicChecklist: string;
 }): string {
   const {
@@ -17,7 +20,7 @@ export function buildAnalysisPrompt(params: {
     currentWeekData,
     previousWeekData,
     previousAnalysisText,
-    managerNotes,
+    generationNotes,
     strategicChecklist,
   } = params;
 
@@ -67,8 +70,9 @@ bullet 2~4개로 반복·리스크·차주 조치 방향 요약 (원문 복사 �
 - 조직 리소스 낭비 차단·운영 효율 관점
 
 ## 5. 팀장, 대표님 첨언 및 지시사항
-- 팀장·대표님이 아래에 제공한 메모를 반영·정리
-- 보고서 톤에 맞게 문장 다듬기
+- **이 섹션은 팀장·대표님이 보고서 확인 후 별도로 작성합니다.**
+- 아래 한 줄만 그대로 출력하고 다른 문장·bullet을 추가하지 마세요:
+- ${DIRECTIVE_PLACEHOLDER_LINE}
 
 ---
 
@@ -86,8 +90,8 @@ ${previousAnalysisText || "(비교 기준 보고서 미제공 — [A] 일일 기
 ### [D] 비교 기준 주 핵심 전략 과제 목록 (체크리스트용)
 ${strategicChecklist || "(별도 미제공 — [C] 보고서에서 추출하여 체크리스트 작성)"}
 
-### [E] 팀장, 대표님 첨언 및 지시사항 초안
-${managerNotes || "(없음 — [5] 섹션은 '추가 첨언 없음'으로 간략히 기술)"}
+### [E] 분석 생성 참고 메모 (보고서 본문·5번 섹션에 반영 금지)
+${generationNotes || "(없음)"}
 
 ---
 
@@ -97,5 +101,6 @@ ${managerNotes || "(없음 — [5] 섹션은 '추가 첨언 없음'으로 간략
 - 인명은 일일 기록·[C] 비교 기준 보고서에 나온 이름을 사용
 - 과장하지 말고 데이터 기반으로 작성
 - **구성원별 👍/👎 섹션에서 일일 기록 원문·bullet 나열을 금지** — 표와 요약 bullet만 사용
+- **5번 섹션은 placeholder 한 줄만 출력** — 팀장·대표 첨언을 AI가 작성하지 말 것
 - Markdown만 출력 (코드블록 감싸지 말 것)`;
 }

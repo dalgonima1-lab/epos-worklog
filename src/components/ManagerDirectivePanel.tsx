@@ -87,8 +87,8 @@ export function ManagerDirectivePanel({
         <div>
           <h3 className="font-semibold">팀장, 대표님 첨언 및 지시사항</h3>
           <p className="muted mt-1 text-xs">
-            {weekCaption} 보고서를 확인한 뒤 작성합니다. 저장하면 보고서 5번
-            섹션에 반영됩니다.
+            {weekCaption} 보고서(1~4장)를 확인한 뒤 팀장·대표님이 직접 작성합니다.
+            저장하면 보고서 5번 섹션·인쇄/PDF·다운로드에 반영됩니다.
           </p>
         </div>
         {hasSaved ? (

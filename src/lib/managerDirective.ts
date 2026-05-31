@@ -1,5 +1,10 @@
 import type { ManagerDirective } from "./types";
 
+export const DIRECTIVE_SECTION_TITLE = "5. 팀장, 대표님 첨언 및 지시사항";
+
+export const DIRECTIVE_PLACEHOLDER_LINE =
+  "_(팀장·대표님이 보고서 확인 후 작성·저장합니다.)_";
+
 export function formatDirectiveTimestamp(iso: string): string {
   try {
     return new Date(iso).toLocaleString("ko-KR", {
@@ -29,7 +34,7 @@ export function mergeDirectiveIntoMarkdown(
     .map((line) => line.trim())
     .filter(Boolean);
   const section = [
-    `## 5. 팀장, 대표님 첨언 및 지시사항`,
+    `## ${DIRECTIVE_SECTION_TITLE}`,
     ``,
     `- **작성자:** ${directive.author} · ${when}`,
     ...textLines.map((line) => `- ${line}`),
@@ -48,4 +53,11 @@ export function mergeDirectiveIntoMarkdown(
 export function stripDirectiveSection(markdown: string): string {
   const re = /(\n---\s*\n)?##\s*5\.\s*[^\n]*[\s\S]*?(?=\n##\s+\d+\.|$)/i;
   return markdown.replace(re, "").trimEnd();
+}
+
+/** AI·자동 생성본 저장 시 5번 섹션은 비워 두고 placeholder만 둡니다 */
+export function prepareAnalysisMarkdownForSave(markdown: string): string {
+  const base = stripDirectiveSection(markdown).trimEnd();
+  const sep = base.endsWith("---") ? "\n\n" : "\n\n---\n\n";
+  return `${base}${sep}## ${DIRECTIVE_SECTION_TITLE}\n\n${DIRECTIVE_PLACEHOLDER_LINE}\n`;
 }
