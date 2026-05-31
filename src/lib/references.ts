@@ -94,9 +94,17 @@ export async function loadPriorWeekAnalysisText(
 export async function saveGeneratedAnalysis(
   weekKey: string,
   markdown: string,
-  source: WeeklyAnalysisRecord["source"] = "gemini"
+  source: WeeklyAnalysisRecord["source"] = "gemini",
+  options?: {
+    dataSignature?: WeeklyAnalysisRecord["dataSignature"];
+    updatedAt?: string;
+  }
 ): Promise<string> {
-  await saveWeeklyAnalysis(weekKey, markdown, source);
+  await saveWeeklyAnalysis(weekKey, markdown, source, {
+    preserveDirective: true,
+    dataSignature: options?.dataSignature,
+    updatedAt: options?.updatedAt,
+  });
   if (!shouldMirrorAnalysisToDisk()) {
     return weekKey;
   }

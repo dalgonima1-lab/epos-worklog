@@ -17,13 +17,24 @@ import {
 } from "./references";
 import { buildWeeklySummary } from "./summary";
 import { isWeekSubmissionComplete } from "./weeklySubmission";
+import {
+  buildWeekDataSignature,
+  describeWeekDataChange,
+  formatRefreshedAnalysisMessage,
+  formatUnchangedAnalysisMessage,
+} from "./analysisWeekFingerprint";
 
 export type AutoAnalysisSchedule = "saturday" | "sunday" | "manual";
 
 export interface AutoAnalysisResult {
   ok: boolean;
   skipped?: boolean;
+  unchanged?: boolean;
   reason?: string;
+  message?: string;
+  changeSummary?: string;
+  updatedAt?: string;
+  previousUpdatedAt?: string;
   weekKey?: string;
   source?: "auto" | "gemini";
   start?: string;
@@ -85,42 +96,24 @@ export async function runWeeklyAutoAnalysis(options?: {
   }
 
   const existing = await loadWeeklyAnalysis(key);
+  const currentSig = buildWeekDataSignature(reports, schedules);
+  const partialSubmission = allowPartial || !readiness.complete;
 
-  if (schedule === "saturday") {
-    if (existing?.markdown && !options?.force) {
+  if (existing?.markdown && !options?.force) {
+    const prevSig = existing.dataSignature;
+    if (prevSig?.fingerprint === currentSig.fingerprint) {
       return {
         ok: false,
         skipped: true,
-        reason: "이미 저장된 주간 분석이 있습니다.",
+        unchanged: true,
+        reason: formatUnchangedAnalysisMessage(existing.updatedAt, prevSig),
         weekKey: key,
         start,
         end,
+        updatedAt: existing.updatedAt,
+        partial: partialSubmission,
       };
     }
-  }
-
-  if (schedule === "sunday") {
-    if (existing?.markdown && readiness.complete && !options?.force) {
-      return {
-        ok: false,
-        skipped: true,
-        reason:
-          "토요일에 전원 제출 기준 분석이 이미 저장되어 있습니다. 추가 제출이 없으면 생략합니다.",
-        weekKey: key,
-        start,
-        end,
-        partial: false,
-      };
-    }
-  } else if (existing?.markdown && !options?.force && !allowPartial) {
-    return {
-      ok: false,
-      skipped: true,
-      reason: "이미 저장된 주간 분석이 있습니다.",
-      weekKey: key,
-      start,
-      end,
-    };
   }
 
   const prevAnchor = shiftWeek(anchor, -1);
@@ -131,8 +124,6 @@ export async function runWeeklyAutoAnalysis(options?: {
     prevWeek.start,
     prevWeek.end
   );
-
-  const partialSubmission = allowPartial || !readiness.complete;
 
   let markdown = generateAutoWeeklyAnalysis({
     summary,
@@ -188,7 +179,15 @@ export async function runWeeklyAutoAnalysis(options?: {
     }
   }
 
-  await saveGeneratedAnalysis(key, markdown, source);
+  const changeSummary = options?.force
+    ? "등록분 전체 재분석"
+    : describeWeekDataChange(existing?.dataSignature, currentSig);
+  const updatedAt = new Date().toISOString();
+
+  await saveGeneratedAnalysis(key, markdown, source, {
+    dataSignature: currentSig,
+    updatedAt,
+  });
 
   return {
     ok: true,
@@ -197,5 +196,9 @@ export async function runWeeklyAutoAnalysis(options?: {
     start,
     end,
     partial: partialSubmission,
+    changeSummary,
+    updatedAt,
+    previousUpdatedAt: existing?.updatedAt,
+    message: formatRefreshedAnalysisMessage(changeSummary, updatedAt, source),
   };
 }

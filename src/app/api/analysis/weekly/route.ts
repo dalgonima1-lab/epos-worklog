@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildAnalysisPrompt } from "@/lib/analysisPrompt";
 import { generateWithGemini } from "@/lib/gemini";
-import { getDb, getMembers, getReportsInRange, verifyManagerPin } from "@/lib/db";
+import { getDb, getMembers, getReportsInRange, getSchedulesInRange, verifyManagerPin } from "@/lib/db";
+import { buildWeekDataSignature } from "@/lib/analysisWeekFingerprint";
 import { getCompareWeekForTarget } from "@/lib/analysisWeekScope";
 import { formatScopeSummary } from "@/lib/analysisWeekScope";
 import { getWeekRange } from "@/lib/dates";
@@ -113,7 +114,12 @@ export async function POST(request: NextRequest) {
 
     const markdown = await generateWithGemini(prompt);
     const key = weekKey(start, end);
-    await saveGeneratedAnalysis(key, markdown, "gemini");
+    const schedules = await getSchedulesInRange(start, end);
+    const dataSignature = buildWeekDataSignature(currentReports, schedules);
+    await saveGeneratedAnalysis(key, markdown, "gemini", {
+      dataSignature,
+      updatedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({
       markdown,

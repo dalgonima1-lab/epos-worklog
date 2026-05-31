@@ -108,6 +108,15 @@ export interface WeeklyAnalysisRecord {
   source: "gemini" | "cursor" | "file" | "auto";
   updatedAt: string;
   managerDirective?: ManagerDirective;
+  /** 분석 시점의 해당 주 기록·일정 지문 (변경 감지용) */
+  dataSignature?: WeekAnalysisDataSignature;
+}
+
+export interface WeekAnalysisDataSignature {
+  reportCount: number;
+  scheduleCount: number;
+  fingerprint: string;
+  latestDataAt: string | null;
 }
 
 export interface Database {

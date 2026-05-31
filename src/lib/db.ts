@@ -8,6 +8,7 @@ import type {
   ScheduleEntry,
   StationRecord,
   WeeklyAnalysisRecord,
+  WeekAnalysisDataSignature,
 } from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
@@ -864,7 +865,12 @@ export async function saveWeeklyAnalysis(
   key: string,
   markdown: string,
   source: WeeklyAnalysisRecord["source"],
-  options?: { preserveDirective?: boolean; managerDirective?: ManagerDirective }
+  options?: {
+    preserveDirective?: boolean;
+    managerDirective?: ManagerDirective;
+    dataSignature?: WeekAnalysisDataSignature;
+    updatedAt?: string;
+  }
 ): Promise<void> {
   const db = await ensureDb();
   db.weeklyAnalyses = db.weeklyAnalyses ?? {};
@@ -872,10 +878,11 @@ export async function saveWeeklyAnalysis(
   db.weeklyAnalyses[key] = {
     markdown,
     source,
-    updatedAt: new Date().toISOString(),
+    updatedAt: options?.updatedAt ?? new Date().toISOString(),
     managerDirective:
       options?.managerDirective ??
       (options?.preserveDirective !== false ? prev?.managerDirective : undefined),
+    dataSignature: options?.dataSignature ?? prev?.dataSignature,
   };
   await saveDb(db);
 }
@@ -895,7 +902,6 @@ export async function saveWeeklyAnalysisDirective(
   db.weeklyAnalyses[key] = {
     ...prev,
     managerDirective: directive,
-    updatedAt: new Date().toISOString(),
   };
   await saveDb(db);
 }

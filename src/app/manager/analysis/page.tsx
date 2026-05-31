@@ -383,6 +383,9 @@ export default function ManagerAnalysisPage() {
           data.message ??
             `자동 분석을 저장했습니다 (${data.source === "gemini" ? "Gemini" : "자동"})`
         );
+      } else if (data.skipped && data.unchanged) {
+        setAnalysisNotice(data.reason ?? "일정·기록 변경이 없어 기존 보고서를 유지합니다.");
+        setError("");
       } else {
         setError(
           data.reason ??
@@ -443,6 +446,7 @@ export default function ManagerAnalysisPage() {
               <p className="font-semibold">보고서 다시 분석하기</p>
               <p className="muted text-sm">
                 비교 기준(지난주)을 맞춘 뒤 자동 분석·Gemini로 보고서를 생성·갱신합니다.
+                「자동 분석·저장」은 마지막 분석 이후 일정·기록이 바뀐 경우에만 다시 저장합니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

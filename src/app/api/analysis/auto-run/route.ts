@@ -49,16 +49,21 @@ export async function POST(request: NextRequest) {
         source: result.source,
         start: result.start ?? week.start,
         end: result.end ?? week.end,
-        message: "주간 분석을 저장했습니다. 아래 보고서를 새로고침하세요.",
+        message: result.message ?? "주간 분석을 저장했습니다.",
+        changeSummary: result.changeSummary,
+        updatedAt: result.updatedAt,
+        previousUpdatedAt: result.previousUpdatedAt,
       });
     }
 
     return NextResponse.json({
       ok: false,
       skipped: result.skipped,
+      unchanged: result.unchanged,
       reason: result.reason,
-      start: week.start,
-      end: week.end,
+      updatedAt: result.updatedAt,
+      start: result.start ?? week.start,
+      end: result.end ?? week.end,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "자동 분석 실패";
