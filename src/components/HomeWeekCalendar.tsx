@@ -130,12 +130,6 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     [week.start, week.end]
   );
 
-  /** 차주 계획 패널 대상 주 (이번주 탭=다음 주, 다음주 탭=표시 중인 주) */
-  const planWeek = useMemo(() => {
-    if (weekTab === 1) return week;
-    return getWeekRange(shiftWeek(weekAnchor, 1));
-  }, [weekTab, week, weekAnchor]);
-
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const mem of members) m.set(mem.id, mem.name);
@@ -789,17 +783,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             />
           </div>
         )}
-        {weekTab >= 0 && writers.length > 0 ? (
+        {weekTab === 1 && writers.length > 0 ? (
           <NextWeekPlanPanel
-            weekStart={planWeek.start}
-            weekEnd={planWeek.end}
-            weekLabel={planWeek.label}
+            weekStart={week.start}
+            weekEnd={week.end}
+            weekLabel={week.label}
             members={writers}
-            caption={
-              weekTab === 0
-                ? "이번 주 AI 분석 보고서에 포함될 **다음 주** 계획입니다. 「다음주」 탭 일정과 함께 저장하세요."
-                : "등록한 일정과 함께 AI 주간 분석 보고서 4-1절에 반영됩니다."
-            }
+            caption="이 주 일정과 함께 저장하면 AI 주간 분석 보고서 4-1절(차주 계획)에 반영됩니다."
           />
         ) : null}
       </section>
