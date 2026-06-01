@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
     processingRole,
     done,
     plan,
+    nextWeekPlan,
     issues,
     deficiencies,
     beforePhotoAt,
@@ -169,6 +170,9 @@ export async function POST(request: NextRequest) {
       processingRole: summarizeOfficeWorkRoles(officeEntries),
       done: summaryDone,
       plan: plan ?? "",
+      nextWeekPlan: nextWeekPlan?.trim()
+        ? String(nextWeekPlan).trim()
+        : undefined,
       issues: issues ?? "",
       deficiencies: deficiencies ?? "",
       beforePhotoAt: beforePhotoAt ?? existing?.beforePhotoAt,
@@ -315,6 +319,7 @@ export async function POST(request: NextRequest) {
     processingRole: role,
     done: done ?? "",
     plan: plan ?? "",
+    nextWeekPlan: nextWeekPlan?.trim() ? String(nextWeekPlan).trim() : undefined,
     issues: issues ?? "",
     deficiencies: deficiencies ?? "",
     beforePhotoAt: isMaintenance
@@ -332,6 +337,9 @@ export async function POST(request: NextRequest) {
       processingRole: role,
       done: done ?? "",
       plan: plan ?? "",
+      nextWeekPlan: nextWeekPlan?.trim()
+        ? String(nextWeekPlan).trim()
+        : undefined,
       issues: issues ?? "",
       deficiencies: deficiencies ?? "",
       beforePhotoAt: upsertPayload.beforePhotoAt,
@@ -348,6 +356,7 @@ export async function POST(request: NextRequest) {
         | undefined,
       done: merged.done,
       plan: merged.plan ?? "",
+      nextWeekPlan: merged.nextWeekPlan,
       issues: merged.issues ?? "",
       deficiencies: merged.deficiencies ?? "",
       beforePhotoAt: merged.beforePhotoAt,

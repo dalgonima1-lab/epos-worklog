@@ -55,6 +55,7 @@ import {
 } from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
 import { WeekTeamRoster } from "@/components/WeekTeamRoster";
+import { NextWeekPlanPanel } from "@/components/NextWeekPlanPanel";
 
 type WeekTab = -1 | 0 | 1;
 
@@ -128,6 +129,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     () => weekdaysBetween(week.start, week.end),
     [week.start, week.end]
   );
+
+  /** 차주 계획 패널 대상 주 (이번주 탭=다음 주, 다음주 탭=표시 중인 주) */
+  const planWeek = useMemo(() => {
+    if (weekTab === 1) return week;
+    return getWeekRange(shiftWeek(weekAnchor, 1));
+  }, [weekTab, week, weekAnchor]);
 
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -664,6 +671,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           <p className="muted mt-1 text-sm">
             {teamName} · 일정을 누르면 해당 날짜·담당자의{" "}
             <strong className="text-slate-700">일일 기록</strong>으로 이동합니다.
+            {weekTab === 1 ? (
+              <span className="mt-1 block text-indigo-700">
+                「다음주」 탭에서 등록한 일정·차주 계획은 AI 주간 분석에 반영됩니다.
+              </span>
+            ) : null}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {WEEK_TABS.map((tab) => (
@@ -777,6 +789,19 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             />
           </div>
         )}
+        {weekTab >= 0 && writers.length > 0 ? (
+          <NextWeekPlanPanel
+            weekStart={planWeek.start}
+            weekEnd={planWeek.end}
+            weekLabel={planWeek.label}
+            members={writers}
+            caption={
+              weekTab === 0
+                ? "이번 주 AI 분석 보고서에 포함될 **다음 주** 계획입니다. 「다음주」 탭 일정과 함께 저장하세요."
+                : "등록한 일정과 함께 AI 주간 분석 보고서 4-1절에 반영됩니다."
+            }
+          />
+        ) : null}
       </section>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

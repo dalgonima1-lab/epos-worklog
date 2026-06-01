@@ -399,7 +399,8 @@ function classifySection(title: string): AnalysisSection["kind"] {
   if (/종합|Executive|요약/.test(title)) return "summary";
   if (/구성원|팀원별|멤버별|성과.*보완|보완.*과제/.test(title)) return "members";
   if (/체크|전략|과제/.test(title)) return "checklist";
-  if (/제언|권고|결론/.test(title)) return "numbered";
+  if (/제언|권고|결론/.test(title) && !/차주|4-1/.test(title)) return "numbered";
+  if (/차주|다음\s*주/.test(title)) return "prose";
   if (/첨언|비고/.test(title)) return "bullets";
   return "prose";
 }

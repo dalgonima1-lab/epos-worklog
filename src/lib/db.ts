@@ -9,6 +9,7 @@ import type {
   StationRecord,
   WeeklyAnalysisRecord,
   WeekAnalysisDataSignature,
+  MemberWeekPlan,
 } from "./types";
 import { calcWorkMinutes } from "./workTime";
 import { dataUrlToBuffer, readPhoto, shouldStorePhotosInFirestore } from "./photos";
@@ -66,6 +67,7 @@ const DEFAULT_DB: Database = {
   reports: [],
   stationHistory: seedStationHistory(),
   schedules: [],
+  weekPlans: {},
 };
 
 const DEFAULT_MEMBERS: Member[] = DEFAULT_DB.members;
@@ -98,6 +100,7 @@ export type ReportPayload = Pick<
   | "processingRole"
   | "done"
   | "plan"
+  | "nextWeekPlan"
   | "issues"
   | "deficiencies"
   | "beforePhotoAt"
@@ -143,6 +146,7 @@ function migrateDb(db: Database): Database {
   db.reports = db.reports.map(normalizeReport);
   db.stationHistory = sortStations(db.stationHistory);
   db.schedules = Array.isArray(db.schedules) ? db.schedules : [];
+  db.weekPlans = db.weekPlans ?? {};
   db.weeklyAnalyses = db.weeklyAnalyses ?? {};
   return db;
 }
@@ -467,6 +471,9 @@ export async function upsertReport(
     existing.processingRole = payload.processingRole;
     existing.done = payload.done;
     existing.plan = payload.plan;
+    existing.nextWeekPlan = payload.nextWeekPlan?.trim()
+      ? payload.nextWeekPlan.trim()
+      : undefined;
     existing.issues = payload.issues;
     existing.deficiencies = payload.deficiencies;
     if (isMaintenanceReport) {
@@ -521,6 +528,9 @@ export async function upsertReport(
     processingRole: payload.processingRole,
     done: payload.done,
     plan: payload.plan,
+    nextWeekPlan: payload.nextWeekPlan?.trim()
+      ? payload.nextWeekPlan.trim()
+      : undefined,
     issues: payload.issues,
     deficiencies: payload.deficiencies,
     beforePhotoAt: payload.beforePhotoAt,
@@ -968,4 +978,51 @@ export async function resolveWeeklyAnalysis(
   if (byEnd.length === 0) return null;
   const [key, record] = byEnd[0]!;
   return { key, record };
+}
+
+export function weekPlanKey(start: string, end: string): string {
+  return `${start}_${end}`;
+}
+
+export async function getWeekPlans(
+  start: string,
+  end: string
+): Promise<MemberWeekPlan[]> {
+  const db = await ensureDb();
+  const key = weekPlanKey(start, end);
+  return db.weekPlans?.[key] ?? [];
+}
+
+export async function saveMemberWeekPlan(
+  start: string,
+  end: string,
+  memberId: string,
+  text: string
+): Promise<MemberWeekPlan> {
+  const db = await ensureDb();
+  db.weekPlans = db.weekPlans ?? {};
+  const key = weekPlanKey(start, end);
+  const list = [...(db.weekPlans[key] ?? [])];
+  const trimmed = text.trim();
+  const now = new Date().toISOString();
+  const entry: MemberWeekPlan = {
+    memberId,
+    text: trimmed,
+    updatedAt: now,
+  };
+  const idx = list.findIndex((p) => p.memberId === memberId);
+  if (!trimmed) {
+    if (idx >= 0) list.splice(idx, 1);
+  } else if (idx >= 0) {
+    list[idx] = entry;
+  } else {
+    list.push(entry);
+  }
+  if (list.length) {
+    db.weekPlans[key] = list;
+  } else {
+    delete db.weekPlans[key];
+  }
+  await saveDb(db);
+  return entry;
 }

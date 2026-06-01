@@ -106,6 +106,7 @@ export interface FieldVisitSaveInput {
   processingRole: string;
   done: string;
   plan?: string;
+  nextWeekPlan?: string;
   issues?: string;
   deficiencies?: string;
   beforePhotoAt?: string;
@@ -139,6 +140,9 @@ export function mergeFieldVisitSave(
     ...visit,
     done: mergedDone,
     plan: visit.plan?.trim() ? visit.plan : existing.plan,
+    nextWeekPlan: visit.nextWeekPlan?.trim()
+      ? visit.nextWeekPlan
+      : existing.nextWeekPlan,
     issues: visit.issues?.trim() ? visit.issues : existing.issues,
     deficiencies: visit.deficiencies?.trim()
       ? visit.deficiencies

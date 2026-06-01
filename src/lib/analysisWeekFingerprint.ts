@@ -1,5 +1,10 @@
 import { createHash } from "crypto";
-import type { DailyReport, ScheduleEntry, WeekAnalysisDataSignature } from "./types";
+import type {
+  DailyReport,
+  MemberWeekPlan,
+  ScheduleEntry,
+  WeekAnalysisDataSignature,
+} from "./types";
 import { formatDirectiveTimestamp } from "./managerDirective";
 
 function maxIso(dates: (string | undefined)[]): string | null {
@@ -8,10 +13,14 @@ function maxIso(dates: (string | undefined)[]): string | null {
   return valid.sort((a, b) => b.localeCompare(a))[0];
 }
 
-/** 해당 주 일일 기록·일정의 변경 감지용 지문 */
+/** 해당 주 일일 기록·일정·차주 계획의 변경 감지용 지문 */
 export function buildWeekDataSignature(
   reports: DailyReport[],
-  schedules: ScheduleEntry[]
+  schedules: ScheduleEntry[],
+  options?: {
+    nextWeekSchedules?: ScheduleEntry[];
+    weekPlans?: MemberWeekPlan[];
+  }
 ): WeekAnalysisDataSignature {
   const parts: string[] = [];
 
@@ -28,6 +37,7 @@ export function buildWeekDataSignature(
         r.processingRole ?? "",
         r.done ?? "",
         r.plan ?? "",
+        r.nextWeekPlan ?? "",
         r.issues ?? "",
         r.deficiencies ?? "",
       ].join("|")
@@ -50,18 +60,46 @@ export function buildWeekDataSignature(
     );
   }
 
+  for (const s of [...(options?.nextWeekSchedules ?? [])].sort((a, b) =>
+    a.id.localeCompare(b.id)
+  )) {
+    parts.push(
+      [
+        "nw",
+        s.id,
+        s.updatedAt,
+        s.date,
+        s.memberId,
+        s.title ?? "",
+        s.stationName ?? "",
+        s.note ?? "",
+      ].join("|")
+    );
+  }
+
+  for (const p of [...(options?.weekPlans ?? [])].sort((a, b) =>
+    a.memberId.localeCompare(b.memberId)
+  )) {
+    parts.push(["wp", p.memberId, p.updatedAt, p.text].join("|"));
+  }
+
   const fingerprint = createHash("sha256")
     .update(parts.join("\n"))
     .digest("hex")
     .slice(0, 20);
 
+  const nextWeekScheduleCount = options?.nextWeekSchedules?.length ?? 0;
+
   return {
     reportCount: reports.length,
     scheduleCount: schedules.length,
+    nextWeekScheduleCount,
     fingerprint,
     latestDataAt: maxIso([
       ...reports.map((r) => r.updatedAt),
       ...schedules.map((s) => s.updatedAt),
+      ...(options?.nextWeekSchedules ?? []).map((s) => s.updatedAt),
+      ...(options?.weekPlans ?? []).map((p) => p.updatedAt),
     ]),
   };
 }
@@ -80,6 +118,11 @@ export function describeWeekDataChange(
   }
   if (next.scheduleCount !== prev.scheduleCount) {
     bits.push(`일정 ${prev.scheduleCount}→${next.scheduleCount}건`);
+  }
+  const prevNw = prev.nextWeekScheduleCount ?? 0;
+  const nextNw = next.nextWeekScheduleCount ?? 0;
+  if (nextNw !== prevNw) {
+    bits.push(`차주 일정 ${prevNw}→${nextNw}건`);
   }
   if (bits.length === 0) {
     bits.push("일정·기록 내용 수정");

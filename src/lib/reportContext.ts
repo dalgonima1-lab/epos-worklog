@@ -73,6 +73,9 @@ export function buildWeeklyReportsContext(
 
       lines.push(`- 금일 수행:\n${r.done || "(없음)"}`);
       lines.push(`- 익일 계획:\n${r.plan || "(없음)"}`);
+      if (r.nextWeekPlan?.trim()) {
+        lines.push(`- 차주 계획:\n${r.nextWeekPlan.trim()}`);
+      }
       if (r.issues?.trim()) lines.push(`- 이슈:\n${r.issues}`);
       if (r.deficiencies?.trim()) lines.push(`- 미비사항:\n${r.deficiencies}`);
       lines.push("");

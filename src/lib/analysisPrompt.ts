@@ -10,6 +10,8 @@ export function buildAnalysisPrompt(params: {
   previousAnalysisText: string;
   /** 분석 생성 시 참고할 내부 메모 (보고서 본문·5번 섹션에 넣지 말 것) */
   generationNotes?: string;
+  /** 차주 일정·계획 (4-1절 작성용) */
+  nextWeekPlanData?: string;
   strategicChecklist: string;
 }): string {
   const {
@@ -21,6 +23,7 @@ export function buildAnalysisPrompt(params: {
     previousWeekData,
     previousAnalysisText,
     generationNotes,
+    nextWeekPlanData,
     strategicChecklist,
   } = params;
 
@@ -69,6 +72,10 @@ bullet 2~4개로 반복·리스크·차주 조치 방향 요약 (원문 복사 �
 - 차주 강력 지시가 필요한 사항 2~3가지 (번호 목록)
 - 조직 리소스 낭비 차단·운영 효율 관점
 
+## 4-1. 차주 업무 계획
+- [F] 차주 일정·계획 데이터를 바탕으로 구성원별 차주 예정 업무를 표 또는 bullet로 정리
+- 등록된 일정·메모가 없으면 "등록된 차주 계획 없음"으로 간략히 기술
+
 ## 5. 팀장, 대표님 첨언 및 지시사항
 - **이 섹션은 팀장·대표님이 보고서 확인 후 별도로 작성합니다.**
 - 아래 한 줄만 그대로 출력하고 다른 문장·bullet을 추가하지 마세요:
@@ -92,6 +99,9 @@ ${strategicChecklist || "(별도 미제공 — [C] 보고서에서 추출하여 
 
 ### [E] 분석 생성 참고 메모 (보고서 본문·5번 섹션에 반영 금지)
 ${generationNotes || "(없음)"}
+
+### [F] 차주(다음 주) 일정·계획 (4-1절 작성용)
+${nextWeekPlanData || "(차주 일정·계획 메모 없음)"}
 
 ---
 

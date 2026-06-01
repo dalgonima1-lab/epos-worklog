@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildAnalysisPrompt } from "@/lib/analysisPrompt";
 import { generateWithGemini } from "@/lib/gemini";
-import { getDb, getMembers, getReportsInRange, getSchedulesInRange, verifyManagerPin } from "@/lib/db";
+import { getDb, getMembers, getReportsInRange, getSchedulesInRange, getWeekPlans, verifyManagerPin } from "@/lib/db";
 import { buildWeekDataSignature } from "@/lib/analysisWeekFingerprint";
 import { getCompareWeekForTarget } from "@/lib/analysisWeekScope";
 import { formatScopeSummary } from "@/lib/analysisWeekScope";
-import { getWeekRange } from "@/lib/dates";
+import { getWeekRange, shiftWeek } from "@/lib/dates";
+import { buildNextWeekPlanContext } from "@/lib/nextWeekPlanContext";
 import { buildWeeklyReportsContext } from "@/lib/reportContext";
 import {
   loadGeneratedAnalysis,
@@ -98,6 +99,24 @@ export async function POST(request: NextRequest) {
       (await loadReferenceForWeek(compareWeek.start, compareWeek.end)) ||
       "";
 
+    const anchor = anchorDate
+      ? new Date(String(anchorDate) + "T12:00:00")
+      : new Date(end + "T12:00:00");
+    const nextWeek = getWeekRange(shiftWeek(anchor, 1));
+    const [nextWeekSchedules, weekPlans] = await Promise.all([
+      getSchedulesInRange(nextWeek.start, nextWeek.end),
+      getWeekPlans(nextWeek.start, nextWeek.end),
+    ]);
+    const nextWeekPlanData = buildNextWeekPlanContext({
+      nextWeekLabel: nextWeek.label,
+      nextWeekStart: nextWeek.start,
+      nextWeekEnd: nextWeek.end,
+      members,
+      nextWeekSchedules,
+      weekPlans,
+      reportNextWeekPlans: currentReports.filter((r) => r.nextWeekPlan?.trim()),
+    });
+
     const weekTitle = formatWeekTitle(end, db.teamName);
     const prompt = buildAnalysisPrompt({
       teamName: db.teamName,
@@ -107,13 +126,17 @@ export async function POST(request: NextRequest) {
       currentWeekData,
       previousWeekData,
       previousAnalysisText: prevAnalysis,
+      nextWeekPlanData,
       strategicChecklist: String(strategicChecklist ?? ""),
     });
 
     const markdown = await generateWithGemini(prompt);
     const key = weekKey(start, end);
     const schedules = await getSchedulesInRange(start, end);
-    const dataSignature = buildWeekDataSignature(currentReports, schedules);
+    const dataSignature = buildWeekDataSignature(currentReports, schedules, {
+      nextWeekSchedules,
+      weekPlans,
+    });
     await saveGeneratedAnalysis(key, markdown, "gemini", {
       dataSignature,
       updatedAt: new Date().toISOString(),

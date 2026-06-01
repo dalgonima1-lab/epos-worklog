@@ -4,11 +4,16 @@ import {
   getMembers,
   getReportsInRange,
   getSchedulesInRange,
+  getWeekPlans,
   loadWeeklyAnalysis,
 } from "./db";
 import { generateAutoWeeklyAnalysis } from "./autoWeeklyAnalysis";
 import { buildAnalysisPrompt } from "./analysisPrompt";
 import { generateWithGemini } from "./gemini";
+import {
+  buildNextWeekPlanContext,
+  buildNextWeekPlanMarkdownSection,
+} from "./nextWeekPlanContext";
 import { buildWeeklyReportsContext } from "./reportContext";
 import {
   loadPriorWeekAnalysisText,
@@ -61,6 +66,26 @@ export async function runWeeklyAutoAnalysis(options?: {
     getReportsInRange(start, end),
     getSchedulesInRange(start, end),
   ]);
+  const nextWeekAnchor = shiftWeek(anchor, 1);
+  const nextWeek = getWeekRange(nextWeekAnchor);
+  const [nextWeekSchedules, weekPlans] = await Promise.all([
+    getSchedulesInRange(nextWeek.start, nextWeek.end),
+    getWeekPlans(nextWeek.start, nextWeek.end),
+  ]);
+  const reportNextWeekPlans = reports.filter((r) => r.nextWeekPlan?.trim());
+  const nextWeekPlanContext = buildNextWeekPlanContext({
+    nextWeekLabel: nextWeek.label,
+    nextWeekStart: nextWeek.start,
+    nextWeekEnd: nextWeek.end,
+    members,
+    nextWeekSchedules,
+    weekPlans,
+    reportNextWeekPlans,
+  });
+  const nextWeekPlanSection = buildNextWeekPlanMarkdownSection(
+    nextWeekPlanContext,
+    nextWeek.label
+  );
   const summary = buildWeeklySummary(
     db.teamName,
     label,
@@ -96,7 +121,10 @@ export async function runWeeklyAutoAnalysis(options?: {
   }
 
   const existing = await loadWeeklyAnalysis(key);
-  const currentSig = buildWeekDataSignature(reports, schedules);
+  const currentSig = buildWeekDataSignature(reports, schedules, {
+    nextWeekSchedules,
+    weekPlans,
+  });
   const partialSubmission = allowPartial || !readiness.complete;
 
   if (existing?.markdown && !options?.force) {
@@ -131,6 +159,7 @@ export async function runWeeklyAutoAnalysis(options?: {
     previousAnalysisMarkdown: prevAnalysis.text,
     partialSubmission,
     submissionStatus: readiness,
+    nextWeekPlanSection,
   });
   let source: "auto" | "gemini" = "auto";
 
@@ -170,6 +199,7 @@ export async function runWeeklyAutoAnalysis(options?: {
         previousWeekData,
         previousAnalysisText: prevAnalysis.text,
         generationNotes,
+        nextWeekPlanData: nextWeekPlanContext,
         strategicChecklist: "",
       });
       markdown = await generateWithGemini(prompt);

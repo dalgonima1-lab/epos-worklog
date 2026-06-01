@@ -133,6 +133,7 @@ function DailyPageInner() {
   const [customRole, setCustomRole] = useState("");
   const [done, setDone] = useState("");
   const [plan, setPlan] = useState("");
+  const [nextWeekPlan, setNextWeekPlan] = useState("");
   const [issues, setIssues] = useState("");
   const [deficiencies, setDeficiencies] = useState("");
   const [beforePhotoAt, setBeforePhotoAt] = useState<string | undefined>();
@@ -318,6 +319,7 @@ function DailyPageInner() {
         customRole,
         done,
         plan,
+        nextWeekPlan,
         issues,
         deficiencies,
         officeWorkMode,
@@ -343,6 +345,7 @@ function DailyPageInner() {
     customRole,
     done,
     plan,
+    nextWeekPlan,
     issues,
     deficiencies,
     officeWorkMode,
@@ -717,11 +720,13 @@ function DailyPageInner() {
             : rawDone
         );
         setPlan(report?.plan ?? "");
+        setNextWeekPlan(report?.nextWeekPlan ?? "");
         setIssues(report?.issues ?? "");
         setDeficiencies(report?.deficiencies ?? "");
         setExtraMemoOpen(
           Boolean(
             report?.plan?.trim() ||
+              report?.nextWeekPlan?.trim() ||
               report?.issues?.trim() ||
               report?.deficiencies?.trim()
           )
@@ -838,6 +843,7 @@ function DailyPageInner() {
             ? officeVisitedStations
             : undefined,
           plan,
+          nextWeekPlan,
           issues,
           deficiencies,
         }),
@@ -974,6 +980,7 @@ function DailyPageInner() {
         processingRole: effectiveRole,
         done,
         plan,
+        nextWeekPlan,
         issues,
         deficiencies: mergedDeficiencies,
         beforePhotoAt: maintenanceMode ? undefined : beforePhotoAt,
@@ -992,6 +999,11 @@ function DailyPageInner() {
       setStatus(err.error ?? "\uc800\uc7a5\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4.");
     }
   }
+
+  const isFriday = useMemo(
+    () => new Date(date + "T12:00:00").getDay() === 5,
+    [date]
+  );
 
   return (
     <>
@@ -1347,20 +1359,49 @@ function DailyPageInner() {
           >
             추가 메모
             <span className="text-xs font-normal text-slate-500">
-              {extraMemoOpen ? "접기" : "익일 계획 · 이슈 · 미비사항"}
+              {extraMemoOpen ? "접기" : "익일·차주 계획 · 이슈 · 미비사항"}
             </span>
           </button>
           {extraMemoOpen ? (
             <div className="space-y-4 border-t border-slate-200 px-3 pb-3 pt-2">
               <div>
                 <label className="label" htmlFor="plan">
-                  {"\uc775\uc77c \uacc4\ud68d"}
+                  익일 계획
                 </label>
                 <textarea
                   id="plan"
                   className="textarea"
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div
+                className={
+                  isFriday
+                    ? "rounded-lg border border-indigo-200 bg-indigo-50/40 p-3"
+                    : undefined
+                }
+              >
+                <label className="label" htmlFor="nextWeekPlan">
+                  차주 계획 (다음 주 월~금)
+                </label>
+                {isFriday ? (
+                  <p className="muted mb-2 text-xs text-indigo-800">
+                    금요일 기록에 차주 계획을 남기면 AI 주간 분석 보고서에
+                    반영됩니다.
+                  </p>
+                ) : (
+                  <p className="muted mb-2 text-xs">
+                    다음 주 예정 업무를 미리 적어 두면 주간 분석에 포함됩니다.
+                  </p>
+                )}
+                <textarea
+                  id="nextWeekPlan"
+                  className="textarea"
+                  placeholder="예: 월 봉천역 DB 점검, 수요일 A/S 현장…"
+                  value={nextWeekPlan}
+                  onChange={(e) => setNextWeekPlan(e.target.value)}
                   disabled={loading}
                 />
               </div>

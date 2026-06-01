@@ -54,6 +54,8 @@ export interface DailyReport {
   processingRole: string;
   done: string;
   plan: string;
+  /** 차주(다음 주) 업무 계획 — 금요일 일일 기록 등에서 작성 */
+  nextWeekPlan?: string;
   issues: string;
   /** 미비사항 */
   deficiencies: string;
@@ -115,8 +117,17 @@ export interface WeeklyAnalysisRecord {
 export interface WeekAnalysisDataSignature {
   reportCount: number;
   scheduleCount: number;
+  /** 분석 시점 기준 차주(다음 주) 등록 일정 수 */
+  nextWeekScheduleCount?: number;
   fingerprint: string;
   latestDataAt: string | null;
+}
+
+/** 홈 캘린더 「다음주」 탭 등에서 저장하는 구성원별 차주 계획 메모 */
+export interface MemberWeekPlan {
+  memberId: string;
+  text: string;
+  updatedAt: string;
 }
 
 export interface Database {
@@ -131,6 +142,8 @@ export interface Database {
   /** 1 = 보안테스트 placeholder 일일기록 제거 */
   dataSanitizeVersion?: number;
   schedules: ScheduleEntry[];
+  /** `{start}_{end}` → 구성원별 차주 계획 메모 */
+  weekPlans?: Record<string, MemberWeekPlan[]>;
   /** `{start}_{end}` → 분석 본문 */
   weeklyAnalyses?: Record<string, WeeklyAnalysisRecord>;
 }

@@ -115,6 +115,7 @@ export function generateAutoWeeklyAnalysis(params: {
   previousAnalysisMarkdown?: string;
   partialSubmission?: boolean;
   submissionStatus?: SubmissionReadiness;
+  nextWeekPlanSection?: string;
 }): string {
   const {
     summary,
@@ -122,6 +123,7 @@ export function generateAutoWeeklyAnalysis(params: {
     previousAnalysisMarkdown,
     partialSubmission,
     submissionStatus,
+    nextWeekPlanSection,
   } = params;
   const now = new Date().toLocaleString("ko-KR");
   const totalReports = summary.members.reduce((n, m) => n + m.reports.length, 0);
@@ -266,6 +268,10 @@ export function generateAutoWeeklyAnalysis(params: {
   lines.push(
     `3. **DB·화면(이준명) – 현장 설치(유영준) – 연동·A/S(노희찬)** 역할을 홈 **주간 일정**에 등록하면 협업 품질이 향상됩니다.`
   );
+
+  if (nextWeekPlanSection?.trim()) {
+    lines.push(nextWeekPlanSection.trim());
+  }
 
   lines.push(``, `---`, ``, `## ${DIRECTIVE_SECTION_TITLE}`, ``);
   lines.push(DIRECTIVE_PLACEHOLDER_LINE);
