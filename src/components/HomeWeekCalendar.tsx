@@ -63,6 +63,7 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
   type StationFacilityArea,
+  type WorkFacilityArea,
 } from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
 import { WeekTeamRoster } from "@/components/WeekTeamRoster";
@@ -95,9 +96,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [formDate, setFormDate] = useState(formatDate(new Date()));
   const [formMemberId, setFormMemberId] = useState("");
   const [formStation, setFormStation] = useState("");
-  const [formFacilityArea, setFormFacilityArea] = useState<
-    StationFacilityArea | typeof MANAGEMENT_OFFICE_FACILITY | ""
-  >("");
+  const [formFacilityArea, setFormFacilityArea] = useState<WorkFacilityArea | "">(
+    ""
+  );
   const [formFacilityAreas, setFormFacilityAreas] = useState<
     StationFacilityArea[]
   >([]);
