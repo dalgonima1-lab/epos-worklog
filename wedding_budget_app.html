@@ -687,8 +687,9 @@
                   id="entryAmount"
                   type="number"
                   min="0"
-                  step="1000"
-                  placeholder="예: 2000000"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="예: 3198951"
                   required
                 />
               </div>
@@ -810,10 +811,10 @@
             <input id="budgetName" placeholder="예: 신혼집 보증금" required />
 
             <label for="budgetExpected">예상 예산</label>
-            <input id="budgetExpected" type="number" min="0" step="10000" required />
+            <input id="budgetExpected" type="number" min="0" step="1" inputmode="numeric" required />
 
             <label for="budgetPaid">이미 지출한 금액</label>
-            <input id="budgetPaid" type="number" min="0" step="10000" value="0" />
+            <input id="budgetPaid" type="number" min="0" step="1" inputmode="numeric" value="0" />
 
             <label for="budgetMemo">메모</label>
             <textarea id="budgetMemo" placeholder="계약일, 결제 예정일, 담당 등"></textarea>
@@ -846,7 +847,7 @@
             </div>
             <div>
               <label for="goalAmount">결혼 목표금액</label>
-              <input id="goalAmount" type="number" min="0" step="100000" />
+              <input id="goalAmount" type="number" min="0" step="1" inputmode="numeric" />
             </div>
           </div>
 
@@ -879,6 +880,17 @@
 
     <script>
       const STORAGE_KEY = "wedding-budget-app-v1";
+
+      /** 천 원 단위 step 제한 없이 원 단위 정수로 저장 */
+      function parseAmountInput(value) {
+        const normalized = String(value ?? "")
+          .replace(/,/g, "")
+          .trim();
+        if (!normalized) return 0;
+        const n = Number(normalized);
+        if (!Number.isFinite(n) || n < 0) return 0;
+        return Math.round(n);
+      }
 
       const defaultData = {
         settings: {
@@ -1612,7 +1624,7 @@
           date: document.getElementById("entryDate").value,
           person: document.getElementById("entryPerson").value,
           type: document.getElementById("entryType").value,
-          amount: Number(document.getElementById("entryAmount").value),
+          amount: parseAmountInput(document.getElementById("entryAmount").value),
           category: document.getElementById("entryCategory").value.trim(),
           memo: document.getElementById("entryMemo").value.trim(),
         };
@@ -1631,8 +1643,8 @@
         const next = {
           id,
           name: document.getElementById("budgetName").value.trim(),
-          expected: Number(document.getElementById("budgetExpected").value),
-          paid: Number(document.getElementById("budgetPaid").value || 0),
+          expected: parseAmountInput(document.getElementById("budgetExpected").value),
+          paid: parseAmountInput(document.getElementById("budgetPaid").value || 0),
           memo: document.getElementById("budgetMemo").value.trim(),
         };
 
@@ -1648,7 +1660,7 @@
         event.preventDefault();
         data.settings = {
           weddingDate: document.getElementById("weddingDate").value,
-          goalAmount: Number(document.getElementById("goalAmount").value),
+          goalAmount: parseAmountInput(document.getElementById("goalAmount").value),
           groomName: document.getElementById("groomName").value.trim() || "예비신랑",
           brideName: document.getElementById("brideName").value.trim() || "예비신부",
         };
