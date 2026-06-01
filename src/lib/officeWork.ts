@@ -128,6 +128,21 @@ export function buildOfficeWorkScheduleTitle(
   return parts.join("-");
 }
 
+/** 일정 제목에서 공종 복원 (예: `2호선-강남역-사무-전력감시시스템-요약`) */
+export function guessOfficeProcessingRoleFromScheduleTitle(
+  title: string
+): string | null {
+  const parts = title.trim().split("-").filter(Boolean);
+  const officeIdx = parts.findIndex((p) => p === "사무");
+  if (officeIdx < 0 || officeIdx >= parts.length - 1) return null;
+  const token = parts[officeIdx + 1]!.trim();
+  if (token === "AI자동화") return OFFICE_AI_AUTOMATION_ROLE;
+  for (const role of OFFICE_STATION_ROLES) {
+    if (token === role.replace(/\s+/g, "")) return role;
+  }
+  return null;
+}
+
 export function summarizeOfficeWorkRoles(entries: OfficeWorkEntry[]): string {
   const roles = [...new Set(entries.map((e) => e.processingRole.trim()).filter(Boolean))];
   if (roles.length === 0) return "사무 작업";

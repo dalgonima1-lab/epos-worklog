@@ -30,10 +30,20 @@ import {
   getKoreanHolidayName,
   type KoreanHoliday,
 } from "@/lib/koreanHolidays";
+import {
+  buildOfficeWorkScheduleTitle,
+  guessOfficeProcessingRoleFromScheduleTitle,
+  isOfficeAiAutomationRole,
+  isOfficeGeneralStation,
+  OFFICE_AI_AUTOMATION_ROLE,
+  OFFICE_GENERAL_STATION,
+  OFFICE_STATION_ROLES,
+} from "@/lib/officeWork";
 import { buildScheduleTitle } from "@/lib/scheduleTitle";
 import {
   ANNUAL_LEAVE_FACILITY,
   defaultTimeOffTitle,
+  isOfficeWorkFacility,
   isTimeOffFacility,
   PUBLIC_HOLIDAY_FACILITY,
   scheduleFormKindFromEntry,
@@ -51,6 +61,7 @@ import {
   formatStationVisitLabel,
   isStationFacilityArea,
   MANAGEMENT_OFFICE_FACILITY,
+  OFFICE_WORK_FACILITY,
   type StationFacilityArea,
 } from "@/lib/stationFacility";
 import type { DailyReport, Member, ScheduleEntry } from "@/lib/types";
@@ -106,6 +117,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
   const [weekHolidays, setWeekHolidays] = useState<KoreanHoliday[]>([]);
   const [formScheduleKind, setFormScheduleKind] =
     useState<ScheduleFormKind>("field_visit");
+  const [officeProcessingRole, setOfficeProcessingRole] = useState(
+    () => OFFICE_STATION_ROLES[0] ?? "전력감시시스템"
+  );
 
   const holidaysByDate = useMemo(() => {
     const m = new Map<string, string>();
@@ -149,6 +163,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     const stations =
       (formScheduleKind === "maintenance" ||
         formScheduleKind === "field_visit" ||
+        formScheduleKind === "office_work" ||
         multiStationMode) &&
       selectedStations.length > 0
         ? selectedStations
@@ -156,6 +171,18 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
           ? [formStation.trim()]
           : [];
     if (!stations.length) return "";
+
+    if (formScheduleKind === "office_work") {
+      return stations
+        .map((st) =>
+          buildOfficeWorkScheduleTitle(
+            st,
+            officeProcessingRole,
+            formWorkContent
+          )
+        )
+        .join(" · ");
+    }
 
     const facilitiesFor = (st: string): StationFacilityArea[] =>
       stations.length >= 2
@@ -180,6 +207,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     formFacilityAreas,
     formWorkContent,
     formScheduleKind,
+    officeProcessingRole,
     managementOffice,
     maintenanceSelections,
     multiStationMode,
@@ -297,6 +325,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
     setSelectedStations([]);
     setStationFacilityByStation({});
     setMaintenanceSelections([]);
+    setOfficeProcessingRole(OFFICE_STATION_ROLES[0] ?? "전력감시시스템");
     const first =
       prefillMemberId?.trim() ||
       writers[0]?.id ||
@@ -349,6 +378,57 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       setMultiStationMode(false);
       setStationFacilityByStation({});
       setMaintenanceSelections([]);
+      if (entry.visitGroupId) {
+        const cohort = cohortMemberIdsForVisit(
+          schedules,
+          entry.date,
+          entry.visitGroupId
+        );
+        const ids = cohort.length > 0 ? cohort : [entry.memberId];
+        setSelectedMemberIds(ids);
+        setFormMemberId(ids[0] ?? entry.memberId);
+      } else {
+        setSelectedMemberIds([entry.memberId]);
+      }
+      setModalOpen(true);
+      return;
+    }
+    if (isOfficeWorkFacility(entry.facilityArea)) {
+      setFormScheduleKind("office_work");
+      setMaintenanceMode(false);
+      setManagementOffice("");
+      setMaintenanceSelections([]);
+      setFormFacilityArea(OFFICE_WORK_FACILITY);
+      setFormFacilityAreas([]);
+      setStationFacilityByStation({});
+      setFormWorkContent(entry.note ?? "");
+      setOfficeProcessingRole(
+        guessOfficeProcessingRoleFromScheduleTitle(entry.title ?? "") ??
+          OFFICE_STATION_ROLES[0] ??
+          "전력감시시스템"
+      );
+      let officeStations: string[] = [];
+      if (entry.visitGroupId) {
+        officeStations = [
+          ...new Set(
+            schedules
+              .filter(
+                (s) =>
+                  s.date === entry.date &&
+                  s.visitGroupId === entry.visitGroupId &&
+                  isOfficeWorkFacility(s.facilityArea)
+              )
+              .map((s) => s.stationName?.trim() ?? "")
+              .filter(Boolean)
+          ),
+        ];
+      }
+      if (!officeStations.length && entry.stationName?.trim()) {
+        officeStations = [entry.stationName.trim()];
+      }
+      setSelectedStations(officeStations);
+      setMultiStationMode(officeStations.length > 0);
+      setFormStation(officeStations[0] ?? "");
       if (entry.visitGroupId) {
         const cohort = cohortMemberIdsForVisit(
           schedules,
@@ -442,6 +522,8 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
       q.set("facility", MANAGEMENT_OFFICE_FACILITY);
     } else if (isStationFacilityArea(area)) {
       q.set("facility", area);
+    } else if (area === OFFICE_WORK_FACILITY) {
+      q.set("facility", OFFICE_WORK_FACILITY);
     }
     if (area === MANAGEMENT_OFFICE_FACILITY && managementOfficeId?.trim()) {
       q.set("office", managementOfficeId.trim());
@@ -497,6 +579,88 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
             facilityArea: facility,
             note: formWorkContent.trim() || undefined,
             timeOff: true,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "저장 실패");
+          return;
+        }
+        setModalOpen(false);
+        setError("");
+        await loadWeek();
+      } catch {
+        setError("저장 중 오류가 발생했습니다.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (formScheduleKind === "office_work") {
+      const officeStations =
+        selectedStations.length > 0
+          ? selectedStations
+          : formStation.trim()
+            ? [formStation.trim()]
+            : [];
+      if (!officeStations.length) {
+        setError("사무 작업할 역사를 1곳 이상 선택해 주세요.");
+        return;
+      }
+      const role = officeProcessingRole.trim();
+      if (!role) {
+        setError("공종을 선택해 주세요.");
+        return;
+      }
+      if (
+        isOfficeAiAutomationRole(role) &&
+        !officeStations.every((st) => isOfficeGeneralStation(st))
+      ) {
+        setError(
+          `「${OFFICE_AI_AUTOMATION_ROLE}」은 「${OFFICE_GENERAL_STATION}」만 선택할 수 있습니다.`
+        );
+        return;
+      }
+      if (
+        !isOfficeAiAutomationRole(role) &&
+        officeStations.some((st) => isOfficeGeneralStation(st))
+      ) {
+        setError(
+          `역사별 사무 작업은 「${OFFICE_GENERAL_STATION}」을 제외하고 역을 선택해 주세요.`
+        );
+        return;
+      }
+      if (!formWorkContent.trim()) {
+        setError("작업 내용을 입력해 주세요.");
+        return;
+      }
+      const visitGroupId = createVisitGroupId();
+      const titles = officeStations.map((st) =>
+        buildOfficeWorkScheduleTitle(st, role, formWorkContent)
+      );
+      setSaving(true);
+      try {
+        const res = await fetch("/api/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id:
+              !replaceVisitGroupId && memberIds.length === 1
+                ? editing?.id
+                : undefined,
+            date: formDate,
+            memberIds,
+            replaceVisitGroupId,
+            title: titles[0],
+            titles: officeStations.length > 1 ? titles : undefined,
+            stationNames:
+              officeStations.length > 1 ? officeStations : undefined,
+            stationName:
+              officeStations.length === 1 ? officeStations[0] : undefined,
+            visitGroupId,
+            facilityArea: OFFICE_WORK_FACILITY,
+            note: formWorkContent.trim(),
           }),
         });
         const data = await res.json();
@@ -884,6 +1048,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   {(
                     [
                       ["field_visit", "외근"],
+                      ["office_work", "사무작업"],
                       ["maintenance", "유지보수"],
                       ["annual_leave", "연차"],
                       ["public_holiday", "공휴일"],
@@ -897,9 +1062,11 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                         formScheduleKind === kind
                           ? kind === "field_visit"
                             ? "border-indigo-600 bg-indigo-600 text-white"
-                            : kind === "maintenance"
-                              ? "border-amber-600 bg-amber-600 text-white"
-                              : "border-rose-600 bg-rose-600 text-white"
+                            : kind === "office_work"
+                              ? "border-sky-600 bg-sky-600 text-white"
+                              : kind === "maintenance"
+                                ? "border-amber-600 bg-amber-600 text-white"
+                                : "border-rose-600 bg-rose-600 text-white"
                           : "border-slate-200 bg-white text-slate-700"
                       }`}
                       onClick={() => {
@@ -918,13 +1085,30 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                           setMultiStationMode(false);
                           setSelectedStations([]);
                           setStationFacilityByStation({});
+                          setFormFacilityArea("");
+                          setFormFacilityAreas([]);
                           if (!formWorkContent.trim()) {
                             setFormWorkContent("정기점검");
+                          }
+                        } else if (kind === "office_work") {
+                          setMaintenanceMode(false);
+                          setManagementOffice("");
+                          setMaintenanceSelections([]);
+                          setMultiStationMode(true);
+                          setFormFacilityArea(OFFICE_WORK_FACILITY);
+                          setFormFacilityAreas([]);
+                          setStationFacilityByStation({});
+                          setSelectedStations([]);
+                          setFormStation("");
+                          if (!formWorkContent.trim()) {
+                            setFormWorkContent("");
                           }
                         } else {
                           setMaintenanceMode(false);
                           setManagementOffice("");
                           setMaintenanceSelections([]);
+                          setFormFacilityArea("");
+                          setFormFacilityAreas([]);
                           setFormWorkContent("");
                         }
                       }}
@@ -946,6 +1130,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     일정이 각각 생성됩니다.
                   </p>
                 ) : null}
+                {formScheduleKind === "office_work" ? (
+                  <p className="muted mt-2 text-xs">
+                    역사별 사무 작업을 등록합니다. 역을 여러 곳 고르면{" "}
+                    <strong>역마다 일정</strong>이 생성됩니다.
+                  </p>
+                ) : null}
                 {formScheduleKind === "maintenance" ? (
                   <p className="muted mt-2 text-xs">
                     전기관리소·정기점검계획서 기준으로 역·기능실을
@@ -958,7 +1148,40 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   </p>
                 ) : null}
               </div>
-              {formScheduleKind === "field_visit" || formScheduleKind === "maintenance" ? (
+              {formScheduleKind === "field_visit" ||
+              formScheduleKind === "office_work" ||
+              formScheduleKind === "maintenance" ? (
+              <>
+              {formScheduleKind === "office_work" ? (
+                <div>
+                  <label className="label">
+                    공종 <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    className="input max-w-md"
+                    value={officeProcessingRole}
+                    disabled={saving}
+                    onChange={(e) => {
+                      const role = e.target.value;
+                      setOfficeProcessingRole(role);
+                      if (isOfficeAiAutomationRole(role)) {
+                        setSelectedStations([OFFICE_GENERAL_STATION]);
+                        setFormStation(OFFICE_GENERAL_STATION);
+                        setMultiStationMode(true);
+                      }
+                    }}
+                  >
+                    {OFFICE_STATION_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                    <option value={OFFICE_AI_AUTOMATION_ROLE}>
+                      {OFFICE_AI_AUTOMATION_ROLE}
+                    </option>
+                  </select>
+                </div>
+              ) : null}
               <StationPicker
                 value={formStation}
                 onChange={setFormStation}
@@ -974,7 +1197,10 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 enableMetroPicker
                 enableDirectInput
                 fieldVisitMode={formScheduleKind === "field_visit"}
-                multiStationMode={multiStationMode}
+                officeWorkMode={formScheduleKind === "office_work"}
+                multiStationMode={
+                  formScheduleKind === "office_work" ? true : multiStationMode
+                }
                 onMultiStationModeChange={
                   formScheduleKind === "field_visit"
                     ? setMultiStationMode
@@ -990,6 +1216,7 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 managementOffice={managementOffice}
                 onManagementOfficeChange={setManagementOffice}
               />
+              </>
               ) : (
               <div>
                 <label className="label">메모 (선택)</label>
@@ -1007,7 +1234,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 />
               </div>
               )}
-              {formScheduleKind === "field_visit" || formScheduleKind === "maintenance" ? (
+              {formScheduleKind === "field_visit" ||
+              formScheduleKind === "office_work" ||
+              formScheduleKind === "maintenance" ? (
               <div>
                 <label className="label">
                   작업 내용 <span className="text-red-600">*</span>
@@ -1017,7 +1246,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                   placeholder={
                     formScheduleKind === "maintenance"
                       ? "예: 정기점검"
-                      : "예: 관제 화면 점검, 현장 조치"
+                      : formScheduleKind === "office_work"
+                        ? "예: 관제 화면 점검, 자료 정리"
+                        : "예: 관제 화면 점검, 현장 조치"
                   }
                   value={formWorkContent}
                   required
@@ -1038,7 +1269,13 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                       ? selectedMemberIds.length > 1
                         ? `동행 ${selectedMemberIds.length}명에게 관리소 산하 일정 1건씩 저장합니다.`
                         : "유지보수 용역은 관리소 산하 일정 1건으로 저장합니다."
-                      : formScheduleKind === "field_visit"
+                      : formScheduleKind === "office_work"
+                        ? selectedMemberIds.length > 1
+                          ? `동행 ${selectedMemberIds.length}명 × 선택한 역마다 사무 일정이 생성됩니다.`
+                          : selectedStations.length > 1
+                            ? `선택한 ${selectedStations.length}개 역에 대해 사무 일정이 각각 생성됩니다.`
+                            : "호선 · 역사명 · 사무 · 공종 · 작업 내용 순으로 자동 정리됩니다."
+                        : formScheduleKind === "field_visit"
                         ? selectedMemberIds.length > 1
                           ? `동행 ${selectedMemberIds.length}명 × 선택한 역마다 일정이 생성됩니다.`
                           : selectedStations.length > 1
@@ -1073,9 +1310,12 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                 onClick={() => {
                   if (
                     formScheduleKind !== "field_visit" &&
+                    formScheduleKind !== "office_work" &&
                     formScheduleKind !== "maintenance"
                   ) {
-                    setError("외근·유지보수 일정만 일일 기록으로 바로 갈 수 있습니다.");
+                    setError(
+                      "외근·사무작업·유지보수 일정만 일일 기록으로 바로 갈 수 있습니다."
+                    );
                     return;
                   }
                   if (
@@ -1102,7 +1342,9 @@ export function HomeWeekCalendar({ teamName }: HomeWeekCalendarProps) {
                     dailyStations?.[0] ?? formStation,
                     formScheduleKind === "maintenance"
                       ? MANAGEMENT_OFFICE_FACILITY
-                      : formFacilityAreas[0] ?? formFacilityArea,
+                      : formScheduleKind === "office_work"
+                        ? OFFICE_WORK_FACILITY
+                        : formFacilityAreas[0] ?? formFacilityArea,
                     managementOffice,
                     dailyStations,
                     formScheduleKind === "maintenance"
