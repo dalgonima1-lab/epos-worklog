@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { formatFirestoreUserError } from "@/lib/firebaseAdmin";
-import { getWeddingBudgetData, saveWeddingBudgetData } from "@/lib/weddingBudget/db";
-import type { WeddingBudgetData } from "@/lib/weddingBudget/types";
+import { getBudgetData, saveBudgetData } from "@/lib/db";
+import type { WeddingBudgetData } from "@/lib/types";
 
 function formatApiError(e: unknown): string {
-  if (e instanceof Error) return formatFirestoreUserError(e);
   return formatFirestoreUserError(e);
 }
 
@@ -17,28 +16,28 @@ function pinOk(request: NextRequest): boolean {
   return pin === required;
 }
 
-function pinDenied() {
-  return NextResponse.json({ error: "접근 PIN이 올바르지 않습니다." }, { status: 403 });
-}
-
 export async function GET(request: NextRequest) {
-  if (!pinOk(request)) return pinDenied();
+  if (!pinOk(request)) {
+    return NextResponse.json({ error: "접근 PIN이 올바르지 않습니다." }, { status: 403 });
+  }
   try {
-    const data = await getWeddingBudgetData();
-    return NextResponse.json({ data, storage: "cloud" });
+    const data = await getBudgetData();
+    return NextResponse.json({ data });
   } catch (e) {
     return NextResponse.json({ error: formatApiError(e) }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  if (!pinOk(request)) return pinDenied();
+  if (!pinOk(request)) {
+    return NextResponse.json({ error: "접근 PIN이 올바르지 않습니다." }, { status: 403 });
+  }
   try {
     const body = (await request.json()) as { data?: WeddingBudgetData };
-    if (!body?.data || typeof body.data !== "object") {
+    if (!body?.data) {
       return NextResponse.json({ error: "data 필드가 필요합니다." }, { status: 400 });
     }
-    await saveWeddingBudgetData(body.data);
+    await saveBudgetData(body.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: formatApiError(e) }, { status: 500 });

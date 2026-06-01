@@ -574,7 +574,7 @@
     <main class="app">
       <header>
         <div>
-          <p class="eyebrow">EPOS · WEDDING MONEY PLANNER</p>
+          <p class="eyebrow">OUR WEDDING · MONEY PLANNER</p>
           <h1>우리 결혼자금 노트</h1>
           <p class="muted" style="margin: 10px 0 0">
             각자 통장은 그대로 두고, 결혼 준비 자금만 둘이 함께 관리합니다.
@@ -876,8 +876,8 @@
 
           <div class="notice">
             이 앱은 돈을 실제로 이동시키지 않습니다. 각자 통장에 있는 금액을 직접
-            기록하고, 결혼 준비 목표만 함께 봅니다. 데이터는 EPOS와 같은 Firebase에
-            저장되며, 링크를 아는 분만 접속할 수 있습니다.
+            기록하고, 결혼 준비 목표만 함께 봅니다. 데이터는 클라우드에 저장되며,
+            링크(와 PIN)를 아는 분만 접속할 수 있습니다.
           </div>
         </form>
       </section>
@@ -1147,7 +1147,7 @@
         const headers = {};
         const pin = weddingPin();
         if (pin) headers["X-Wedding-Pin"] = pin;
-        const res = await fetch("/api/wedding-budget", { headers });
+        const res = await fetch("/api/budget", { headers });
         if (res.status === 403) {
           const entered = prompt("접근 PIN을 입력하세요 (설정된 경우에만 필요)");
           if (!entered) throw new Error("PIN 필요");
@@ -1163,7 +1163,7 @@
       }
 
       async function saveToCloud() {
-        const res = await fetch("/api/wedding-budget", {
+        const res = await fetch("/api/budget", {
           method: "POST",
           headers: weddingHeaders(),
           body: JSON.stringify({ data }),
@@ -1822,7 +1822,7 @@
           cloudReady = false;
           if (status) {
             status.textContent =
-              "오프라인(이 기기만) · /wedding 주소로 접속하면 공유됩니다";
+              "오프라인(이 기기만) · 배포된 https 주소로 접속하면 둘이 공유됩니다";
           }
         }
         booting = false;
