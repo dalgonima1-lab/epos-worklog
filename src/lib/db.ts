@@ -643,6 +643,37 @@ export async function updatePhotoTimestamp(
   return report;
 }
 
+export async function updateSafetyPrecheck(
+  memberId: string,
+  date: string,
+  safetyPrecheck: DailyReport["safetyPrecheck"]
+): Promise<DailyReport> {
+  const db = await ensureDb();
+  let report = db.reports.find(
+    (r) => r.memberId === memberId && r.date === date
+  );
+  if (!report) {
+    report = {
+      id: `r_${memberId}_${date}`,
+      memberId,
+      date,
+      stationName: "",
+      processingRole: "",
+      done: "",
+      plan: "",
+      issues: "",
+      deficiencies: "",
+      updatedAt: new Date().toISOString(),
+    };
+    db.reports.push(report);
+  }
+  report.safetyPrecheck = normalizeSafetyPrecheck(safetyPrecheck);
+  report.updatedAt = new Date().toISOString();
+  await syncPhotoFlags(report);
+  await saveDb(db);
+  return report;
+}
+
 export async function getSchedulesInRange(
   startDate: string,
   endDate: string

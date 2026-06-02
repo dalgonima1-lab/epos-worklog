@@ -905,18 +905,10 @@ function DailyPageInner() {
       return;
     }
     if (!maintenanceMode && !officeWorkMode) {
-      const missing = safetyForms.find(
-        (f) =>
-          !f.completed ||
-          !f.checkerName?.trim() ||
-          !f.checkerSignature?.trim() ||
-          !f.approverName?.trim() ||
-          !f.approverSignature?.trim() ||
-          !f.checkedAt?.trim()
-      );
+      const missing = safetyForms.find((f) => !f.completed);
       if (missing) {
         setStatus(
-          `안전서류 「${missing.title}」의 체크/점검자/확인자/서명/일시를 모두 입력해 주세요.`
+          `안전서류 「${missing.title}」 작성 체크를 완료해 주세요.`
         );
         return;
       }
@@ -1354,6 +1346,7 @@ function DailyPageInner() {
 
         {!maintenanceMode && !officeWorkMode ? (
         <SafetyPrecheckForm
+          memberId={memberId}
           date={date}
           memberName={currentMemberName}
           stationName={stationName}

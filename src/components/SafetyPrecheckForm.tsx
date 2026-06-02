@@ -8,6 +8,7 @@ import {
 } from "@/lib/safetyPrecheck";
 
 interface SafetyPrecheckFormProps {
+  memberId: string;
   date: string;
   memberName: string;
   stationName: string;
@@ -21,6 +22,7 @@ interface SafetyPrecheckFormProps {
 }
 
 export function SafetyPrecheckForm({
+  memberId,
   date,
   memberName,
   stationName,
@@ -34,6 +36,8 @@ export function SafetyPrecheckForm({
 }: SafetyPrecheckFormProps) {
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("");
   const galleryRefs = useRef<Array<HTMLInputElement | null>>([]);
   const cameraRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -82,20 +86,65 @@ export function SafetyPrecheckForm({
     }, 200);
   }
 
+  async function savePrecheckOnly() {
+    setSaveStatus("");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/reports/safety-precheck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId,
+          date,
+          safetyPrecheck: {
+            forms,
+            safetyPhotoDataUrls: photoDataUrls.filter(Boolean).slice(0, 3),
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveStatus(data.error ?? "안전서류 저장 실패");
+        return;
+      }
+      setSaveStatus("안전서류가 바로 저장되었습니다.");
+    } catch {
+      setSaveStatus("네트워크 오류로 저장하지 못했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openTemplate(path: string) {
+    const fileUri = `file:///${path.replace(/\\/g, "/")}`;
+    window.open(encodeURI(fileUri), "_blank");
+  }
+
   return (
     <section className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 safety-precheck-print-area">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-bold text-emerald-950">
           작업 전 필수 안전서류 (중대재해처벌법 대응)
         </h2>
-        <button
-          type="button"
-          className="btn btn-secondary text-xs no-print"
-          onClick={printSafetyDocs}
-          disabled={disabled}
-        >
-          양식 인쇄 / PDF 저장
-        </button>
+        <div className="flex flex-wrap gap-2 no-print">
+          <button
+            type="button"
+            className="btn btn-secondary text-xs"
+            onClick={savePrecheckOnly}
+            disabled={disabled || saving || !memberId || !date}
+          >
+            {saving ? "저장 중..." : "안전서류 바로 저장"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary text-xs"
+            onClick={printSafetyDocs}
+            disabled={disabled}
+          >
+            양식 인쇄 / PDF 저장
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-xs text-emerald-900/90">
         조명제어시스템 작업 전(전기실·역무실·변전소) 서류 5종 작성 후, 안전장구류
@@ -104,6 +153,9 @@ export function SafetyPrecheckForm({
       <p className="mt-1 text-xs text-emerald-800">
         작성 진행: <strong>{completedCount}</strong> / {forms.length}
       </p>
+      {saveStatus ? (
+        <p className="mt-1 text-xs text-emerald-900">{saveStatus}</p>
+      ) : null}
 
       <div className="mt-3 space-y-3">
         {SAFETY_PRECHECK_FORM_TEMPLATES.map((tpl) => {
@@ -124,99 +176,35 @@ export function SafetyPrecheckForm({
               key={tpl.id}
               className="rounded-lg border border-emerald-200 bg-white p-3"
             >
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    updateForm(item.id, { completed: e.target.checked })
-                  }
-                />
-                {tpl.title}
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateForm(item.id, { completed: e.target.checked })
+                    }
+                  />
+                  {tpl.title}
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-secondary px-2 py-1 text-xs"
+                  onClick={() => openTemplate(tpl.sourcePath)}
+                >
+                  양식 열기
+                </button>
+              </div>
               <p className="mt-1 text-xs text-slate-500">{tpl.sourceName}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <div>
-                  <label className="label text-xs">점검자</label>
-                  <input
-                    className="input"
-                    placeholder="예: 홍길동"
-                    value={item.checkerName ?? ""}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      updateForm(item.id, { checkerName: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label text-xs">점검자 서명</label>
-                  <input
-                    className="input"
-                    placeholder="예: 홍길동(서명)"
-                    value={item.checkerSignature ?? ""}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      updateForm(item.id, { checkerSignature: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label text-xs">확인자</label>
-                  <input
-                    className="input"
-                    placeholder="예: 팀장"
-                    value={item.approverName ?? ""}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      updateForm(item.id, { approverName: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label text-xs">확인자 서명</label>
-                  <input
-                    className="input"
-                    placeholder="예: 팀장(서명)"
-                    value={item.approverSignature ?? ""}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      updateForm(item.id, { approverSignature: e.target.value })
-                    }
-                  />
-                </div>
+              <div className="mt-2 flex items-center gap-3 text-xs text-slate-600">
+                <span>
+                  상태:{" "}
+                  <strong className={item.completed ? "text-emerald-700" : "text-rose-700"}>
+                    {item.completed ? "작성 체크 완료" : "미완료"}
+                  </strong>
+                </span>
               </div>
-              <div className="mt-2">
-                <label className="label text-xs">점검/작성 시각</label>
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={item.checkedAt ?? ""}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    updateForm(item.id, { checkedAt: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mt-2">
-                <label className="label text-xs">체크/점검 내용</label>
-                <textarea
-                  className="textarea min-h-[64px]"
-                  placeholder="필수 점검항목 체크 결과, 위험요인 확인 내용 등"
-                  value={item.checkSummary ?? ""}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    updateForm(item.id, { checkSummary: e.target.value })
-                  }
-                />
-              </div>
-              <textarea
-                className="textarea mt-2 min-h-[72px]"
-                placeholder="특이사항 / 조치사항"
-                value={item.note ?? ""}
-                disabled={disabled}
-                onChange={(e) => updateForm(item.id, { note: e.target.value })}
-              />
             </div>
           );
         })}
@@ -320,8 +308,7 @@ export function SafetyPrecheckForm({
             <tr>
               <th className="border border-slate-300 px-2 py-1 text-left">양식</th>
               <th className="border border-slate-300 px-2 py-1 text-center">작성</th>
-              <th className="border border-slate-300 px-2 py-1 text-left">점검/서명</th>
-              <th className="border border-slate-300 px-2 py-1 text-left">내용/특이사항</th>
+              <th className="border border-slate-300 px-2 py-1 text-left">원본 파일</th>
             </tr>
           </thead>
           <tbody>
@@ -331,26 +318,9 @@ export function SafetyPrecheckForm({
                 <td className="border border-slate-300 px-2 py-1 text-center">
                   {f.completed ? "작성완료" : "미작성"}
                 </td>
-                <td className="border border-slate-300 px-2 py-1 whitespace-pre-wrap">
-                  {[
-                    f.checkedAt ? `일시: ${f.checkedAt}` : "",
-                    f.checkerName ? `점검자: ${f.checkerName}` : "",
-                    f.checkerSignature ? `점검자 서명: ${f.checkerSignature}` : "",
-                    f.approverName ? `확인자: ${f.approverName}` : "",
-                    f.approverSignature
-                      ? `확인자 서명: ${f.approverSignature}`
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join("\n") || "-"}
-                </td>
-                <td className="border border-slate-300 px-2 py-1 whitespace-pre-wrap">
-                  {[
-                    f.checkSummary?.trim() ? `점검내용: ${f.checkSummary.trim()}` : "",
-                    f.note?.trim() ? `특이사항: ${f.note.trim()}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join("\n") || "-"}
+                <td className="border border-slate-300 px-2 py-1">
+                  {SAFETY_PRECHECK_FORM_TEMPLATES.find((t) => t.id === f.id)?.sourceName ??
+                    "-"}
                 </td>
               </tr>
             ))}
