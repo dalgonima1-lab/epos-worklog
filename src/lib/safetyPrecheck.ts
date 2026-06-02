@@ -3,36 +3,31 @@ export const SAFETY_PRECHECK_FORM_TEMPLATES = [
     id: "daily_cross_safety_check",
     title: "일일 크로스 안전점검표",
     sourceName: "3. 일일 크로스 안전점검표_비치.hwp",
-    sourcePath:
-      "F:\\01. EPOS\\00. 25년도 EPOS\\25년도 조명제어시스템 구축\\5-8호선\\현장비치 서류(조명제어 개량 물품)\\현장비치 서류\\3. 일일 크로스 안전점검표_비치.hwp",
+    publicUrl: "/safety-forms/daily-cross-safety-check.hwp",
   },
   {
     id: "safety_management_daily_checklist",
     title: "안전관리이행 및 일일 체크리스트(역사전기)",
     sourceName: "4. 안전관리이행 및 일일 체크리스트(역사전기)(현장비치).hwp",
-    sourcePath:
-      "F:\\01. EPOS\\00. 25년도 EPOS\\25년도 조명제어시스템 구축\\5-8호선\\현장비치 서류(조명제어 개량 물품)\\현장비치 서류\\4. 안전관리이행 및 일일 체크리스트(역사전기)(현장비치).hwp",
+    publicUrl: "/safety-forms/daily-safety-checklist.hwp",
   },
   {
     id: "alcohol_test_check",
     title: "음주측정 점검표",
     sourceName: "5. 음주측정 점검표_비치.hwp",
-    sourcePath:
-      "F:\\01. EPOS\\00. 25년도 EPOS\\25년도 조명제어시스템 구축\\5-8호선\\현장비치 서류(조명제어 개량 물품)\\현장비치 서류\\5. 음주측정 점검표_비치.hwp",
+    publicUrl: "/safety-forms/alcohol-test-check.hwp",
   },
   {
     id: "daily_work_plan_submit",
     title: "일일 작업계획서 (작업 전 역무실 제출)",
     sourceName: "1. 일일 작업계획서_작업 전 역무실에 제출.hwp",
-    sourcePath:
-      "F:\\01. EPOS\\00. 25년도 EPOS\\25년도 조명제어시스템 구축\\5-8호선\\현장비치 서류(조명제어 개량 물품)\\현장비치 서류\\1. 일일 작업계획서_작업 전 역무실에 제출.hwp",
+    publicUrl: "/safety-forms/daily-work-plan.hwp",
   },
   {
     id: "safety_education_log",
     title: "안전교육 일지",
     sourceName: "2. 안전교육 일지_비치.hwp",
-    sourcePath:
-      "F:\\01. EPOS\\00. 25년도 EPOS\\25년도 조명제어시스템 구축\\5-8호선\\현장비치 서류(조명제어 개량 물품)\\현장비치 서류\\2. 안전교육 일지_비치.hwp",
+    publicUrl: "/safety-forms/safety-education-log.hwp",
   },
 ] as const;
 

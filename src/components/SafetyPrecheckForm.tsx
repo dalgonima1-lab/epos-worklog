@@ -117,38 +117,19 @@ export function SafetyPrecheckForm({
     }
   }
 
-  function tryOpenLocalFile(path: string) {
-    const fileUri = encodeURI(`file:///${path.replace(/\\/g, "/")}`);
-    const a = document.createElement("a");
-    a.href = fileUri;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
-  async function openTemplate(id: string, sourcePath: string) {
+  async function openTemplate(publicUrl: string) {
     setOpenStatus("");
     try {
-      const check = await fetch(`/api/safety-forms/${encodeURIComponent(id)}`, {
+      const check = await fetch(publicUrl, {
         method: "HEAD",
       });
       if (!check.ok) {
-        tryOpenLocalFile(sourcePath);
-        const data = (await check.json().catch(() => ({}))) as { error?: string };
-        setOpenStatus(
-          data.error ??
-            "서버에서 양식을 못 열어 로컬 파일 열기를 시도했습니다."
-        );
+        setOpenStatus("양식 파일을 열지 못했습니다. 관리자에게 문의해 주세요.");
         return;
       }
-      window.open(`/api/safety-forms/${encodeURIComponent(id)}`, "_blank");
+      window.open(publicUrl, "_blank");
     } catch {
-      tryOpenLocalFile(sourcePath);
-      setOpenStatus(
-        "서버 연결 오류로 로컬 파일 열기를 시도했습니다. 막히면 탐색기에서 경로를 직접 열어 주세요."
-      );
+      setOpenStatus("양식 파일을 여는 중 오류가 발생했습니다.");
     }
   }
 
@@ -223,7 +204,7 @@ export function SafetyPrecheckForm({
                 <button
                   type="button"
                   className="btn btn-secondary px-2 py-1 text-xs"
-                  onClick={() => void openTemplate(tpl.id, tpl.sourcePath)}
+                  onClick={() => void openTemplate(tpl.publicUrl)}
                 >
                   양식 열기
                 </button>
