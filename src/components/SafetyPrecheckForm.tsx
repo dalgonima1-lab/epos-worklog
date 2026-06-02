@@ -38,6 +38,7 @@ export function SafetyPrecheckForm({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [openStatus, setOpenStatus] = useState("");
   const galleryRefs = useRef<Array<HTMLInputElement | null>>([]);
   const cameraRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -116,9 +117,21 @@ export function SafetyPrecheckForm({
     }
   }
 
-  function openTemplate(path: string) {
-    const fileUri = `file:///${path.replace(/\\/g, "/")}`;
-    window.open(encodeURI(fileUri), "_blank");
+  async function openTemplate(id: string) {
+    setOpenStatus("");
+    try {
+      const check = await fetch(`/api/safety-forms/${encodeURIComponent(id)}`, {
+        method: "HEAD",
+      });
+      if (!check.ok) {
+        const data = (await check.json().catch(() => ({}))) as { error?: string };
+        setOpenStatus(data.error ?? "양식 파일을 열지 못했습니다.");
+        return;
+      }
+      window.open(`/api/safety-forms/${encodeURIComponent(id)}`, "_blank");
+    } catch {
+      setOpenStatus("양식 파일을 여는 중 오류가 발생했습니다.");
+    }
   }
 
   return (
@@ -156,6 +169,7 @@ export function SafetyPrecheckForm({
       {saveStatus ? (
         <p className="mt-1 text-xs text-emerald-900">{saveStatus}</p>
       ) : null}
+      {openStatus ? <p className="mt-1 text-xs text-rose-700">{openStatus}</p> : null}
 
       <div className="mt-3 space-y-3">
         {SAFETY_PRECHECK_FORM_TEMPLATES.map((tpl) => {
@@ -191,7 +205,7 @@ export function SafetyPrecheckForm({
                 <button
                   type="button"
                   className="btn btn-secondary px-2 py-1 text-xs"
-                  onClick={() => openTemplate(tpl.sourcePath)}
+                  onClick={() => void openTemplate(tpl.id)}
                 >
                   양식 열기
                 </button>

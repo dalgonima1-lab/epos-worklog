@@ -36,6 +36,13 @@ export const SAFETY_PRECHECK_FORM_TEMPLATES = [
   },
 ] as const;
 
+export type SafetyPrecheckTemplateId =
+  (typeof SAFETY_PRECHECK_FORM_TEMPLATES)[number]["id"];
+
+export function getSafetyPrecheckTemplateById(id: string) {
+  return SAFETY_PRECHECK_FORM_TEMPLATES.find((item) => item.id === id);
+}
+
 export interface SafetyPrecheckFormRecord {
   id: string;
   title: string;
