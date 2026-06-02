@@ -53,6 +53,7 @@ import {
   MANAGEMENT_OFFICE_FACILITY,
   OFFICE_WORK_FACILITY,
 } from "./stationFacility";
+import { normalizeSafetyPrecheck } from "./safetyPrecheck";
 
 export const DATA_SANITIZE_VERSION = 1;
 
@@ -105,6 +106,7 @@ export type ReportPayload = Pick<
   | "deficiencies"
   | "beforePhotoAt"
   | "afterPhotoAt"
+  | "safetyPrecheck"
   | "visitGroupId"
 >;
 
@@ -209,6 +211,7 @@ function normalizeReport(r: DailyReport): DailyReport {
       r.workMinutes ??
       calcWorkMinutes(r.beforePhotoAt, r.afterPhotoAt) ??
       undefined,
+    safetyPrecheck: normalizeSafetyPrecheck(r.safetyPrecheck),
   };
 }
 
@@ -476,6 +479,7 @@ export async function upsertReport(
       : undefined;
     existing.issues = payload.issues;
     existing.deficiencies = payload.deficiencies;
+    existing.safetyPrecheck = normalizeSafetyPrecheck(payload.safetyPrecheck);
     if (isMaintenanceReport) {
       existing.beforePhotoAt = undefined;
       existing.afterPhotoAt = undefined;
@@ -533,6 +537,7 @@ export async function upsertReport(
       : undefined,
     issues: payload.issues,
     deficiencies: payload.deficiencies,
+    safetyPrecheck: normalizeSafetyPrecheck(payload.safetyPrecheck),
     beforePhotoAt: payload.beforePhotoAt,
     afterPhotoAt: payload.afterPhotoAt,
     workMinutes: workMinutes ?? undefined,

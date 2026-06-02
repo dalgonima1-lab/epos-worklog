@@ -32,6 +32,7 @@ import {
   OFFICE_WORK_FACILITY,
   parseStationFacilityAreas,
 } from "@/lib/stationFacility";
+import { normalizeSafetyPrecheck } from "@/lib/safetyPrecheck";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -104,7 +105,9 @@ export async function POST(request: NextRequest) {
     deficiencies,
     beforePhotoAt,
     afterPhotoAt,
+    safetyPrecheck,
   } = body;
+  const normalizedSafetyPrecheck = normalizeSafetyPrecheck(safetyPrecheck);
 
   if (!memberId || !date) {
     return NextResponse.json(
@@ -175,6 +178,7 @@ export async function POST(request: NextRequest) {
         : undefined,
       issues: issues ?? "",
       deficiencies: deficiencies ?? "",
+      safetyPrecheck: normalizedSafetyPrecheck,
       beforePhotoAt: beforePhotoAt ?? existing?.beforePhotoAt,
       afterPhotoAt: afterPhotoAt ?? existing?.afterPhotoAt,
     });
@@ -322,6 +326,7 @@ export async function POST(request: NextRequest) {
     nextWeekPlan: nextWeekPlan?.trim() ? String(nextWeekPlan).trim() : undefined,
     issues: issues ?? "",
     deficiencies: deficiencies ?? "",
+    safetyPrecheck: normalizedSafetyPrecheck,
     beforePhotoAt: isMaintenance
       ? undefined
       : (beforePhotoAt ?? existing?.beforePhotoAt),

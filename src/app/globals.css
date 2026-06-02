@@ -1767,6 +1767,28 @@ a {
     break-before: auto;
   }
 
+  html.printing-safety-precheck .card:not(.safety-precheck-print-area) {
+    display: none !important;
+  }
+
+  html.printing-safety-precheck .safety-precheck-print-area {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  html.printing-safety-precheck .no-print {
+    display: none !important;
+  }
+
+  html.printing-safety-precheck .safety-precheck-print {
+    display: block !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   .weekly-analysis-report {
     max-width: none;
     width: 100%;

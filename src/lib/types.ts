@@ -67,6 +67,18 @@ export interface DailyReport {
   beforePhotoDataUrl?: string;
   /** Firebase Storage 없이 Firestore에 저장하는 소형 사진 데이터 URL */
   afterPhotoDataUrl?: string;
+  /** 작업 전 안전서류(중대재해처벌법 대응) 작성·사진 기록 */
+  safetyPrecheck?: {
+    forms: {
+      id: string;
+      title: string;
+      completed: boolean;
+      note?: string;
+    }[];
+    /** 작업 전 안전장구류 착용 사진 (최대 3장) */
+    safetyPhotoDataUrls?: string[];
+    updatedAt: string;
+  };
   /** 전·후 시각 기준 산정 작업시간(분) */
   workMinutes?: number;
   hasBeforePhoto?: boolean;

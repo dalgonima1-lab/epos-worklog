@@ -33,6 +33,7 @@ import {
 import { MaintenanceDailyVisitForm } from "@/components/MaintenanceDailyVisitForm";
 import { OfficeWorkDailyForm } from "@/components/OfficeWorkDailyForm";
 import { PhotoCapture, WorkTimeDisplay } from "@/components/PhotoCapture";
+import { SafetyPrecheckForm } from "@/components/SafetyPrecheckForm";
 import { StationPicker } from "@/components/StationPicker";
 import { DEFAULT_TEAM_MEMBERS, DEFAULT_TEAM_NAME } from "@/lib/constants";
 import { formatDate } from "@/lib/dates";
@@ -58,6 +59,10 @@ import {
   migrateLegacyDoneToPrimary,
   pickDoneForStation,
 } from "@/lib/reportVisitMerge";
+import {
+  createDefaultSafetyPrecheckForms,
+  type SafetyPrecheckFormRecord,
+} from "@/lib/safetyPrecheck";
 
 const ROLE_OTHER = "\uae30\ud0c0";
 
@@ -140,6 +145,10 @@ function DailyPageInner() {
   const [afterPhotoAt, setAfterPhotoAt] = useState<string | undefined>();
   const [hasBeforePhoto, setHasBeforePhoto] = useState(false);
   const [hasAfterPhoto, setHasAfterPhoto] = useState(false);
+  const [safetyForms, setSafetyForms] = useState<SafetyPrecheckFormRecord[]>(
+    () => createDefaultSafetyPrecheckForms()
+  );
+  const [safetyPhotoDataUrls, setSafetyPhotoDataUrls] = useState<string[]>([]);
   const [visitGroupId, setVisitGroupId] = useState<string | undefined>();
   const [cohortCoverage, setCohortCoverage] = useState<CohortCoverage | null>(
     null
@@ -327,6 +336,8 @@ function DailyPageInner() {
         selectedOfficeRolesByStation,
         officeWorkByKey,
         officeVisitedStations,
+        safetyForms,
+        safetyPhotoDataUrls,
       });
     }, 600);
     return () => clearTimeout(timer);
@@ -353,6 +364,8 @@ function DailyPageInner() {
     selectedOfficeRolesByStation,
     officeWorkByKey,
     officeVisitedStations,
+    safetyForms,
+    safetyPhotoDataUrls,
   ]);
 
   useEffect(() => {
@@ -464,6 +477,8 @@ function DailyPageInner() {
     setAfterPhotoAt(undefined);
     setHasBeforePhoto(false);
     setHasAfterPhoto(false);
+    setSafetyForms(createDefaultSafetyPrecheckForms());
+    setSafetyPhotoDataUrls([]);
     fetch(`/api/reports?memberId=${memberId}&date=${date}`)
       .then((r) => r.json())
       .then((data) => {
@@ -739,6 +754,27 @@ function DailyPageInner() {
           report?.workMinutes ??
             calcWorkMinutes(report?.beforePhotoAt, report?.afterPhotoAt)
         );
+        const precheck = report?.safetyPrecheck;
+        if (precheck?.forms?.length) {
+          const byId = new Map<string, SafetyPrecheckFormRecord>(
+            precheck.forms.map((f: SafetyPrecheckFormRecord) => [f.id, f])
+          );
+          setSafetyForms(
+            createDefaultSafetyPrecheckForms().map((f) => {
+              const found = byId.get(f.id);
+              return found
+                ? {
+                    ...f,
+                    completed: Boolean(found.completed),
+                    note: found.note ?? "",
+                  }
+                : f;
+            })
+          );
+        }
+        if (precheck?.safetyPhotoDataUrls?.length) {
+          setSafetyPhotoDataUrls(precheck.safetyPhotoDataUrls.slice(0, 3));
+        }
       })
       .finally(() => setLoading(false));
   }, [memberId, date, searchParams]);
@@ -842,6 +878,11 @@ function DailyPageInner() {
           officeWorkVisitedStations: hasVisited
             ? officeVisitedStations
             : undefined,
+          safetyPrecheck: {
+            forms: safetyForms,
+            safetyPhotoDataUrls: safetyPhotoDataUrls.filter(Boolean).slice(0, 3),
+            updatedAt: new Date().toISOString(),
+          },
           plan,
           nextWeekPlan,
           issues,
@@ -985,6 +1026,15 @@ function DailyPageInner() {
         deficiencies: mergedDeficiencies,
         beforePhotoAt: maintenanceMode ? undefined : beforePhotoAt,
         afterPhotoAt: maintenanceMode ? undefined : afterPhotoAt,
+        safetyPrecheck: maintenanceMode
+          ? undefined
+          : {
+              forms: safetyForms,
+              safetyPhotoDataUrls: safetyPhotoDataUrls
+                .filter(Boolean)
+                .slice(0, 3),
+              updatedAt: new Date().toISOString(),
+            },
         visitGroupId,
         scheduleId: searchParams.get("scheduleId")?.trim() || undefined,
       }),
@@ -1003,6 +1053,10 @@ function DailyPageInner() {
   const isFriday = useMemo(
     () => new Date(date + "T12:00:00").getDay() === 5,
     [date]
+  );
+  const currentMemberName = useMemo(
+    () => members.find((m) => m.id === memberId)?.name ?? "",
+    [members, memberId]
   );
 
   return (
@@ -1279,6 +1333,21 @@ function DailyPageInner() {
             />
           )}
         </div>
+        ) : null}
+
+        {!maintenanceMode && !officeWorkMode ? (
+        <SafetyPrecheckForm
+          date={date}
+          memberName={currentMemberName}
+          stationName={stationName}
+          facilityArea={facilityArea}
+          processingRole={effectiveRole}
+          forms={safetyForms}
+          photoDataUrls={safetyPhotoDataUrls}
+          disabled={loading || formLockedByCohort}
+          onChangeForms={setSafetyForms}
+          onChangePhotos={setSafetyPhotoDataUrls}
+        />
         ) : null}
 
         {!maintenanceMode && !officeWorkMode ? (
