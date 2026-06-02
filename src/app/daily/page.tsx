@@ -765,8 +765,8 @@ function DailyPageInner() {
               return found
                 ? {
                     ...f,
+                    ...found,
                     completed: Boolean(found.completed),
-                    note: found.note ?? "",
                   }
                 : f;
             })
@@ -903,6 +903,23 @@ function DailyPageInner() {
     if (maintenanceMode && !maintenanceSelections.length) {
       setStatus("실제 방문한 점검 대상(역·기능실)을 1건 이상 남겨 주세요.");
       return;
+    }
+    if (!maintenanceMode && !officeWorkMode) {
+      const missing = safetyForms.find(
+        (f) =>
+          !f.completed ||
+          !f.checkerName?.trim() ||
+          !f.checkerSignature?.trim() ||
+          !f.approverName?.trim() ||
+          !f.approverSignature?.trim() ||
+          !f.checkedAt?.trim()
+      );
+      if (missing) {
+        setStatus(
+          `안전서류 「${missing.title}」의 체크/점검자/확인자/서명/일시를 모두 입력해 주세요.`
+        );
+        return;
+      }
     }
     const stations =
       maintenanceMode && maintenanceSelections.length > 0

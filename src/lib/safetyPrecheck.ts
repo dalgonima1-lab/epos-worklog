@@ -30,6 +30,19 @@ export interface SafetyPrecheckFormRecord {
   id: string;
   title: string;
   completed: boolean;
+  /** 점검 체크 항목 요약 */
+  checkSummary?: string;
+  /** 점검자 */
+  checkerName?: string;
+  /** 점검자 서명 */
+  checkerSignature?: string;
+  /** 확인자 */
+  approverName?: string;
+  /** 확인자 서명 */
+  approverSignature?: string;
+  /** 점검/작성 시각 (YYYY-MM-DD HH:mm) */
+  checkedAt?: string;
+  /** 특이사항 */
   note?: string;
 }
 
@@ -44,6 +57,12 @@ export function createDefaultSafetyPrecheckForms(): SafetyPrecheckFormRecord[] {
     id: item.id,
     title: item.title,
     completed: false,
+    checkSummary: "",
+    checkerName: "",
+    checkerSignature: "",
+    approverName: "",
+    approverSignature: "",
+    checkedAt: "",
     note: "",
   }));
 }
@@ -57,6 +76,12 @@ export function normalizeSafetyPrecheck(
       id?: string;
       title?: string;
       completed?: boolean;
+      checkSummary?: string;
+      checkerName?: string;
+      checkerSignature?: string;
+      approverName?: string;
+      approverSignature?: string;
+      checkedAt?: string;
       note?: string;
     }>;
     safetyPhotoDataUrls?: string[];
@@ -68,6 +93,12 @@ export function normalizeSafetyPrecheck(
         id: String(f.id ?? "").trim(),
         title: String(f.title ?? "").trim(),
         completed: Boolean(f.completed),
+        checkSummary: String(f.checkSummary ?? "").trim(),
+        checkerName: String(f.checkerName ?? "").trim(),
+        checkerSignature: String(f.checkerSignature ?? "").trim(),
+        approverName: String(f.approverName ?? "").trim(),
+        approverSignature: String(f.approverSignature ?? "").trim(),
+        checkedAt: String(f.checkedAt ?? "").trim(),
         note: String(f.note ?? "").trim(),
       }))
       .filter((f) => f.id)
@@ -79,6 +110,12 @@ export function normalizeSafetyPrecheck(
       id: tpl.id,
       title: tpl.title,
       completed: found?.completed ?? false,
+      checkSummary: found?.checkSummary ?? "",
+      checkerName: found?.checkerName ?? "",
+      checkerSignature: found?.checkerSignature ?? "",
+      approverName: found?.approverName ?? "",
+      approverSignature: found?.approverSignature ?? "",
+      checkedAt: found?.checkedAt ?? "",
       note: found?.note ?? "",
     };
   });

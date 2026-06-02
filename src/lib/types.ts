@@ -73,6 +73,12 @@ export interface DailyReport {
       id: string;
       title: string;
       completed: boolean;
+      checkSummary?: string;
+      checkerName?: string;
+      checkerSignature?: string;
+      approverName?: string;
+      approverSignature?: string;
+      checkedAt?: string;
       note?: string;
     }[];
     /** 작업 전 안전장구류 착용 사진 (최대 3장) */

@@ -44,7 +44,7 @@ export function SafetyPrecheckForm({
 
   function updateForm(
     id: string,
-    patch: Partial<Pick<SafetyPrecheckFormRecord, "completed" | "note">>
+    patch: Partial<SafetyPrecheckFormRecord>
   ) {
     onChangeForms(
       forms.map((f) => (f.id === id ? { ...f, ...patch } : f))
@@ -111,6 +111,12 @@ export function SafetyPrecheckForm({
             id: tpl.id,
             title: tpl.title,
             completed: false,
+            checkSummary: "",
+            checkerName: "",
+            checkerSignature: "",
+            approverName: "",
+            approverSignature: "",
+            checkedAt: "",
             note: "",
           };
           return (
@@ -130,9 +136,83 @@ export function SafetyPrecheckForm({
                 {tpl.title}
               </label>
               <p className="mt-1 text-xs text-slate-500">{tpl.sourceName}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="label text-xs">점검자</label>
+                  <input
+                    className="input"
+                    placeholder="예: 홍길동"
+                    value={item.checkerName ?? ""}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateForm(item.id, { checkerName: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">점검자 서명</label>
+                  <input
+                    className="input"
+                    placeholder="예: 홍길동(서명)"
+                    value={item.checkerSignature ?? ""}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateForm(item.id, { checkerSignature: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">확인자</label>
+                  <input
+                    className="input"
+                    placeholder="예: 팀장"
+                    value={item.approverName ?? ""}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateForm(item.id, { approverName: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs">확인자 서명</label>
+                  <input
+                    className="input"
+                    placeholder="예: 팀장(서명)"
+                    value={item.approverSignature ?? ""}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      updateForm(item.id, { approverSignature: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mt-2">
+                <label className="label text-xs">점검/작성 시각</label>
+                <input
+                  className="input"
+                  type="datetime-local"
+                  value={item.checkedAt ?? ""}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    updateForm(item.id, { checkedAt: e.target.value })
+                  }
+                />
+              </div>
+              <div className="mt-2">
+                <label className="label text-xs">체크/점검 내용</label>
+                <textarea
+                  className="textarea min-h-[64px]"
+                  placeholder="필수 점검항목 체크 결과, 위험요인 확인 내용 등"
+                  value={item.checkSummary ?? ""}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    updateForm(item.id, { checkSummary: e.target.value })
+                  }
+                />
+              </div>
               <textarea
                 className="textarea mt-2 min-h-[72px]"
-                placeholder="작성 내용/비고 (선택)"
+                placeholder="특이사항 / 조치사항"
                 value={item.note ?? ""}
                 disabled={disabled}
                 onChange={(e) => updateForm(item.id, { note: e.target.value })}
@@ -240,7 +320,8 @@ export function SafetyPrecheckForm({
             <tr>
               <th className="border border-slate-300 px-2 py-1 text-left">양식</th>
               <th className="border border-slate-300 px-2 py-1 text-center">작성</th>
-              <th className="border border-slate-300 px-2 py-1 text-left">비고</th>
+              <th className="border border-slate-300 px-2 py-1 text-left">점검/서명</th>
+              <th className="border border-slate-300 px-2 py-1 text-left">내용/특이사항</th>
             </tr>
           </thead>
           <tbody>
@@ -251,7 +332,25 @@ export function SafetyPrecheckForm({
                   {f.completed ? "작성완료" : "미작성"}
                 </td>
                 <td className="border border-slate-300 px-2 py-1 whitespace-pre-wrap">
-                  {f.note?.trim() || "-"}
+                  {[
+                    f.checkedAt ? `일시: ${f.checkedAt}` : "",
+                    f.checkerName ? `점검자: ${f.checkerName}` : "",
+                    f.checkerSignature ? `점검자 서명: ${f.checkerSignature}` : "",
+                    f.approverName ? `확인자: ${f.approverName}` : "",
+                    f.approverSignature
+                      ? `확인자 서명: ${f.approverSignature}`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n") || "-"}
+                </td>
+                <td className="border border-slate-300 px-2 py-1 whitespace-pre-wrap">
+                  {[
+                    f.checkSummary?.trim() ? `점검내용: ${f.checkSummary.trim()}` : "",
+                    f.note?.trim() ? `특이사항: ${f.note.trim()}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n") || "-"}
                 </td>
               </tr>
             ))}
