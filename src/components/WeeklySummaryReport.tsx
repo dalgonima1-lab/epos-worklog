@@ -4,6 +4,7 @@ import type { WeeklySummary } from "@/lib/summary";
 import type { DailyReport } from "@/lib/types";
 import { photoApiUrl } from "@/lib/photoUrl";
 import { formatStationVisitLabel } from "@/lib/stationFacility";
+import { formatKoreanDateTime } from "@/lib/koreanTime";
 import { formatDateTime, formatWorkDuration } from "@/lib/workTime";
 
 interface WeeklySummaryReportProps {
@@ -26,7 +27,7 @@ export function WeeklySummaryReport({
   summary,
   onDayClick,
 }: WeeklySummaryReportProps) {
-  const generated = new Date(summary.generatedAt).toLocaleString("ko-KR");
+  const generated = formatKoreanDateTime(summary.generatedAt);
 
   return (
     <div className="weekly-summary-report text-slate-900">

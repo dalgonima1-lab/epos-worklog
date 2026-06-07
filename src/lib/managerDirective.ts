@@ -1,3 +1,4 @@
+import { formatKoreanDateTime } from "./koreanTime";
 import type { ManagerDirective } from "./types";
 
 export const DIRECTIVE_SECTION_TITLE = "5. 팀장, 대표님 첨언 및 지시사항";
@@ -6,17 +7,7 @@ export const DIRECTIVE_PLACEHOLDER_LINE =
   "_(팀장·대표님이 보고서 확인 후 작성·저장합니다.)_";
 
 export function formatDirectiveTimestamp(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+  return formatKoreanDateTime(iso);
 }
 
 /** 보고서 5번 섹션에 첨언·지시를 반영한 표시용 Markdown */

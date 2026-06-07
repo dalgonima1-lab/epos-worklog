@@ -247,10 +247,18 @@ export default function ManagerAnalysisPage() {
     setBaseAnalysis(String(data.markdown ?? ""));
     setManagerDirective(data.managerDirective ?? null);
     setAnalysisSource(data.source ?? "file");
+    const savedAt =
+      typeof data.updatedAt === "string" && data.updatedAt
+        ? formatDirectiveTimestamp(data.updatedAt)
+        : null;
     setAnalysisNotice(
       data.source === "cursor"
-        ? "저장된 Cursor 주간 분석입니다."
-        : `분석 대상 주(${scopeText.targetCaption}) 저장본입니다.`
+        ? savedAt
+          ? `저장된 Cursor 주간 분석입니다. (저장: ${savedAt})`
+          : "저장된 Cursor 주간 분석입니다."
+        : savedAt
+          ? `분석 대상 주(${scopeText.targetCaption}) 저장본입니다. (저장: ${savedAt})`
+          : `분석 대상 주(${scopeText.targetCaption}) 저장본입니다.`
     );
     return true;
   }

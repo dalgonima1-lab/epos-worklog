@@ -6,6 +6,7 @@ import { reportHasMeaningfulContent } from "./visitCohort";
 import { isTimeOffFacility } from "./scheduleKinds";
 import { MANAGEMENT_OFFICE_FACILITY } from "./stationFacility";
 import { getKoreanHolidayName, isKoreanPublicHoliday } from "./koreanHolidays";
+import { formatKoreanDateTime } from "./koreanTime";
 
 export interface MemberWeekSummary {
   member: Member;
@@ -158,7 +159,7 @@ export function summaryToMarkdown(summary: WeeklySummary): string {
     `# ${summary.teamName} 주간 업무 요약`,
     ``,
     `**기간:** ${summary.weekLabel}`,
-    `**생성:** ${new Date(summary.generatedAt).toLocaleString("ko-KR")}`,
+    `**생성:** ${formatKoreanDateTime(summary.generatedAt)}`,
     ``,
   ];
 

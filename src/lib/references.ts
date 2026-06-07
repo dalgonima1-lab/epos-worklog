@@ -122,6 +122,7 @@ export async function loadGeneratedAnalysis(
 ): Promise<{
   markdown: string;
   source: WeeklyAnalysisRecord["source"];
+  updatedAt?: string;
   managerDirective?: WeeklyAnalysisRecord["managerDirective"];
 } | null> {
   if (weekStart && weekEnd) {
@@ -130,6 +131,7 @@ export async function loadGeneratedAnalysis(
       return {
         markdown: resolved.record.markdown,
         source: resolved.record.source,
+        updatedAt: resolved.record.updatedAt,
         managerDirective: resolved.record.managerDirective,
       };
     }
@@ -140,6 +142,7 @@ export async function loadGeneratedAnalysis(
     return {
       markdown: fromDb.markdown,
       source: fromDb.source,
+      updatedAt: fromDb.updatedAt,
       managerDirective: fromDb.managerDirective,
     };
   }

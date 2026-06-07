@@ -12,6 +12,7 @@ import {
   DIRECTIVE_PLACEHOLDER_LINE,
   DIRECTIVE_SECTION_TITLE,
 } from "./managerDirective";
+import { koreanNowLabel } from "./koreanTime";
 
 function collectIssues(reports: DailyReport[]): string[] {
   const items: string[] = [];
@@ -125,7 +126,7 @@ export function generateAutoWeeklyAnalysis(params: {
     submissionStatus,
     nextWeekPlanSection,
   } = params;
-  const now = new Date().toLocaleString("ko-KR");
+  const now = koreanNowLabel();
   const totalReports = summary.members.reduce((n, m) => n + m.reports.length, 0);
   const maxExpected = summary.members.reduce((n, m) => n + m.expectedDays, 0);
   const allIssues = summary.members.flatMap((m) => collectIssues(m.reports));

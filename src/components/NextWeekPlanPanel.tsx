@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatKoreanDateTime } from "@/lib/koreanTime";
 import type { Member, MemberWeekPlan } from "@/lib/types";
 
 interface NextWeekPlanPanelProps {
@@ -115,7 +116,7 @@ export function NextWeekPlanPanel({
                 {savedAt[m.id] ? (
                   <span className="text-[11px] text-emerald-700">
                     저장됨 ·{" "}
-                    {new Date(savedAt[m.id]).toLocaleString("ko-KR", {
+                    {formatKoreanDateTime(savedAt[m.id], {
                       month: "numeric",
                       day: "numeric",
                       hour: "2-digit",

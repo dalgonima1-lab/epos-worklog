@@ -219,6 +219,7 @@ export async function GET(request: NextRequest) {
     ),
     managerDirective: saved.managerDirective ?? null,
     source: saved.source,
+    updatedAt: saved.updatedAt ?? null,
   });
 }
 
