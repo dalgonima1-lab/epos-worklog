@@ -159,6 +159,8 @@ export interface Database {
   stationCatalogVersion?: number;
   /** 1 = 보안테스트 placeholder 일일기록 제거 */
   dataSanitizeVersion?: number;
+  /** 2 = Firestore reports/schedules 서브컬렉션 분리 */
+  storageVersion?: number;
   schedules: ScheduleEntry[];
   /** `{start}_{end}` → 구성원별 차주 계획 메모 */
   weekPlans?: Record<string, MemberWeekPlan[]>;

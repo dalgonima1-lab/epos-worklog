@@ -54,12 +54,98 @@ import {
   OFFICE_WORK_FACILITY,
 } from "./stationFacility";
 import { normalizeSafetyPrecheck } from "./safetyPrecheck";
+import {
+  databaseFromMeta,
+  deleteSplitSchedule,
+  deleteSplitSchedulesByIds,
+  getSplitReport,
+  getSplitSchedule,
+  listAllSplitReports,
+  listSplitReportsInRange,
+  listSplitSchedulesForDate,
+  listSplitSchedulesInRange,
+  metaFromDatabase,
+  migrateMonolithicToSplit,
+  saveFirestoreMeta,
+  setSplitReport,
+  setSplitSchedule,
+  type FirestoreMetaDocument,
+} from "./firestoreSplitStore";
 
 export const DATA_SANITIZE_VERSION = 1;
 
 const DATA_PATH = path.join(process.cwd(), "data", "store.json");
 const CLOUD_DB_COLLECTION = "epos-worklog";
 const CLOUD_DB_DOC = "main";
+
+let cachedFirestoreMeta: FirestoreMetaDocument | null = null;
+
+/** 헬스·관리용: Firestore 분리 저장 상태 */
+export async function getFirestoreStorageDiagnostics(): Promise<{
+  storageVersion: number;
+  reportCount: number;
+  scheduleCount: number;
+} | null> {
+  if (!isFirebaseConfigured()) return null;
+  const meta = await ensureFirestoreMeta();
+  const { countSplitDocuments } = await import("./firestoreSplitStore");
+  const counts = await countSplitDocuments();
+  return {
+    storageVersion: meta.storageVersion,
+    reportCount: counts.reports,
+    scheduleCount: counts.schedules,
+  };
+}
+
+async function ensureFirestoreMeta(): Promise<FirestoreMetaDocument> {
+  if (cachedFirestoreMeta) return cachedFirestoreMeta;
+
+  const cloudDb = getFirebaseDb();
+  const ref = cloudDb.collection(CLOUD_DB_COLLECTION).doc(CLOUD_DB_DOC);
+  const snapshot = await ref.get();
+
+  if (!snapshot.exists) {
+    const seeded = migrateDb({ ...DEFAULT_DB, storageVersion: 2 });
+    const meta = metaFromDatabase(seeded);
+    await saveFirestoreMeta(meta);
+    cachedFirestoreMeta = meta;
+    return meta;
+  }
+
+  const data = snapshot.data() as Record<string, unknown>;
+  const isLegacy =
+    data.storageVersion !== 2 &&
+    (Array.isArray(data.reports) ||
+      Array.isArray(data.schedules) ||
+      data.storageVersion == null);
+
+  if (isLegacy) {
+    const legacy = migrateDb(snapshot.data() as Database);
+    const meta = await migrateMonolithicToSplit(legacy);
+    cachedFirestoreMeta = meta;
+    return meta;
+  }
+
+  let meta = snapshot.data() as FirestoreMetaDocument;
+  const db = migrateDb(databaseFromMeta(meta));
+  const nextMeta = metaFromDatabase(db);
+  if (
+    (meta.stationCatalogVersion ?? 0) !== (nextMeta.stationCatalogVersion ?? 0) ||
+    (meta.dataSanitizeVersion ?? 0) !== (nextMeta.dataSanitizeVersion ?? 0) ||
+    meta.teamName !== nextMeta.teamName
+  ) {
+    await saveFirestoreMeta(nextMeta);
+    meta = nextMeta;
+  }
+  cachedFirestoreMeta = meta;
+  return meta;
+}
+
+async function persistFirestoreMetaFromDb(db: Database): Promise<void> {
+  const meta = metaFromDatabase(db);
+  await saveFirestoreMeta(meta);
+  cachedFirestoreMeta = meta;
+}
 
 const DEFAULT_DB: Database = {
   teamName: DEFAULT_TEAM_NAME,
@@ -160,19 +246,10 @@ async function ensureDb(): Promise<Database> {
 
   if (isFirebaseConfigured()) {
     try {
-      const cloudDb = getFirebaseDb();
-      const ref = cloudDb.collection(CLOUD_DB_COLLECTION).doc(CLOUD_DB_DOC);
-      const snapshot = await ref.get();
-
-      if (!snapshot.exists) {
-        await ref.set(DEFAULT_DB);
-        return DEFAULT_DB;
-      }
-
-      db = snapshot.data() as Database;
+      const meta = await ensureFirestoreMeta();
+      db = databaseFromMeta(meta);
       catalogVersionBefore = db.stationCatalogVersion ?? 0;
       dataSanitizeVersionBefore = db.dataSanitizeVersion ?? 0;
-      db = migrateDb(db);
     } catch (e) {
       throw new Error(formatFirestoreUserError(e));
     }
@@ -218,10 +295,7 @@ function normalizeReport(r: DailyReport): DailyReport {
 async function saveDb(db: Database): Promise<void> {
   if (isFirebaseConfigured()) {
     try {
-      await getFirebaseDb()
-        .collection(CLOUD_DB_COLLECTION)
-        .doc(CLOUD_DB_DOC)
-        .set(db);
+      await persistFirestoreMetaFromDb(db);
       return;
     } catch (e) {
       throw new Error(formatFirestoreUserError(e));
@@ -276,13 +350,9 @@ export async function rebuildStationCatalog(): Promise<{
   let db: Database;
 
   if (isFirebaseConfigured()) {
-    const snapshot = await getFirebaseDb()
-      .collection(CLOUD_DB_COLLECTION)
-      .doc(CLOUD_DB_DOC)
-      .get();
-    db = snapshot.exists
-      ? (snapshot.data() as Database)
-      : { ...DEFAULT_DB };
+    const meta = await ensureFirestoreMeta();
+    const reports = await listAllSplitReports();
+    db = { ...databaseFromMeta(meta), reports };
   } else {
     try {
       const raw = await fs.readFile(DATA_PATH, "utf-8");
@@ -301,7 +371,14 @@ export async function rebuildStationCatalog(): Promise<{
   db.stationHistory = buildMetroStationCatalog(db.reports, db.stationHistory);
   db.stationCatalogVersion = STATION_CATALOG_VERSION;
   db = migrateDb(db);
-  await saveDb(db);
+  if (isFirebaseConfigured()) {
+    await persistFirestoreMetaFromDb(db);
+    for (const report of db.reports) {
+      await setSplitReport(report);
+    }
+  } else {
+    await saveDb(db);
+  }
 
   return {
     beforeCount,
@@ -416,9 +493,9 @@ export async function upsertReport(
     .filter(Boolean);
 
   payload = { ...payload, stationName, additionalStationNames, visitGroupId };
-  const existing = db.reports.find(
-    (r) => r.memberId === memberId && r.date === date
-  );
+  const existing = isFirebaseConfigured()
+    ? await getSplitReport(memberId, date)
+    : db.reports.find((r) => r.memberId === memberId && r.date === date);
   const now = new Date().toISOString();
   const isMaintenanceReport =
     normalizeFacilityArea(payload.facilityArea) === MANAGEMENT_OFFICE_FACILITY;
@@ -495,6 +572,11 @@ export async function upsertReport(
     }
     existing.updatedAt = now;
     await syncPhotoFlags(existing);
+    if (isFirebaseConfigured()) {
+      await setSplitReport(existing);
+      await saveDb(db);
+      return existing;
+    }
     await saveDb(db);
     return existing;
   }
@@ -544,6 +626,11 @@ export async function upsertReport(
     updatedAt: now,
   };
   await syncPhotoFlags(report);
+  if (isFirebaseConfigured()) {
+    await setSplitReport(report);
+    await saveDb(db);
+    return report;
+  }
   db.reports.push(report);
   await saveDb(db);
   return report;
@@ -553,10 +640,11 @@ export async function getReport(
   memberId: string,
   date: string
 ): Promise<DailyReport | null> {
-  const db = await ensureDb();
-  const report = db.reports.find(
-    (r) => r.memberId === memberId && r.date === date
-  );
+  const report = isFirebaseConfigured()
+    ? await getSplitReport(memberId, date)
+    : (await ensureDb()).reports.find(
+        (r) => r.memberId === memberId && r.date === date
+      );
   if (!report) return null;
   return syncPhotoFlags(normalizeReport({ ...report }));
 }
@@ -565,10 +653,11 @@ export async function getReportsInRange(
   startDate: string,
   endDate: string
 ): Promise<DailyReport[]> {
-  const db = await ensureDb();
-  const list = db.reports.filter(
-    (r) => r.date >= startDate && r.date <= endDate
-  );
+  const list = isFirebaseConfigured()
+    ? await listSplitReportsInRange(startDate, endDate)
+    : (await ensureDb()).reports.filter(
+        (r) => r.date >= startDate && r.date <= endDate
+      );
   return Promise.all(list.map((r) => syncPhotoFlags(normalizeReport({ ...r }))));
 }
 
@@ -577,10 +666,13 @@ export async function getReportsByStationName(
   stationQuery: string,
   limit = 300
 ): Promise<DailyReport[]> {
-  const db = await ensureDb();
   if (!stationQuery.trim()) return [];
 
-  const list = db.reports.filter((r) => reportInvolvesStation(r, stationQuery));
+  const list = (
+    isFirebaseConfigured()
+      ? await listAllSplitReports()
+      : (await ensureDb()).reports
+  ).filter((r) => reportInvolvesStation(r, stationQuery));
   list.sort((a, b) => {
     const byDate = b.date.localeCompare(a.date);
     if (byDate !== 0) return byDate;
@@ -607,9 +699,11 @@ export async function updatePhotoTimestamp(
   photoDataUrl?: string
 ): Promise<DailyReport> {
   const db = await ensureDb();
-  let report = db.reports.find(
-    (r) => r.memberId === memberId && r.date === date
-  );
+  let report =
+    (isFirebaseConfigured()
+      ? await getSplitReport(memberId, date)
+      : db.reports.find((r) => r.memberId === memberId && r.date === date)) ??
+    null;
 
   if (!report) {
     report = {
@@ -624,7 +718,9 @@ export async function updatePhotoTimestamp(
       deficiencies: "",
       updatedAt: new Date().toISOString(),
     };
-    db.reports.push(report);
+    if (!isFirebaseConfigured()) {
+      db.reports.push(report);
+    }
   }
 
   if (slot === "before") report.beforePhotoAt = recordedAt;
@@ -639,7 +735,11 @@ export async function updatePhotoTimestamp(
     calcWorkMinutes(report.beforePhotoAt, report.afterPhotoAt) ?? undefined;
   report.updatedAt = new Date().toISOString();
   await syncPhotoFlags(report);
-  await saveDb(db);
+  if (isFirebaseConfigured()) {
+    await setSplitReport(report);
+  } else {
+    await saveDb(db);
+  }
   return report;
 }
 
@@ -649,9 +749,11 @@ export async function updateSafetyPrecheck(
   safetyPrecheck: DailyReport["safetyPrecheck"]
 ): Promise<DailyReport> {
   const db = await ensureDb();
-  let report = db.reports.find(
-    (r) => r.memberId === memberId && r.date === date
-  );
+  let report =
+    (isFirebaseConfigured()
+      ? await getSplitReport(memberId, date)
+      : db.reports.find((r) => r.memberId === memberId && r.date === date)) ??
+    null;
   if (!report) {
     report = {
       id: `r_${memberId}_${date}`,
@@ -665,12 +767,18 @@ export async function updateSafetyPrecheck(
       deficiencies: "",
       updatedAt: new Date().toISOString(),
     };
-    db.reports.push(report);
+    if (!isFirebaseConfigured()) {
+      db.reports.push(report);
+    }
   }
   report.safetyPrecheck = normalizeSafetyPrecheck(safetyPrecheck);
   report.updatedAt = new Date().toISOString();
   await syncPhotoFlags(report);
-  await saveDb(db);
+  if (isFirebaseConfigured()) {
+    await setSplitReport(report);
+  } else {
+    await saveDb(db);
+  }
   return report;
 }
 
@@ -678,6 +786,9 @@ export async function getSchedulesInRange(
   startDate: string,
   endDate: string
 ): Promise<ScheduleEntry[]> {
+  if (isFirebaseConfigured()) {
+    return listSplitSchedulesInRange(startDate, endDate);
+  }
   const db = await ensureDb();
   return db.schedules
     .filter((s) => s.date >= startDate && s.date <= endDate)
@@ -711,10 +822,12 @@ export async function upsertSchedule(payload: {
 
   let entry: ScheduleEntry;
   if (payload.id) {
-    const idx = db.schedules.findIndex((s) => s.id === payload.id);
-    if (idx < 0) throw new Error("일정을 찾을 수 없습니다.");
+    const prev = isFirebaseConfigured()
+      ? await getSplitSchedule(payload.id)
+      : db.schedules.find((s) => s.id === payload.id);
+    if (!prev) throw new Error("일정을 찾을 수 없습니다.");
     entry = {
-      ...db.schedules[idx],
+      ...prev,
       date: payload.date,
       memberId: payload.memberId,
       title,
@@ -731,7 +844,10 @@ export async function upsertSchedule(payload: {
         : undefined,
       updatedAt: now,
     };
-    db.schedules[idx] = entry;
+    if (!isFirebaseConfigured()) {
+      const idx = db.schedules.findIndex((s) => s.id === payload.id);
+      if (idx >= 0) db.schedules[idx] = entry;
+    }
   } else {
     entry = {
       id: `sch_${payload.memberId}_${payload.date}_${Date.now()}`,
@@ -752,11 +868,33 @@ export async function upsertSchedule(payload: {
       createdAt: now,
       updatedAt: now,
     };
-    db.schedules.push(entry);
+    if (!isFirebaseConfigured()) {
+      db.schedules.push(entry);
+    }
   }
 
-  await saveDb(db);
+  if (isFirebaseConfigured()) {
+    await setSplitSchedule(entry);
+  } else {
+    await saveDb(db);
+  }
   return entry;
+}
+
+function shouldRemoveAutoSyncedSchedule(
+  schedule: ScheduleEntry,
+  memberId: string,
+  date: string
+): boolean {
+  if (schedule.memberId !== memberId || schedule.date !== date) return false;
+  const area = schedule.facilityArea?.trim() ?? "";
+  if (area === OFFICE_WORK_FACILITY) return false;
+  if (area === ANNUAL_LEAVE_FACILITY || area === PUBLIC_HOLIDAY_FACILITY) {
+    return false;
+  }
+  if (area === MANAGEMENT_OFFICE_FACILITY) return true;
+  if (!area) return false;
+  return true;
 }
 
 /** 일일기록 동기화 대상(외근·유지보수) 일정만 제거 — 연차·공휴·사무 유지 */
@@ -764,19 +902,18 @@ export async function deleteAutoSyncedSchedulesForMemberDate(
   memberId: string,
   date: string
 ): Promise<number> {
+  if (isFirebaseConfigured()) {
+    const daySchedules = await listSplitSchedulesForDate(date);
+    const toRemove = daySchedules.filter((s) =>
+      shouldRemoveAutoSyncedSchedule(s, memberId, date)
+    );
+    return deleteSplitSchedulesByIds(toRemove.map((s) => s.id));
+  }
   const db = await ensureDb();
   const before = db.schedules.length;
-  db.schedules = db.schedules.filter((s) => {
-    if (s.memberId !== memberId || s.date !== date) return true;
-    const area = s.facilityArea?.trim() ?? "";
-    if (area === OFFICE_WORK_FACILITY) return true;
-    if (area === ANNUAL_LEAVE_FACILITY || area === PUBLIC_HOLIDAY_FACILITY) {
-      return true;
-    }
-    if (area === MANAGEMENT_OFFICE_FACILITY) return false;
-    if (!area) return true;
-    return false;
-  });
+  db.schedules = db.schedules.filter(
+    (s) => !shouldRemoveAutoSyncedSchedule(s, memberId, date)
+  );
   const removed = before - db.schedules.length;
   if (removed > 0) await saveDb(db);
   return removed;
@@ -806,6 +943,16 @@ export async function deleteAutoSyncedSchedulesForSlots(
   slots: { station: string; facility: string }[]
 ): Promise<number> {
   if (!slots.length) return 0;
+  if (isFirebaseConfigured()) {
+    const daySchedules = await listSplitSchedulesForDate(date);
+    const toRemove = daySchedules.filter(
+      (s) =>
+        s.memberId === memberId &&
+        s.date === date &&
+        slots.some((slot) => scheduleMatchesVisitSlot(s, slot))
+    );
+    return deleteSplitSchedulesByIds(toRemove.map((s) => s.id));
+  }
   const db = await ensureDb();
   const before = db.schedules.length;
   db.schedules = db.schedules.filter((s) => {
@@ -823,6 +970,9 @@ export async function deleteAutoSyncedSchedulesForSlots(
 export async function getScheduleById(
   id: string
 ): Promise<ScheduleEntry | undefined> {
+  if (isFirebaseConfigured()) {
+    return getSplitSchedule(id);
+  }
   const db = await ensureDb();
   return db.schedules.find((s) => s.id === id);
 }
@@ -832,8 +982,18 @@ export async function deleteSchedulesForMemberDateFacility(
   date: string,
   facilityArea: string
 ): Promise<number> {
-  const db = await ensureDb();
   const area = facilityArea.trim();
+  if (isFirebaseConfigured()) {
+    const daySchedules = await listSplitSchedulesForDate(date);
+    const toRemove = daySchedules.filter(
+      (s) =>
+        s.memberId === memberId &&
+        s.date === date &&
+        s.facilityArea?.trim() === area
+    );
+    return deleteSplitSchedulesByIds(toRemove.map((s) => s.id));
+  }
+  const db = await ensureDb();
   const before = db.schedules.length;
   db.schedules = db.schedules.filter(
     (s) =>
@@ -877,6 +1037,11 @@ export async function syncSchedulesFromOfficeWork(
 }
 
 export async function deleteSchedule(id: string): Promise<void> {
+  if (isFirebaseConfigured()) {
+    const removed = await deleteSplitSchedule(id);
+    if (!removed) throw new Error("일정을 찾을 수 없습니다.");
+    return;
+  }
   const db = await ensureDb();
   const before = db.schedules.length;
   db.schedules = db.schedules.filter((s) => s.id !== id);
@@ -890,9 +1055,16 @@ export async function deleteSchedulesByVisitGroup(
   date: string,
   visitGroupId: string
 ): Promise<number> {
-  const db = await ensureDb();
   const gid = visitGroupId.trim();
   if (!gid) return 0;
+  if (isFirebaseConfigured()) {
+    const daySchedules = await listSplitSchedulesForDate(date);
+    const toRemove = daySchedules.filter(
+      (s) => s.date === date && s.visitGroupId === gid
+    );
+    return deleteSplitSchedulesByIds(toRemove.map((s) => s.id));
+  }
+  const db = await ensureDb();
   const before = db.schedules.length;
   db.schedules = db.schedules.filter(
     (s) => !(s.date === date && s.visitGroupId === gid)
