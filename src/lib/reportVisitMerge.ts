@@ -65,6 +65,15 @@ export function pickDoneForStation(done: string, station: string): string {
   return "";
 }
 
+/** 당일 전체 역사가 【】로 구분된 일괄 저장 본문인지 */
+export function isMultiSectionDoneText(done: string): boolean {
+  const sections = parseDoneSections(done);
+  const keys = Object.keys(sections).filter(
+    (k) => k.trim() && sections[k]?.trim()
+  );
+  return keys.length > 1;
+}
+
 /** 구분 없이 저장된 본문을 첫 역사 키로 옮김 */
 export function migrateLegacyDoneToPrimary(
   done: string,
@@ -134,7 +143,9 @@ export function mergeFieldVisitSave(
     existing.done ?? "",
     existing.stationName ?? ""
   );
-  const mergedDone = mergeDoneForStation(normalizedDone, focus, visit.done);
+  const mergedDone = isMultiSectionDoneText(visit.done)
+    ? visit.done.trim()
+    : mergeDoneForStation(normalizedDone, focus, visit.done);
 
   const base = {
     ...visit,
