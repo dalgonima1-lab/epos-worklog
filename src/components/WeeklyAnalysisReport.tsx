@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { formatKoreanDateTime } from "@/lib/koreanTime";
 import {
   parseAnalysisMarkdown,
   type ParsedAnalysisReport,
@@ -14,6 +15,8 @@ interface WeeklyAnalysisReportProps {
   weekLabel?: string;
   compareWeekLabel?: string;
   source?: "gemini" | "cursor" | "file" | "auto" | "";
+  /** 저장 시각(ISO). 있으면 본문 일시 대신 KST로 표시 */
+  reportSavedAt?: string | null;
 }
 
 function InlineText({ text }: { text: string }) {
@@ -78,15 +81,19 @@ function ReportHeader({
   weekLabel,
   compareWeekLabel,
   source,
+  reportSavedAt,
 }: {
   report: ParsedAnalysisReport;
   weekLabel?: string;
   compareWeekLabel?: string;
   source?: string;
+  reportSavedAt?: string | null;
 }) {
   const period =
     report.meta.find((m) => /기간|period/i.test(m.label))?.value ?? weekLabel;
-  const dateLine = report.meta.find((m) => /일시/.test(m.label))?.value;
+  const dateLine = reportSavedAt
+    ? formatKoreanDateTime(reportSavedAt)
+    : report.meta.find((m) => /일시/.test(m.label))?.value;
   const fromLine = report.meta.find((m) => /발신/.test(m.label))?.value;
   const refLine = report.meta.find((m) => /참조/.test(m.label))?.value;
 
@@ -226,6 +233,7 @@ export function WeeklyAnalysisReport({
   weekLabel,
   compareWeekLabel,
   source,
+  reportSavedAt,
 }: WeeklyAnalysisReportProps) {
   const report = useMemo(
     () => parseAnalysisMarkdown(String(markdown ?? "")),
@@ -239,6 +247,7 @@ export function WeeklyAnalysisReport({
         weekLabel={weekLabel}
         compareWeekLabel={compareWeekLabel}
         source={source}
+        reportSavedAt={reportSavedAt}
       />
 
       <div className="war-sections">

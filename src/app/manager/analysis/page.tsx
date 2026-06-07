@@ -30,6 +30,7 @@ export default function ManagerAnalysisPage() {
     useState<ManagerDirective | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [analysisNotice, setAnalysisNotice] = useState("");
+  const [analysisSavedAt, setAnalysisSavedAt] = useState<string | null>(null);
   const [analysisSource, setAnalysisSource] = useState<
     "gemini" | "cursor" | "file" | "auto" | ""
   >("");
@@ -231,6 +232,7 @@ export default function ManagerAnalysisPage() {
     setError("");
     setViewingCompareReport(false);
     setAnalysisNotice("");
+    setAnalysisSavedAt(null);
     const res = await fetch(
       `/api/analysis/weekly?start=${week.start}&end=${week.end}&pin=${encodeURIComponent(pin)}`
     );
@@ -242,11 +244,15 @@ export default function ManagerAnalysisPage() {
     if (!data.markdown) {
       setBaseAnalysis("");
       setManagerDirective(null);
+      setAnalysisSavedAt(null);
       return false;
     }
     setBaseAnalysis(String(data.markdown ?? ""));
     setManagerDirective(data.managerDirective ?? null);
     setAnalysisSource(data.source ?? "file");
+    setAnalysisSavedAt(
+      typeof data.updatedAt === "string" ? data.updatedAt : null
+    );
     const savedAt =
       typeof data.updatedAt === "string" && data.updatedAt
         ? formatDirectiveTimestamp(data.updatedAt)
@@ -617,6 +623,7 @@ export default function ManagerAnalysisPage() {
                   viewingCompareReport ? undefined : scopeText.compareCaption
                 }
                 source={analysisSource}
+                reportSavedAt={analysisSavedAt}
               />
             ) : (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
@@ -742,6 +749,7 @@ export default function ManagerAnalysisPage() {
                   weekLabel={scopeText.targetCaption}
                   compareWeekLabel={scopeText.compareCaption}
                   source={analysisSource}
+                  reportSavedAt={analysisSavedAt}
                 />
               </>
             ) : (

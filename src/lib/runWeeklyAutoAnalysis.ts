@@ -28,6 +28,7 @@ import {
   formatRefreshedAnalysisMessage,
   formatUnchangedAnalysisMessage,
 } from "./analysisWeekFingerprint";
+import { refreshAnalysisMarkdownDateLine } from "./koreanTime";
 
 export type AutoAnalysisSchedule = "saturday" | "sunday" | "manual";
 
@@ -213,6 +214,7 @@ export async function runWeeklyAutoAnalysis(options?: {
     ? "등록분 전체 재분석"
     : describeWeekDataChange(existing?.dataSignature, currentSig);
   const updatedAt = new Date().toISOString();
+  markdown = refreshAnalysisMarkdownDateLine(markdown, updatedAt);
 
   await saveGeneratedAnalysis(key, markdown, source, {
     dataSignature: currentSig,

@@ -14,6 +14,7 @@ import {
   weekKey,
 } from "@/lib/references";
 import { mergeDirectiveIntoMarkdown, stripDirectiveSection } from "@/lib/managerDirective";
+import { refreshAnalysisMarkdownDateLine } from "@/lib/koreanTime";
 
 export const maxDuration = 60;
 
@@ -130,20 +131,23 @@ export async function POST(request: NextRequest) {
       strategicChecklist: String(strategicChecklist ?? ""),
     });
 
-    const markdown = await generateWithGemini(prompt);
+    let markdown = await generateWithGemini(prompt);
     const key = weekKey(start, end);
     const schedules = await getSchedulesInRange(start, end);
     const dataSignature = buildWeekDataSignature(currentReports, schedules, {
       nextWeekSchedules,
       weekPlans,
     });
+    const updatedAt = new Date().toISOString();
+    markdown = refreshAnalysisMarkdownDateLine(markdown, updatedAt);
     await saveGeneratedAnalysis(key, markdown, "gemini", {
       dataSignature,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     });
 
     return NextResponse.json({
       markdown,
+      updatedAt,
       weekKey: key,
       source: "gemini",
       meta: {

@@ -1,4 +1,5 @@
 import { DIRECTIVE_PLACEHOLDER_LINE } from "./managerDirective";
+import { koreanNowLabel } from "./koreanTime";
 
 export function buildAnalysisPrompt(params: {
   teamName: string;
@@ -35,7 +36,7 @@ export function buildAnalysisPrompt(params: {
 
 # ${weekTitle}
 
-일시: ${new Date().toLocaleDateString("ko-KR")}  
+일시: ${koreanNowLabel()}  
 발신: ${teamName} (AI 통합 전략 분석)  
 참조: 경영지원본부, 개발부, EPOS 관리팀
 
