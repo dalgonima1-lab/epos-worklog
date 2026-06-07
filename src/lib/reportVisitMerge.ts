@@ -74,6 +74,14 @@ export function isMultiSectionDoneText(done: string): boolean {
   return keys.length > 1;
 }
 
+/** 【역명】 형식으로 저장된 본문이면 역별 병합 대신 통째로 교체 */
+export function usesDoneSectionMarkers(done: string): boolean {
+  const text = done.trim();
+  if (!/【[^】]+】/.test(text)) return false;
+  const sections = parseDoneSections(text);
+  return Object.keys(sections).some((k) => k.trim() && sections[k]?.trim());
+}
+
 /** 구분 없이 저장된 본문을 첫 역사 키로 옮김 */
 export function migrateLegacyDoneToPrimary(
   done: string,
@@ -143,7 +151,7 @@ export function mergeFieldVisitSave(
     existing.done ?? "",
     existing.stationName ?? ""
   );
-  const mergedDone = isMultiSectionDoneText(visit.done)
+  const mergedDone = usesDoneSectionMarkers(visit.done)
     ? visit.done.trim()
     : mergeDoneForStation(normalizedDone, focus, visit.done);
 
