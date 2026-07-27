@@ -13,7 +13,6 @@ const DAY_MAP = {
 };
 
 const MEMBER_BY_NAME = [
-  { keys: ["노희찬"], id: "m1" },
   { keys: ["이준명"], id: "m2" },
   { keys: ["유영준"], id: "m3" },
 ];

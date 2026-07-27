@@ -7,6 +7,12 @@ function st(line, name) {
   return `${line}호선 ${name}`;
 }
 
+function shortStationLabel(display) {
+  const t = display.trim();
+  const m = t.match(/^\d+호선\s+(.+)$/);
+  return (m ? m[1] : t).trim();
+}
+
 const DAYS = [
   {
     date: "2026-06-01",
@@ -143,7 +149,7 @@ async function main() {
     const visits = day.visits;
     const primary = visits[0];
     const doneText = visits
-      .map((v) => `【${v.station} · ${v.role}】\n${v.done}`)
+      .map((v) => `【${shortStationLabel(v.station)}】\n${v.done}`)
       .join("\n\n");
 
     // Per-visit schedules

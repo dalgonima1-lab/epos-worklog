@@ -11,7 +11,6 @@ export type ProcessingRole = (typeof PROCESSING_ROLES)[number];
 export const DEFAULT_TEAM_NAME = "EPOS 관리팀";
 
 export const DEFAULT_TEAM_MEMBERS = [
-  { id: "m1", name: "노희찬 과장", role: "member" },
   { id: "m2", name: "이준명 대리", role: "member" },
   { id: "m3", name: "유영준 사원", role: "member" },
   { id: "mgr", name: "최원제 팀장", role: "manager" },

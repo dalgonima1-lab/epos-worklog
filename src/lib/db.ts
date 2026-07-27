@@ -167,7 +167,6 @@ function normalizeManagerPinInput(value: unknown): string {
 }
 
 const MEMBER_NAME_MAP: Record<string, string> = {
-  m1: "노희찬 과장",
   m2: "이준명 대리",
   m3: "유영준 사원",
   mgr: "최원제 팀장",
@@ -208,6 +207,7 @@ function migrateDb(db: Database): Database {
   if (!Array.isArray(db.members) || db.members.length === 0) {
     db.members = [...DEFAULT_MEMBERS];
   }
+  db.members = db.members.filter((m) => m.id !== "m1");
 
   if ((db.dataSanitizeVersion ?? 0) < DATA_SANITIZE_VERSION) {
     sanitizeDatabaseTestArtifacts(db);

@@ -168,7 +168,7 @@ export default function StationHistoryPage() {
                 <input
                   type="search"
                   className="input mt-1"
-                  placeholder="예: 노희찬, 2025-05, 콘크리트, 타일…"
+                  placeholder="예: 이준명, 2025-05, 콘크리트, 타일…"
                   value={recordQuery}
                   disabled={loading}
                   autoComplete="off"

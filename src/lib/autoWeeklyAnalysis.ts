@@ -267,7 +267,7 @@ export function generateAutoWeeklyAnalysis(params: {
     );
   }
   lines.push(
-    `3. **DB·화면(이준명) – 현장 설치(유영준) – 연동·A/S(노희찬)** 역할을 홈 **주간 일정**에 등록하면 협업 품질이 향상됩니다.`
+    `3. **DB·화면(이준명) – 현장 설치(유영준)** 역할을 홈 **주간 일정**에 등록하면 협업 품질이 향상됩니다.`
   );
 
   if (nextWeekPlanSection?.trim()) {

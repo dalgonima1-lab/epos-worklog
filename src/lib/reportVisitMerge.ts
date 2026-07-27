@@ -48,6 +48,13 @@ function sectionKeyForStation(station: string): string {
   return shortStationLabel(station) || station.trim();
 }
 
+/** 【역명 · 공종】 형식 키에서 역사명만 추출 */
+function stationFromSectionKey(key: string): string {
+  const trimmed = key.trim();
+  const dot = trimmed.indexOf(" · ");
+  return (dot >= 0 ? trimmed.slice(0, dot) : trimmed).trim();
+}
+
 export function pickDoneForStation(done: string, station: string): string {
   const sections = parseDoneSections(done);
   const keys = Object.keys(sections);
@@ -55,12 +62,18 @@ export function pickDoneForStation(done: string, station: string): string {
   if (keys.length === 1 && keys[0] === "") {
     return sections[""] ?? "";
   }
-  for (const k of keys) {
-    if (stationsMatch(k, station)) return sections[k] ?? "";
-  }
   const label = sectionKeyForStation(station);
   for (const k of keys) {
-    if (k === label || stationsMatch(k, label)) return sections[k] ?? "";
+    const sectionStation = stationFromSectionKey(k);
+    if (
+      stationsMatch(sectionStation, station) ||
+      stationsMatch(sectionStation, label) ||
+      k === label ||
+      stationsMatch(k, station) ||
+      stationsMatch(k, label)
+    ) {
+      return sections[k] ?? "";
+    }
   }
   return "";
 }
